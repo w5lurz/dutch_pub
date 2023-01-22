@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import useLogin from '../../hooks/useLogin';
 
 export default function Login() {
@@ -19,6 +20,7 @@ export default function Login() {
                                     type="text"
                                     name="username"
                                     id="username"
+                                    value="admin"
                                     className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                     placeholder="random username"
                                     required
@@ -32,6 +34,7 @@ export default function Login() {
                                     type="password"
                                     name="password"
                                     id="password"
+                                    value={123456}
                                     placeholder="••••••••"
                                     className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                     required
@@ -66,9 +69,9 @@ export default function Login() {
                             </button>
                             <p className="text-sm font-light text-gray-500 dark:text-gray-400">
                                 Don’t have an account yet?{' '}
-                                <a href="#" className="font-medium text-blue-600 hover:underline dark:text-blue-500">
+                                <Link to="/registration" className="font-medium text-blue-600 hover:underline dark:text-blue-500">
                                     Sign up
-                                </a>
+                                </Link>
                             </p>
                         </form>
                     </div>

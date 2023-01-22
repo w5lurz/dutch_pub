@@ -1,10 +1,10 @@
-// import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-// import { setUser } from '../../user/userSlice';
+import { useAppDispatch } from '../app/hooks';
+import { setUser } from '../app/userSlice';
 
 export default function useLogin() {
     let navigate = useNavigate();
-    // const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
 
     const handleSubmit = async (event: any) => {
         event.preventDefault();
@@ -25,16 +25,16 @@ export default function useLogin() {
         });
         if (response.status === 200) {
             const userData = await response.json();
-            /* dispatch(
+            console.log(userData);
+            dispatch(
                 setUser({
-                    id: userData.user.id,
-                    fullName: userData.user.fullname,
-                    email: userData.user.email,
+                    id: userData.id,
+                    username: userData.username,
+                    email: userData.email,
                     accessToken: userData.accessToken,
                 }),
-            ); */
-            console.log(userData);
-            // sessionStorage.setItem('token', data.token);
+            );
+            sessionStorage.setItem('token', userData.accessToken);
             // dispatch(setIsSnackbarOpen({ isSnackbarOpen: true, snackbarText: 'Sikeres bejelentkezés!' }));
             navigate('/');
         } else {
