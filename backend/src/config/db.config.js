@@ -1,6 +1,6 @@
 export default {
     HOST: 'localhost',
-    USER: 'root',
+    USER: 'user',
     PASSWORD: 'root',
     DB: 'dutch_pub',
     dialect: 'mysql',
