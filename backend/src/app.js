@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cookieSession from 'cookie-session';
+import cors from 'cors';
 
 import db from './models';
 import usersRouters from './routes/user.routes';
@@ -10,7 +11,7 @@ const { json } = bodyParser;
 
 const app = express();
 
-// app.use(cors()) -- TODO
+app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 
 app.use(json());
 
@@ -39,6 +40,6 @@ app.use((err, req, res, next) => {
 
 db.sequelize.sync();
 
-app.listen(3000, () => {
-    console.log('Backend started - Listening on port 3000');
+app.listen(3030, () => {
+    console.log('Backend started - Listening on port 3030');
 });
