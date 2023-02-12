@@ -21,7 +21,6 @@ export default function useLogin() {
                     id: userData.id,
                     username: userData.username,
                     email: userData.email,
-                    accessToken: userData.accessToken,
                 }),
             );
             // dispatch(setIsSnackbarOpen({ isSnackbarOpen: true, snackbarText: 'Sikeres bejelentkezés!' }));

@@ -1,22 +1,8 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getUser } from '../../app/api';
-import { useAppSelector } from '../../app/hooks';
-import { RootState } from '../../app/store';
+import useNavBar from '../../hooks/useNavBar';
 
 export default function NavBar() {
-    const user = useAppSelector((state: RootState) => state.user);
-
-    useEffect(() => {
-        (async () => {
-            try {
-                const response = await getUser();
-                console.log('HEHE', response);
-            } catch (e: any) {
-                console.error(e.toString());
-            }
-        })();
-    }, []);
+    const { user, handleLogout } = useNavBar();
 
     console.log(user, !user);
     return (
@@ -41,7 +27,7 @@ export default function NavBar() {
                     </Link>
                 )}
                 {user && (
-                    <Link to="/" className="text-md" onClick={() => console.log('LOGOUT')}>
+                    <Link to="/" className="text-md" onClick={handleLogout}>
                         Log out
                     </Link>
                 )}
