@@ -1,30 +1,16 @@
-import { TRooms } from '../../app/types';
+import { TRoom } from '../../app/types';
+import useRooms from '../../hooks/useRooms';
+import Button from '../util/Button';
+import CreateRoomForm from './CreateRoomForm';
 
 export default function Rooms() {
-    const rooms: TRooms = {
-        1: {
-            name: 'First Room',
-            owner: 'kiskutya',
-            players: ['kiskutya', 'kiscica', 'hehe'],
-            slots: 4,
-        },
-        2: {
-            name: 'Second Room',
-            owner: 'kiscica',
-            players: ['kiscica'],
-            slots: 4,
-        },
-        3: {
-            name: 'Kiskutya jatszo',
-            owner: 'Tamas',
-            players: ['Tamas', 'Julci'],
-            slots: 2,
-        },
-    };
+    const { rooms, user, isInAnyRoom, currentRoom, isAlreadyOwner, handleDeleteRoom, handleJoinRoom, handleLeaveRoom } = useRooms();
+    console.log('CLIENT ROOMS', rooms, currentRoom);
+
     return (
         <div className="bg-gray-50 dark:bg-gray-900">
-            <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0 gap-4">
-                {Object.entries(rooms).map(([key, value]: [string, any]) => {
+            <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-auto lg:py-8 gap-4">
+                {Object.entries(rooms).map(([key, value]: [string, TRoom]) => {
                     const { name, owner, players, slots } = value;
                     return (
                         <div
@@ -35,14 +21,28 @@ export default function Rooms() {
                                 <div>
                                     <div className="flex justify-between">
                                         <h5 className="text-xl">Room name: {name}</h5>
-                                        {players.length < slots && (
-                                            <button
-                                                className="p-0.5 px-2 bg-green-300 rounded-md border-2 border-green-500 hover:bg-green-500 hover:border-green-300 dark:border"
-                                                onClick={() => console.log(`JOIN CLICKED - ${key}`)}
-                                            >
-                                                Join
-                                            </button>
-                                        )}
+                                        <div className="flex gap-2">
+                                            {players.length < slots && !isInAnyRoom && (
+                                                <Button
+                                                    label="Join"
+                                                    color="green"
+                                                    handleOnClick={() => handleJoinRoom(user?.username ?? 'NO USERNAME', +key)}
+                                                />
+                                            )}
+                                            {currentRoom && currentRoom?.name === name && owner !== user?.username && (
+                                                <Button
+                                                    label="Leave"
+                                                    color="yellow"
+                                                    handleOnClick={() => handleLeaveRoom(user?.username ?? 'NO USERNAME', +key)}
+                                                />
+                                            )}
+                                            {owner === user?.username && (
+                                                <Button label="Delete" color="red" handleOnClick={() => handleDeleteRoom(+key)} />
+                                            )}
+                                            {owner === user?.username && (
+                                                <Button label="Start" color="blue" handleOnClick={() => handleDeleteRoom(+key)} />
+                                            )}
+                                        </div>
                                     </div>
                                     <h6 className="text-sm">Owner: {owner}</h6>
                                 </div>
@@ -51,6 +51,7 @@ export default function Rooms() {
                         </div>
                     );
                 })}
+                <CreateRoomForm key="create-room-form" user={user} isAlreadyOwner={!!isAlreadyOwner} />
             </div>
         </div>
     );

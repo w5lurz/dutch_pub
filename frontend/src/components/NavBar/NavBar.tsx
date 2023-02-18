@@ -6,7 +6,7 @@ export default function NavBar() {
 
     console.log(user, !user);
     return (
-        <div className="bg-blue-400 h-10 px-2 flex gap-2 items-center justify-between">
+        <div className="bg-blue-400 h-10 px-2 flex gap-2 items-center justify-between sticky top-0">
             <div className="flex gap-2 items-center">
                 <Link to="/" className="text-lg font-medium">
                     Dutch Pub

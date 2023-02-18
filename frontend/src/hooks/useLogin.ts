@@ -1,3 +1,4 @@
+import { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../app/api';
 import { useAppDispatch } from '../app/hooks';
@@ -7,7 +8,7 @@ export default function useLogin() {
     let navigate = useNavigate();
     const dispatch = useAppDispatch();
 
-    const handleSubmit = async (event: any) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
 
