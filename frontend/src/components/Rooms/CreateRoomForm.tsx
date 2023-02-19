@@ -1,4 +1,4 @@
-import { User } from '../../app/userSlice';
+import { User } from '../../app/types';
 import useCreateRoomForm from '../../hooks/useCreateRoomForm';
 import Button from '../util/Button';
 
@@ -8,7 +8,7 @@ type CreateRoomFormProps = {
 };
 
 export default function CreateRoomForm({ user, isAlreadyOwner = false }: CreateRoomFormProps) {
-    const { isCreateRoomVisible, setIsCreateRoomVisible, handleCreateRoom } = useCreateRoomForm();
+    const { isCreateRoomVisible, setIsCreateRoomVisible, handleCreateRoom } = useCreateRoomForm(user);
 
     if (isCreateRoomVisible && user) {
         return (

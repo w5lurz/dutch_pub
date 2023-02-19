@@ -1,6 +1,6 @@
 import { FormEvent, useContext, useState } from 'react';
 import { Socket } from 'socket.io-client';
-import { User } from '../app/userSlice';
+import { User } from '../app/types';
 import { SocketContext } from './useApp';
 
 export default function useCreateRoomForm(user?: User) {
