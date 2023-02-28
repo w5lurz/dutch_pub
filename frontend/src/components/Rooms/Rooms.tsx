@@ -1,4 +1,4 @@
-import { TRoom } from '../../app/types';
+import { Player, TRoom } from '../../app/types';
 import useRooms from '../../hooks/useRooms';
 import Button from '../util/Button';
 import CreateRoomForm from './CreateRoomForm';
@@ -6,7 +6,7 @@ import CreateRoomForm from './CreateRoomForm';
 export default function Rooms() {
     const { rooms, user, isInAnyRoom, currentRoom, isAlreadyOwner, handleDeleteRoom, handleJoinRoom, handleLeaveRoom, handleStartRoom } =
         useRooms();
-    console.log('CLIENT ROOMS', rooms, currentRoom);
+    console.log('CLIENT ROOMS', rooms, currentRoom, isInAnyRoom, isAlreadyOwner);
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900">
@@ -49,7 +49,7 @@ export default function Rooms() {
                                         <h6 className="text-sm">Owner: {owner}</h6>
                                     </div>
                                     <h6>
-                                        Players: {players.join(', ')} ({players.length}/{slots})
+                                        Players: {players.map((player: Player) => player.username).join(', ')} ({players.length}/{slots})
                                     </h6>
                                 </div>
                             </div>
@@ -59,7 +59,7 @@ export default function Rooms() {
                     <>
                         <h2 className="text-lg">No Room created yet!</h2>
                         <p>
-                            You can create a new room by clicking on the Create Room button - however if you cannot see it you may had not
+                            You can create a new room by clicking on the Create room button - however if you cannot see it you may had not
                             logged in yet.
                         </p>
                     </>

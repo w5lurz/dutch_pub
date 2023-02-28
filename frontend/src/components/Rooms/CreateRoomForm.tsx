@@ -49,7 +49,8 @@ export default function CreateRoomForm({ user, isAlreadyOwner = false }: CreateR
             </form>
         );
     }
-    if (user && !isAlreadyOwner) {
+    // TODO check smthg else like isLoggedIn --> not logged in user also has an object
+    if (user?.email && !isAlreadyOwner) {
         return <Button label="Create room" handleOnClick={() => setIsCreateRoomVisible(true)} />;
     }
     return null;

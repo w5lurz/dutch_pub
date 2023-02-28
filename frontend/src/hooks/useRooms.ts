@@ -1,47 +1,50 @@
-import { useContext, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useContext, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
+import { updateGame } from '../app/gameSlice';
+import { useAppSelector } from '../app/hooks';
+import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
-import { TRoom, TRooms, User } from '../app/types';
+import { Game, Player, TRoom, TRooms, User } from '../app/types';
 import { setUser } from '../app/userSlice';
 import { SocketContext } from './useApp';
 
 export default function useRooms() {
     const socket: Socket = useContext(SocketContext)!;
-    // TODO move to store
-    const [rooms, setRooms] = useState<TRooms>({});
+    let navigate = useNavigate();
 
     const dispatch = useDispatch();
-    const user = useSelector((state: RootState) => state.user);
-    let navigate = useNavigate();
+    const rooms = useAppSelector((state: RootState) => state.rooms);
+    const user = useAppSelector((state: RootState) => state.user);
 
     useEffect(() => {
         const roomsListedListener = (roomsListed: TRooms) => {
             console.log('ROOMS LISTED');
-            setRooms(roomsListed);
+            dispatch(setRooms(roomsListed));
         };
 
         const joinedRoomListener = (roomsListed: TRooms) => {
             console.log('JOINED ROOM');
-            setRooms(roomsListed);
+            dispatch(setRooms(roomsListed));
         };
 
         const leftRoomListener = (roomsListed: TRooms) => {
             console.log('LEFT ROOM');
-            setRooms(roomsListed);
+            dispatch(setRooms(roomsListed));
         };
 
         const deletedRoomListener = (roomsListed: TRooms) => {
             console.log('DELETED ROOM');
-            setRooms(roomsListed);
+            dispatch(setRooms(roomsListed));
         };
 
-        const gameStartedListener = (roomsListed: TRooms, game: any) => {
+        const gameStartedListener = (roomsListed: TRooms, game: Game) => {
             console.log('Game started', roomsListed, game);
             navigate('/game');
-            setRooms(roomsListed);
+            dispatch(setRooms(roomsListed));
             dispatch(setUser({ ...user, inGame: true } as User));
+            dispatch(updateGame(game));
         };
 
         socket.emit('list-rooms');
@@ -68,11 +71,19 @@ export default function useRooms() {
     };
 
     const handleStartRoom = (roomId: number) => {
-        socket.emit('start-game', roomId);
+        socket.emit('start-game', roomId, socket?.id);
     };
 
-    const isInAnyRoom = Object.values(rooms).some((room: TRoom) => room.players.includes(user?.username || 'NO USERNAME'));
-    const currentRoom = Object.values(rooms).find((room: TRoom) => room.players.includes(user?.username || 'NO USERNAME'));
+    const isInAnyRoom = Object.values(rooms).some(
+        (room: TRoom) =>
+            !!room.players.find((player: Player) => {
+                console.log(player, user);
+                return player.username === user?.username || player.username === 'NO USERNAME';
+            }),
+    );
+    const currentRoom = Object.values(rooms).find(
+        (room: TRoom) => !!room.players.find((player: Player) => player.username === user?.username || player.username === 'NO USERNAME'),
+    );
     const isAlreadyOwner = Object.values(rooms).find((room: TRoom) => room.owner === user?.username);
 
     return {
