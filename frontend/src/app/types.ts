@@ -2,7 +2,7 @@ export type User = {
     id: number;
     username: string;
     email: string;
-    inGame?: boolean;
+    inGame?: number;
 } | null;
 
 export type Player = { username: string; socketId: string };
@@ -35,9 +35,13 @@ export type Opponent = {
 
 export type Opponents = { [key: string]: Opponent };
 
-export type UserCards = { hand: Cards; table: Cards; tableFlipped: Cards };
+export type UserCards = { hand: Cards; table: number; tableFlipped: Cards };
 
 export type Game = {
     userCards: UserCards;
+    active?: boolean;
     opponents: Opponents;
+    deck: number;
+    laidCards: Array<TCard> | null;
+    burntCards: Array<TCard> | null;
 };
