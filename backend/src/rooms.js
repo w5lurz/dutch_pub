@@ -1,28 +1,33 @@
-import { deck as initialDeck, shuffleDeck } from './game';
-import db from './models';
-const User = db.user;
+import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game';
 
-let games = {};
+export let games = {};
 
-let roomsList = {
+export let roomsList = {
     1: {
         name: 'First Room',
         owner: 'kiskutya',
-        players: ['kiskutya', 'kiscica', 'hehe'],
+        players: [
+            { username: 'kiskutya', socketId: 'test1' },
+            { username: 'kiscica', socketId: 'test2' },
+            { username: 'hehe', socketId: 'test3' },
+        ],
         slots: 4,
         socketRoomId: 'game-1',
     },
     2: {
         name: 'Second Room',
-        owner: 'kiscica',
-        players: ['kiscica'],
+        owner: 'kutyi',
+        players: [{ username: 'kutyi', socketId: 'test4' }],
         slots: 4,
         socketRoomId: 'game-2',
     },
     3: {
         name: 'Kiskutya jatszo',
         owner: 'Tamas',
-        players: ['Tamas', 'Julci'],
+        players: [
+            { username: 'Tamas', socketId: 'test5' },
+            { username: 'Julci', socketId: 'test6' },
+        ],
         slots: 2,
         socketRoomId: 'game-3',
     },
@@ -33,41 +38,41 @@ export const rooms = io => {
         console.log('Client connected', socket.id);
 
         socket.on('list-rooms', () => {
-            console.log('LIST ROOMS');
             socket.emit('rooms-listed', roomsList);
         });
 
         socket.on('create-room', ({ name, owner, slots }) => {
-            console.log('CREATAE', name, slots, socket.id);
             const newKey = +Object.keys(roomsList)[Object.keys(roomsList).length - 1] + 1;
             const socketRoomId = `game-${newKey}`;
             const newRoom = {
                 name,
                 owner,
-                players: [owner],
+                players: [{ username: owner, socketId: socket?.id }],
                 slots,
                 socketRoomId,
             };
             roomsList = { ...roomsList, [newKey]: newRoom };
-            // socket.emit('rooms-listed', roomsList);
+
+            // Socket joins new room -- TODO IS THIS NEEDED??? --> maybe for chat yes
             socket.join(socketRoomId);
             io.emit('rooms-listed', roomsList);
         });
 
         socket.on('delete-room', roomId => {
-            console.log('DELETe', roomId);
             const { [roomId]: roomToDelete, ...rest } = roomsList;
             roomsList = rest;
-            // socket.emit('rooms-listed', roomsList);
+
+            // TODO DELETE SOCKET ROOM HERE
             io.emit('room-deleted', roomsList);
         });
 
         socket.on('join-room', ({ username, roomId }) => {
             roomsList = {
                 ...roomsList,
-                [roomId]: { ...roomsList[roomId], players: [...roomsList[roomId].players, username] },
+                [roomId]: { ...roomsList[roomId], players: [...roomsList[roomId].players, { username, socketId: socket?.id }] },
             };
-            console.log(roomsList);
+
+            // Socket joins new room -- TODO IS THIS NEEDED??? --> maybe for chat yes
             socket.join(`game-${roomId}`);
             io.emit('joined-room', roomsList);
         });
@@ -77,89 +82,53 @@ export const rooms = io => {
                 ...roomsList,
                 [roomId]: {
                     ...roomsList[roomId],
-                    players: roomsList[roomId].players.filter(player => player !== username),
-                    slots: roomsList[roomId].slots - 1,
+                    players: roomsList[roomId].players.filter(player => player.username !== username),
+                    // slots: roomsList[roomId].slots - 1,
                 },
             };
-            console.log(roomsList);
+
+            // Socket leaves new room -- TODO IS THIS NEEDED??? --> maybe for chat yes
             socket.leave(`game-${roomId}`);
             io.emit('left-room', roomsList);
         });
 
-        socket.on('start-game', async roomId => {
+        socket.on('start-game', async (roomId, socketId) => {
+            // Set room's inGame to true
             const newRoom = { ...roomsList[roomId], inGame: true };
             roomsList = {
                 ...roomsList,
                 [roomId]: newRoom,
             };
-            console.log('START GAME', roomsList, socket.id);
-            console.log('IO ROOMS', io.of('/').adapter.rooms);
+
+            // Create new deck and shuffle it, init new game
             const deck = shuffleDeck(initialDeck);
-            console.log('START GAME1', deck);
             if (newRoom.players.length > 3) {
                 deck = [...deck, shuffleDeck(initialDeck)];
             }
-
-            /* const newGame = {
-                userCards: {
-                    table: [deck.shift(), deck.shift(), deck.shift()],
-                    tableFlipped: [deck.shift(), deck.shift(), deck.shift()],
-                    hand: [deck.shift(), deck.shift(), deck.shift()],
-                },
-                deck,
-            },
-
-            games = {
-                ...games,
-                [roomId]: newGame,
-            };*/
-            // const deck2 = shuffleDeck(deck);
-            // const gameC
             const newGame = {
-                // userCards: {},
-                // deck,
+                players: {},
             };
-
-            const playerSpecificGameData = {
-                userCards: {},
-                opponents: {},
-            };
-
-            const user = await User.findOne({ where: { username: req?.session?.username } });
 
             // Populate Backend-side data of a game
-            const currentRoomSockets = io.of('/').adapter.rooms[roomId];
+            const rand = newRoom.players[Math.floor(Math.random() * newRoom.players.length)];
             newRoom.players.forEach(player => {
-                newGame[player].userCards = {
+                newGame.players[player.username] = {};
+                newGame.players[player.username].userCards = {
                     table: [deck.shift(), deck.shift(), deck.shift()],
                     tableFlipped: [deck.shift(), deck.shift(), deck.shift()],
                     hand: [deck.shift(), deck.shift(), deck.shift()],
                 };
+                // Random user to start
+                newGame.players[player.username].active = rand.username === player.username;
             });
             newGame.deck = deck;
-
-            newRoom.players.forEach(player => {
-                if (player === user?.username) {
-                    playerSpecificGameData.userCards = { ...newGame[player].userCards };
-                } else {
-                    playerSpecificGameData.opponents[player].table = newGame[player].userCards.table.length;
-                    playerSpecificGameData.opponents[player].hand = newGame[player].userCards.hand.length;
-                    playerSpecificGameData.opponents[player].tableFlipped = { ...newGame[player].userCards.tableFlipped };
-                }
-            });
-            playerSpecificGameData.deck = deck;
-            console.log('HEHEHE', newGame);
             games[roomId] = newGame;
 
-            socket.emit('game-started', roomsList, playerSpecificGameData);
-
-            // currentRoomSockets.forEach(socketId => {});
-            // io.to(`game-${roomId}`).emit('game-started', roomsList, games[roomId]);
-            // io.emit('joined-room', roomsList);
+            // Send new game data to sockets
+            sendUiDataToSocket(io, newRoom, newGame, 'game-started', roomId);
         });
     });
-    // io.on('list-rooms', socket => {
-    //     io.emit('rooms-listed', roomsList)
-    // })
-    // io.on('create-room')
 };
+
+// const currentRoomSockets = io.of('/').adapter.rooms[roomId];
+// console.log(newRoom, newRoom.players, newGame);

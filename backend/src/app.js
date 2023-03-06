@@ -9,6 +9,7 @@ import db from './models';
 import usersRouters from './routes/user.routes';
 import authRouters from './routes/auth.routes';
 import { rooms } from './rooms';
+import { game } from './game';
 
 const { json } = bodyParser;
 
@@ -66,3 +67,4 @@ const io = new Server(server, {
 }); */
 
 rooms(io);
+game(io);
