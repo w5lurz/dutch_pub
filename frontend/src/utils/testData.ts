@@ -1,22 +1,6 @@
 export const testGame = {
     userCards: {
-        table: [
-            {
-                name: '6',
-                value: 6,
-                color: 'diamonds',
-            },
-            {
-                name: 'J',
-                value: 11,
-                color: 'diamonds',
-            },
-            {
-                name: '3',
-                value: 3,
-                color: 'diamonds',
-            },
-        ],
+        table: 3,
         tableFlipped: [
             {
                 name: 'Start Over',
@@ -78,7 +62,11 @@ export const testGame = {
             ],
         },
     },
-    deck: [
+    deck: 34,
+};
+
+/**
+ * deck: [
         {
             name: 'Q',
             value: 12,
@@ -265,4 +253,4 @@ export const testGame = {
             isMagicCard: true,
         },
     ],
-};
+ */
