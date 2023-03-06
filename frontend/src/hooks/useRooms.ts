@@ -39,11 +39,11 @@ export default function useRooms() {
             dispatch(setRooms(roomsListed));
         };
 
-        const gameStartedListener = (roomsListed: TRooms, game: Game) => {
+        const gameStartedListener = (game: Game, roomsListed: TRooms, roomId: number) => {
             console.log('Game started', roomsListed, game);
             navigate('/game');
             dispatch(setRooms(roomsListed));
-            dispatch(setUser({ ...user, inGame: true } as User));
+            dispatch(setUser({ ...user, inGame: roomId } as User));
             dispatch(updateGame(game));
         };
 
@@ -53,7 +53,6 @@ export default function useRooms() {
         socket.on('left-room', leftRoomListener);
         socket.on('room-deleted', deletedRoomListener);
         socket.on('game-started', gameStartedListener);
-        // socket.on('rooms-listed', roomsListedListener);
     }, []);
 
     const handleDeleteRoom = (roomId: number) => {

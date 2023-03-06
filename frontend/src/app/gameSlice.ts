@@ -2,7 +2,13 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { Game } from './types';
 
-const initialState: Game = { userCards: { hand: [], table: [], tableFlipped: [] }, opponents: {} };
+const initialState: Game = {
+    userCards: { hand: [], table: 3, tableFlipped: [] },
+    opponents: {},
+    deck: 34,
+    laidCards: null,
+    burntCards: null,
+};
 
 type UpdateGamePayload = Game;
 
@@ -11,7 +17,8 @@ const gameSlice = createSlice({
     initialState: initialState,
     reducers: {
         updateGame(state, action: PayloadAction<UpdateGamePayload>) {
-            return action.payload;
+            state = action.payload;
+            return state;
         },
     },
 });
