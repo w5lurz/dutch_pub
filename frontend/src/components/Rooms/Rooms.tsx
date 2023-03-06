@@ -64,7 +64,7 @@ export default function Rooms() {
                         </p>
                     </>
                 )}
-                <CreateRoomForm key="create-room-form" user={user} isAlreadyOwner={!!isAlreadyOwner} />
+                <CreateRoomForm key="create-room-form" user={user} isAlreadyOwner={!!isAlreadyOwner} isInAnyRoom={isInAnyRoom} />
             </div>
         </div>
     );

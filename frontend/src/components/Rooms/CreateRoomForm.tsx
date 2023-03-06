@@ -5,9 +5,10 @@ import Button from '../util/Button';
 type CreateRoomFormProps = {
     user?: User;
     isAlreadyOwner?: boolean;
+    isInAnyRoom?: boolean;
 };
 
-export default function CreateRoomForm({ user, isAlreadyOwner = false }: CreateRoomFormProps) {
+export default function CreateRoomForm({ user, isAlreadyOwner = false, isInAnyRoom = false }: CreateRoomFormProps) {
     const { isCreateRoomVisible, setIsCreateRoomVisible, handleCreateRoom } = useCreateRoomForm(user);
 
     if (isCreateRoomVisible && user) {
@@ -50,7 +51,7 @@ export default function CreateRoomForm({ user, isAlreadyOwner = false }: CreateR
         );
     }
     // TODO check smthg else like isLoggedIn --> not logged in user also has an object
-    if (user?.email && !isAlreadyOwner) {
+    if (user?.email && !isAlreadyOwner && !isInAnyRoom) {
         return <Button label="Create room" handleOnClick={() => setIsCreateRoomVisible(true)} />;
     }
     return null;
