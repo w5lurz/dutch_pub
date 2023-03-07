@@ -9,9 +9,27 @@ export const game = io => {
             const currentGame = games[roomId];
 
             // Deleting laid card from hand
-            currentGame.players[username].userCards.hand = currentGame.players[username].userCards.hand.filter(
-                handCard => !(handCard.value === card.value && handCard.color === card.color),
-            );
+            if (currentGame.players[username].userCards.hand.length !== 0) {
+                currentGame.players[username].userCards.hand = currentGame.players[username].userCards.hand.filter(
+                    handCard => !(handCard.value === card.value && handCard.color === card.color),
+                );
+            }
+            // Deleting table flipped card (if hand is empty)
+            if (
+                currentGame.players[username].userCards.hand.length === 0 &&
+                currentGame.players[username].userCards.tableFlipped.length !== 0
+            ) {
+                currentGame.players[username].userCards.tableFlipped = currentGame.players[username].userCards.tableFlipped.filter(
+                    tableFlippedCard => !(tableFlippedCard.value === card.value && tableFlippedCard.color === card.color),
+                );
+            }
+            if (
+                typeof card === 'number' &&
+                currentGame.players[username].userCards.hand.length === 0 &&
+                currentGame.players[username].userCards.tableFlipped.length === 0
+            ) {
+                currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
+            }
 
             // Add top card from deck to hand if hand.length < 3
             const cardToAddToHand =
