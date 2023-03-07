@@ -17,17 +17,7 @@ export default function Game() {
                 <div className="p-6 -mb-[9rem] z-0 flex justify-center">{renderFlippedCards(opponent.table, user, roomId)}</div>
                 <div className="px-6 pt-6 flex z-10 justify-center">
                     {opponent.tableFlipped.map((card: TCard, i: number) => {
-                        return (
-                            <Card
-                                key={`${card.color}-${card.value}`}
-                                card={card}
-                                active={active}
-                                i={i}
-                                user={user}
-                                roomId={roomId}
-                                canTouch={false}
-                            />
-                        );
+                        return <Card key={`${card.color}-${card.value}`} card={card} active={active} i={i} user={user} roomId={roomId} />;
                     })}
                 </div>
                 <h6 className={`${!active ? 'bg-green-200 rounded-md px-2' : ''} flex text-lg font-semibold self-center mt-4`}>
@@ -38,7 +28,7 @@ export default function Game() {
             <div className="flex justify-center gap-6">
                 <div className="flex flex-col items-center">
                     <h6 className="mb-2 font-bold">Deck ({testGame.deck})</h6>
-                    <Card card={testGame.deck} active={active} i={0} user={user} roomId={roomId} canTouch />
+                    <Card card={testGame.deck} active={active} i={0} user={user} roomId={roomId} />
                 </div>
                 <div className="flex flex-col items-center">
                     <h6 className="mb-2 font-bold">Laid Cards</h6>

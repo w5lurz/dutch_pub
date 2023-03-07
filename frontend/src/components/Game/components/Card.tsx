@@ -12,7 +12,7 @@ type CardProps = {
     isHandCard?: boolean;
 };
 
-export default function Card({ card, active, i, roomId, user, canTouch = true, isHandCard = false }: CardProps) {
+export default function Card({ card, active, i, roomId, user, canTouch = false, isHandCard = false }: CardProps) {
     const { handleCardOnClick } = useCard(roomId, user);
 
     if (typeof card === 'number') {

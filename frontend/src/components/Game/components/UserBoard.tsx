@@ -9,7 +9,9 @@ export default function UserBoard({ userCards, active, user, roomId }: UserBoard
         <div className="flex flex-col">
             <div className="px-6 pt-6 flex justify-center">
                 {userCards.hand.map((card: TCard, i: number) => {
-                    return <Card key={`${card.color}-${card.value}`} card={card} active={active} i={i} user={user} roomId={roomId} />;
+                    return (
+                        <Card key={`${card.color}-${card.value}`} card={card} active={active} i={i} user={user} roomId={roomId} canTouch />
+                    );
                 })}
             </div>
             <h6 className={`${active ? 'bg-green-200 rounded-md px-2' : ''} flex text-lg font-semibold self-center mt-4`}>
@@ -25,12 +27,14 @@ export default function UserBoard({ userCards, active, user, roomId }: UserBoard
                             i={i}
                             user={user}
                             roomId={roomId}
-                            canTouch={false}
+                            canTouch={userCards.hand.length === 0}
                         />
                     );
                 })}
             </div>
-            <div className="p-6 -mt-36 z-0 flex justify-center">{renderFlippedCards(userCards.table, user, roomId)}</div>
+            <div className="p-6 -mt-36 z-0 flex justify-center">
+                {renderFlippedCards(userCards.table, user, roomId, userCards.hand.length === 0 && userCards.tableFlipped.length === 0)}
+            </div>
         </div>
     );
 }
