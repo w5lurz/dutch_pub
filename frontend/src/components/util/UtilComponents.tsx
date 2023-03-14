@@ -88,10 +88,10 @@ export const CardIcon = (iconName: string) => {
     }
 };
 
-export const renderFlippedCards = (count: number, user: User, roomId: number, canTouch: boolean = false) => {
+export const renderFlippedCards = (count: number, user: User, roomId: number, active: boolean = false, canTouch: boolean = false) => {
     let arr = [];
     for (let i = 0; i < count; i++) {
-        arr.push(<Card key={`flipped-${i}`} card={i} i={i} user={user} roomId={roomId} canTouch={canTouch} />);
+        arr.push(<Card key={`flipped-${i}`} card={i} active={active} i={i} user={user} roomId={roomId} canTouch={canTouch} />);
     }
     return arr;
 };

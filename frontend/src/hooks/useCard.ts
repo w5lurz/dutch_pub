@@ -11,20 +11,29 @@ export default function useCard(roomId: number, user: User) {
 
     const laidCards = useAppSelector((state: RootState) => state.game.laidCards);
 
-    const handleCardOnClick = (card: TCard, cardIndex: number, roomId: number, user: User) => {
+    const handleCardOnClick = (card: TCard | number, cardIndex: number, roomId: number, user: User) => {
         const lastLaidCard = laidCards ? getFirstArrayItem(laidCards) : null;
         // TODO move to util
-        const canLayCard =
-            !laidCards ||
-            (lastLaidCard.value <= card.value && !lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
-            (laidCards && !lastLaidCard.isTeaseCard && card.isMagicCard) ||
-            (laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard) ||
-            (laidCards &&
-                lastLaidCard.isMagicCard &&
-                lastLaidCard.value === 0 &&
-                (getSecondArrayItem(laidCards).value <= card.value || !getSecondArrayItem(laidCards))) ||
-            (laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value) ||
-            (laidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7);
+        let canLayCard = false;
+        console.log('HANDLE', canLayCard);
+        if (typeof card === 'number') {
+            console.log('HANDLE1', canLayCard);
+            canLayCard = true;
+        } else {
+            canLayCard =
+                !laidCards ||
+                (lastLaidCard.value <= card.value && !lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
+                (laidCards && !lastLaidCard.isTeaseCard && card.isMagicCard) ||
+                (laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard) ||
+                (laidCards &&
+                    lastLaidCard.isMagicCard &&
+                    lastLaidCard.value === 0 &&
+                    (getSecondArrayItem(laidCards).value <= card.value || !getSecondArrayItem(laidCards))) ||
+                (laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value) ||
+                (laidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7);
+            console.log('HANDLE2', canLayCard);
+        }
+        console.log('HANDLE3', canLayCard);
         if (canLayCard) {
             console.log('LAYING CARD', card, user?.username);
             socket.emit('lay-card', { card, cardIndex, roomId, username: user?.username });

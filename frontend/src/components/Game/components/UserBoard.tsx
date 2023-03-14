@@ -5,6 +5,7 @@ import Card from './Card';
 type UserBoardProps = { userCards: UserCards; active?: boolean; user: User; roomId: number };
 
 export default function UserBoard({ userCards, active, user, roomId }: UserBoardProps) {
+    console.log('USERGAME', userCards);
     return (
         <div className="flex flex-col">
             <div className="px-6 pt-6 flex justify-center">
@@ -33,7 +34,13 @@ export default function UserBoard({ userCards, active, user, roomId }: UserBoard
                 })}
             </div>
             <div className="p-6 -mt-36 z-0 flex justify-center">
-                {renderFlippedCards(userCards.table, user, roomId, userCards.hand.length === 0 && userCards.tableFlipped.length === 0)}
+                {renderFlippedCards(
+                    userCards.table,
+                    user,
+                    roomId,
+                    active,
+                    userCards.hand.length === 0 && userCards.tableFlipped.length === 0,
+                )}
             </div>
         </div>
     );

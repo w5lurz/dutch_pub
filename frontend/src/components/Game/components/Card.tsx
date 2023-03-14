@@ -17,8 +17,12 @@ export default function Card({ card, active, i, roomId, user, canTouch = false, 
 
     if (typeof card === 'number') {
         // -ml-4
+        console.log('CANTouch', canTouch, user, active, card);
         return (
-            <div className={canTouch ? 'hover:cursor-pointer hover:bg-blue-50' : ''}>
+            <div
+                className={canTouch ? 'hover:cursor-pointer hover:bg-blue-50' : ''}
+                onClick={() => canTouch && active && handleCardOnClick(card as number, i, roomId, user)}
+            >
                 <CardBackSide />
             </div>
         ); // <div className={'flex flex-col -m-2 bg-gray-600 shadow-md rounded p-2 w-24 h-32 gap-2'}></div>;

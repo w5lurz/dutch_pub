@@ -17,6 +17,9 @@ export default function NavBar() {
                 <Link to="/game" className="text-md font-medium">
                     Game
                 </Link>
+                <Link to="/leaderboard" className="text-md font-medium">
+                    Leaderboard
+                </Link>
             </div>
             <div className="flex gap-2">
                 {!user?.email && (

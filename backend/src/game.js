@@ -7,6 +7,7 @@ export const game = io => {
         socket.on('lay-card', ({ card, cardIndex, roomId, username }) => {
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];
+            let currentLaidCard = card;
 
             // Deleting laid card from hand
             if (currentGame.players[username].userCards.hand.length !== 0) {
@@ -23,35 +24,79 @@ export const game = io => {
                     tableFlippedCard => !(tableFlippedCard.value === card.value && tableFlippedCard.color === card.color),
                 );
             }
+            let isValidLastLaidCard = true;
             if (
+                // TODO TEST what if it is a number, we should reveal that to UI
                 typeof card === 'number' &&
                 currentGame.players[username].userCards.hand.length === 0 &&
                 currentGame.players[username].userCards.tableFlipped.length === 0
             ) {
+                currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
                 currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
+                const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
+                const secondLaidCard = currentGame.laidCards ? currentGame.laidCards[1] : null;
+                isValidLastLaidCard =
+                    !lastLaidCard ||
+                    (lastLaidCard.value <= currentLaidCard.value &&
+                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
+                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) ||
+                    (!lastLaidCard.isTeaseCard && currentLaidCard.isMagicCard) ||
+                    (lastLaidCard.isMagicCard && lastLaidCard.value === 14 && currentLaidCard.isMagicCard) ||
+                    (lastLaidCard.isMagicCard && lastLaidCard.value === 0 && secondLaidCard?.value <= currentLaidCard.value) ||
+                    (lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= currentLaidCard.value) ||
+                    (lastLaidCard.isTeaseCard && currentLaidCard.value >= 3 && currentLaidCard.value <= 7);
+                console.log('LAST ROUND', isValidLastLaidCard);
             }
+            if (!isValidLastLaidCard) {
+                console.log('LAST ROUND1', isValidLastLaidCard);
+                // Setting hand with drawn cards
+                currentGame.players[username].userCards.hand = [lastLaidCard, ...currentGame.laidCards];
 
-            // Add top card from deck to hand if hand.length < 3
-            const cardToAddToHand =
-                currentGame.deck.length && currentGame.players[username].userCards.hand.length < 3 && currentGame.deck.shift();
-            cardToAddToHand && currentGame.players[username].userCards.hand.splice(cardIndex, 0, cardToAddToHand);
-
-            // If laid card is a 10 we burn all laid cards
-            if (card.value === 10) {
-                currentGame.burntCards = currentGame.burntCards
-                    ? [card, ...(currentGame.laidCards ? currentGame.laidCards : []), ...currentGame.burntCards]
-                    : [card, ...(currentGame.laidCards ? currentGame.laidCards : [])];
+                // Setting laidCards to null (given to hand)
                 currentGame.laidCards = null;
+
+                // Setting active player to next
+                setActivePlayerNext(currentGame.players, username);
+
+                // Send new game data to sockets
+                console.log('DRAWNHEHE', currentGame.players);
+                sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
             } else {
-                currentGame.laidCards = currentGame.laidCards ? [card, ...currentGame.laidCards] : [card];
+                // Add top card from deck to hand if hand.length < 3
+                const cardToAddToHand =
+                    currentGame.deck.length && currentGame.players[username].userCards.hand.length < 3 && currentGame.deck.shift();
+                cardToAddToHand && currentGame.players[username].userCards.hand.splice(cardIndex, 0, cardToAddToHand);
+
+                // If laid card is a 10 we burn all laid cards
+                // TODO TEST of setting active player next when burning cards
+                if (currentLaidCard?.value === 10) {
+                    currentGame.burntCards = currentGame.burntCards
+                        ? [currentLaidCard, ...(currentGame.laidCards ? currentGame.laidCards : []), ...currentGame.burntCards]
+                        : [currentLaidCard, ...(currentGame.laidCards ? currentGame.laidCards : [])];
+                    currentGame.laidCards = null;
+                } else if (isLastFourCardsSame(currentGame.laidCards, currentLaidCard)) {
+                    currentGame.burntCards = [
+                        currentLaidCard,
+                        ...currentGame.laidCards,
+                        ...(currentGame.burntCards ? currentGame.burntCards : []),
+                    ];
+                    currentGame.laidCards = null;
+                } else {
+                    currentGame.laidCards = currentGame.laidCards ? [currentLaidCard, ...currentGame.laidCards] : [currentLaidCard];
+                    // TODO SET WINNER HERE
+                    if (typeof card === 'number' && card === 0) {
+                        const { [roomId]: omit, ...rest } = roomsList;
+                        roomsList = rest;
+                        io.to(`game-${roomId}`).emit('game-won', username, roomsList);
+                    }
+                    // Setting active player to next
+                    setActivePlayerNext(currentGame.players, username);
+                }
+
+                // Send new game data to sockets
+                console.log('CARD LAYED', card, currentLaidCard, username, currentGame.players);
+                sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
             }
-
-            // Setting active player to next
-            setActivePlayerNext(currentGame.players);
-
-            // Send new game data to sockets
-            console.log('CARD LAYED', card, username, currentGame.players);
-            sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
         });
 
         socket.on('draw-cards', ({ roomId, username }) => {
@@ -70,7 +115,7 @@ export const game = io => {
             currentGame.laidCards = null;
 
             // Setting active player to next
-            setActivePlayerNext(currentGame.players);
+            setActivePlayerNext(currentGame.players, username);
 
             // Send new game data to sockets
             console.log('DRAWNHEHE', currentGame.players);
@@ -78,6 +123,15 @@ export const game = io => {
         });
     });
 };
+
+const isLastFourCardsSame = (laidCards, card) =>
+    laidCards &&
+    laidCards[0] &&
+    laidCards[1] &&
+    laidCards[2] &&
+    card.value === laidCards[0].value &&
+    laidCards[0].value === laidCards[1].value &&
+    laidCards[1].value === laidCards[2].value;
 
 export const sendUiDataToSocket = (io, room, game, message, roomId) => {
     room.players.forEach(player => {
@@ -107,7 +161,7 @@ export const sendUiDataToSocket = (io, room, game, message, roomId) => {
     });
 };
 
-const setActivePlayerNext = players => {
+const setActivePlayerNext = (players, username) => {
     const activePlayerIndex = Object.values(players).findIndex(playerSpecificGame => playerSpecificGame.active);
     players[username].active = false;
     if (activePlayerIndex + 1 >= Object.keys(players).length) {
