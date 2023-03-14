@@ -11,12 +11,14 @@ module.exports = {
         },
         ecmaVersion: 12,
         sourceType: 'module',
-        project: ['./dutch_pub/frontend/tsconfig.json'],
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: __dirname,
     },
     plugins: ['react', '@typescript-eslint', 'import'],
     rules: {
         'react/react-in-jsx-scope': 0,
-        '@typescript-eslint/indent': ['error', 4],
+        '@typescript-eslint/indent': 0,
         '@typescript-eslint/no-unused-vars': 0,
+        '@typescript-eslint/no-shadow': 1,
     },
 };
