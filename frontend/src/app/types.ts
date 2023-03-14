@@ -45,3 +45,22 @@ export type Game = {
     laidCards: Array<TCard> | null;
     burntCards: Array<TCard> | null;
 };
+
+export type TToast = {
+    // id: number;
+    type: 'success' | 'info' | 'warning' | 'error';
+    message: string;
+    duration: number;
+    position: ToastPositionType;
+    // icon?: ReactNode | boolean;
+};
+
+export type ToastPositionType = 'topLeft' | 'topCenter' | 'topRight' | 'bottomRight' | 'bottomCenter' | 'bottomLeft';
+
+export type RequiredToastProps = Required<TToast>;
+
+// export type Banner = { type: 'success' | 'info' | 'warning' | 'error'; message: string; duration: number; position: ToastPositionType };
+
+export type GeneralState = {
+    toast: TToast | null;
+};
