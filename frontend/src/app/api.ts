@@ -39,3 +39,17 @@ export const getUser = async () => {
     });
     return response;
 };
+
+export const getLeaderBoard = async () => {
+    const response = await fetch('http://localhost:3030/api/games/leaderboard', {
+        method: 'GET', // *GET, POST, PUT, DELETE, etc.
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            // Authorization: 'Bearer app-secret-key',
+
+            // 'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    });
+    return response;
+};

@@ -64,3 +64,5 @@ export type RequiredToastProps = Required<TToast>;
 export type GeneralState = {
     toast: TToast | null;
 };
+
+export type TLeaderBoard = Array<{ rank: number; winner: string; wins: number; favouriteFriend: string; latestWin: string }>;
