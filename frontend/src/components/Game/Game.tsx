@@ -1,7 +1,9 @@
 import { TCard } from '../../app/types';
 import useGame from '../../hooks/useGame';
+import { MessageToastsProvider } from '../../hooks/useMessageToast';
 import { renderFlippedCards } from '../util/UtilComponents';
 import Card from './components/Card';
+import ChatInterface from './components/ChatInterface';
 import UserBoard from './components/UserBoard';
 
 export default function Game() {
@@ -39,6 +41,9 @@ export default function Game() {
                     <Card card={testGame.burntCards ? testGame.burntCards[0] : null} active={active} i={0} user={user} roomId={roomId} />
                 </div>
             </div>
+            <MessageToastsProvider>
+                <ChatInterface roomId={roomId} user={user} />
+            </MessageToastsProvider>
             <UserBoard userCards={testGame.userCards} active={active} user={user} roomId={roomId} />
         </div>
     );

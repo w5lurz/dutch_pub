@@ -6,13 +6,13 @@ const initialState: GeneralState = {
     toast: null,
 };
 
-type SetBannerPayload = TToast | null;
+type SetToastPayload = TToast | null;
 
 const generalSlice = createSlice({
     name: 'general',
     initialState: initialState,
     reducers: {
-        setToast(state, action: PayloadAction<SetBannerPayload>) {
+        setToast(state, action: PayloadAction<SetToastPayload>) {
             return { ...state, toast: action.payload };
         },
     },
