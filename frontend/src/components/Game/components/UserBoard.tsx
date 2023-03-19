@@ -39,7 +39,7 @@ export default function UserBoard({ userCards, active, user, roomId }: UserBoard
                     user,
                     roomId,
                     active,
-                    userCards.hand.length === 0 && userCards.tableFlipped.length === 0,
+                    userCards.hand.length === 0 && userCards.tableFlipped.length === 0 && active,
                 )}
             </div>
         </div>

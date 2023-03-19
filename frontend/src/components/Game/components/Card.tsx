@@ -21,7 +21,11 @@ export default function Card({ card, active, i, roomId, user, canTouch = false, 
         return (
             <div
                 className={canTouch ? 'hover:cursor-pointer hover:bg-blue-50' : ''}
-                onClick={() => canTouch && active && handleCardOnClick(card as number, i, roomId, user)}
+                onClick={() => {
+                    console.log(canTouch, active);
+                    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                    canTouch && active && handleCardOnClick(card as number, i, roomId, user);
+                }}
             >
                 <CardBackSide />
             </div>
