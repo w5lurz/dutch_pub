@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import dbConfig from '../config/db.config.js';
 import User from './user.model';
+import PlayedGame from './played_game.model';
 
 const { DB, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool } = dbConfig;
 
@@ -24,6 +25,7 @@ db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
 db.user = User(sequelize, Sequelize);
+db.played_game = PlayedGame(sequelize, Sequelize);
 
 /* db.role.belongsToMany(db.user, {
     through: 'user_roles',
