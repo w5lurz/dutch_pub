@@ -11,6 +11,7 @@ import authRouters from './routes/auth.routes';
 import playedGamesRoutes from './routes/played_game.routes';
 import { rooms } from './rooms';
 import { game } from './game';
+import { chat } from './chat';
 
 const { json } = bodyParser;
 
@@ -71,3 +72,4 @@ const io = new Server(server, {
 
 rooms(io);
 game(io);
+chat(io);

@@ -111,6 +111,8 @@ export const game = io => {
 
                     // TODO write to db
                     console.log('GAMEWON', card);
+                    // TODO DELETE ROOM
+                    io.in(`game-${roomId}`).socketsLeave(`game-${roomId}`);
                     console.log('GAMEWON1', roomsList);
                     await PlayedGame.create({
                         winner: username,
