@@ -1,12 +1,16 @@
 import { games, roomsList } from './rooms';
 
+import db from './models';
+const PlayedGame = db.played_game;
+
 const handleClearAll = () => {};
 
 export const game = io => {
     io.on('connection', socket => {
-        socket.on('lay-card', ({ card, cardIndex, roomId, username }) => {
+        socket.on('lay-card', async ({ card, cardIndex, roomId, username }) => {
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];
+            const originalCard = card;
             let currentLaidCard = card;
 
             // Deleting laid card from hand
@@ -34,23 +38,28 @@ export const game = io => {
                 currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
                 currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
                 const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
+                console.log('LASTLAID', lastLaidCard, currentLaidCard);
                 const secondLaidCard = currentGame.laidCards ? currentGame.laidCards[1] : null;
+                console.log('LASTLAID1', secondLaidCard, currentLaidCard);
                 isValidLastLaidCard =
-                    !lastLaidCard ||
-                    (lastLaidCard.value <= currentLaidCard.value &&
-                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
-                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) ||
-                    (!lastLaidCard.isTeaseCard && currentLaidCard.isMagicCard) ||
-                    (lastLaidCard.isMagicCard && lastLaidCard.value === 14 && currentLaidCard.isMagicCard) ||
-                    (lastLaidCard.isMagicCard && lastLaidCard.value === 0 && secondLaidCard?.value <= currentLaidCard.value) ||
-                    (lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= currentLaidCard.value) ||
-                    (lastLaidCard.isTeaseCard && currentLaidCard.value >= 3 && currentLaidCard.value <= 7);
-                console.log('LAST ROUND', isValidLastLaidCard);
+                    !lastLaidCard || // false
+                    (lastLaidCard.value <= currentLaidCard.value && // false
+                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) || // true
+                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) || // false
+                    (!lastLaidCard.isTeaseCard && currentLaidCard.isMagicCard) || // false
+                    (lastLaidCard.isMagicCard && lastLaidCard.value === 14 && currentLaidCard.isMagicCard) || // false
+                    (lastLaidCard.isMagicCard &&
+                        lastLaidCard.value === 0 &&
+                        (secondLaidCard?.value <= currentLaidCard.value || !secondLaidCard)) || // TODO NOT SECOND LAID CARD but the first card what is not an 8 before that
+                    (lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= currentLaidCard.value) || // false
+                    (lastLaidCard.isTeaseCard && currentLaidCard.value >= 3 && currentLaidCard.value <= 7); // false
+                console.log('LAST ROUND', isValidLastLaidCard, currentGame.laidCards);
             }
             if (!isValidLastLaidCard) {
+                // const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
                 console.log('LAST ROUND1', isValidLastLaidCard);
                 // Setting hand with drawn cards
-                currentGame.players[username].userCards.hand = [lastLaidCard, ...currentGame.laidCards];
+                currentGame.players[username].userCards.hand = [...currentGame.laidCards];
 
                 // Setting laidCards to null (given to hand)
                 currentGame.laidCards = null;
@@ -59,7 +68,7 @@ export const game = io => {
                 setActivePlayerNext(currentGame.players, username);
 
                 // Send new game data to sockets
-                console.log('DRAWNHEHE', currentGame.players);
+                console.log('DRAWNHEHE', currentGame.players[username].userCards.hand);
                 sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
             } else {
                 // Add top card from deck to hand if hand.length < 3
@@ -82,15 +91,32 @@ export const game = io => {
                     ];
                     currentGame.laidCards = null;
                 } else {
+                    console.log('ELSE', card, cardIndex);
                     currentGame.laidCards = currentGame.laidCards ? [currentLaidCard, ...currentGame.laidCards] : [currentLaidCard];
-                    // TODO SET WINNER HERE
-                    if (typeof card === 'number' && card === 0) {
-                        const { [roomId]: omit, ...rest } = roomsList;
-                        roomsList = rest;
-                        io.to(`game-${roomId}`).emit('game-won', username, roomsList);
-                    }
+                    console.log('SET NEXT', username);
                     // Setting active player to next
                     setActivePlayerNext(currentGame.players, username);
+                }
+
+                // TODO SET WINNER HERE
+                if (
+                    originalCard === 0 ||
+                    (currentGame.players[username].userCards.hand.length === 0 &&
+                        currentGame.players[username].userCards.tableFlipped.length === 0 &&
+                        currentGame.players[username].userCards.table.length === 0)
+                ) {
+                    let { [roomId]: omit, ...rest } = roomsList;
+                    // roomsList = rest; TODO NEEDED BUT not working
+                    io.to(`game-${roomId}`).emit('game-won', username, roomsList);
+
+                    // TODO write to db
+                    console.log('GAMEWON', card);
+                    console.log('GAMEWON1', roomsList);
+                    await PlayedGame.create({
+                        winner: username,
+                        players: currentRoom.players.map(player => player.username).join(','),
+                    });
+                } else {
                 }
 
                 // Send new game data to sockets
@@ -169,6 +195,7 @@ const setActivePlayerNext = (players, username) => {
     } else {
         Object.values(players)[activePlayerIndex + 1].active = true;
     }
+    console.log('SET NEXT2', players);
 };
 
 export const deck = [
