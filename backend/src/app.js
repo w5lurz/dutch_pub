@@ -8,6 +8,7 @@ import { Server } from 'socket.io';
 import db from './models';
 import usersRouters from './routes/user.routes';
 import authRouters from './routes/auth.routes';
+import playedGamesRoutes from './routes/played_game.routes';
 import { rooms } from './rooms';
 import { game } from './game';
 
@@ -39,13 +40,15 @@ app.use('/api/auth', authRouters);
 
 app.use('/api/users', usersRouters);
 
+app.use('/api/games', playedGamesRoutes);
+
 // Error-handling middleware below
 // app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message });
 });
 
-db.sequelize.sync();
+db.sequelize.sync(); // {force: true}
 
 server.listen(port, () => {
     console.log('Backend started - Listening on port 3030');

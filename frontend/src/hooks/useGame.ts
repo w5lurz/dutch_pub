@@ -34,6 +34,7 @@ export default function useGame() {
         };
 
         const gameWonListener = (username: string, roomsList: TRooms) => {
+            console.log('GAME WON', username);
             dispatch(
                 setToast({
                     type: 'success',
@@ -75,6 +76,7 @@ export default function useGame() {
                         lastLaidCard.isMagicCard &&
                         lastLaidCard.value === 0 &&
                         getSecondArrayItem(currentLaidCards).value <= card.value) ||
+                    !getSecondArrayItem(currentLaidCards) ||
                     (currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value) ||
                     (currentLaidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7);
             });

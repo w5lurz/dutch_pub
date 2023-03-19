@@ -1,8 +1,10 @@
 import db from '../models';
 const User = db.user;
 
-export const allAccess = (req, res) => {
-    res.status(200).send('Public Content.');
+export const allAccess = async (req, res) => {
+    const users = await User.findAll();
+
+    res.status(200).send(users);
 };
 
 export const userBoard = async (req, res) => {
