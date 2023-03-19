@@ -53,6 +53,13 @@ export default function useRooms() {
         socket.on('left-room', leftRoomListener);
         socket.on('room-deleted', deletedRoomListener);
         socket.on('game-started', gameStartedListener);
+        return () => {
+            socket.off('rooms-listed', roomsListedListener);
+            socket.off('joined-room', joinedRoomListener);
+            socket.off('left-room', leftRoomListener);
+            socket.off('room-deleted', deletedRoomListener);
+            socket.off('game-started', gameStartedListener);
+        };
     }, []);
 
     const handleDeleteRoom = (roomId: number) => {
