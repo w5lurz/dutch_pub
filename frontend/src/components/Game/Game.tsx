@@ -14,7 +14,7 @@ export default function Game() {
     const opponentName = Object.keys(testGame.opponents)[0];
     console.log('OPPONENTER', opponent, testGame);
     return (
-        <div className="flex flex-col gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700">
+        <div className="flex flex-col gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700 h-full">
             <div className="flex flex-col">
                 <div className="p-6 -mb-[9rem] z-0 flex justify-center">{renderFlippedCards(opponent?.table, user, roomId)}</div>
                 <div className="px-6 pt-6 flex z-10 justify-center">

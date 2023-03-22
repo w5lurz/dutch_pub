@@ -15,15 +15,19 @@ function App() {
     return (
         <SocketContext.Provider value={socket}>
             <Toast />
-            <NavBar />
-            <Routes>
-                <Route key="welcome" path="/" element={<Welcome />}></Route>
-                <Route key="play" path="/play" element={<Rooms />}></Route>
-                <Route key="game" path="/game" element={<Game />}></Route>
-                <Route key="leaderboard" path="/leaderboard" element={<LeaderBoard />}></Route>
-                <Route key="login" path="/login" element={<Login />}></Route>
-                <Route key="registration" path="/registration" element={<Registration />}></Route>
-            </Routes>
+            <div className="flex flex-col h-screen">
+                <NavBar />
+                <div className="grow">
+                    <Routes>
+                        <Route key="welcome" path="/" element={<Welcome />}></Route>
+                        <Route key="play" path="/play" element={<Rooms />}></Route>
+                        <Route key="game" path="/game" element={<Game />}></Route>
+                        <Route key="leaderboard" path="/leaderboard" element={<LeaderBoard />}></Route>
+                        <Route key="login" path="/login" element={<Login />}></Route>
+                        <Route key="registration" path="/registration" element={<Registration />}></Route>
+                    </Routes>
+                </div>
+            </div>
         </SocketContext.Provider>
     );
 }

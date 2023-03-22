@@ -1,15 +1,16 @@
 import { Link } from 'react-router-dom';
 import useNavBar from '../../hooks/useNavBar';
+import { DutchPubLogo } from '../util/UtilComponents';
 
 export default function NavBar() {
     const { user, handleLogout } = useNavBar();
 
     // TODO user smthg else instead of email
     return (
-        <div className="bg-blue-400 p-2 flex gap-2 items-center justify-between sticky top-0">
+        <div className="bg-blue-400 p-2 px-4 flex gap-2 items-center justify-between sticky top-0 basis-auto">
             <div className="flex gap-2 items-center">
-                <Link to="/" className="text-lg font-medium">
-                    Dutch Pub
+                <Link to="/" className="text-lg font-medium mr-4">
+                    <DutchPubLogo />
                 </Link>
                 <Link to="/play" className="text-md font-medium">
                     Play
