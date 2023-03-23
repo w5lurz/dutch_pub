@@ -1,9 +1,8 @@
 import { useContext, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { updateGame } from '../app/gameSlice';
-import { useAppSelector } from '../app/hooks';
+import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
 import { Game, Player, TRoom, TRooms, User } from '../app/types';
@@ -14,7 +13,7 @@ export default function useRooms() {
     const socket: Socket = useContext(SocketContext)!;
     let navigate = useNavigate();
 
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
     const rooms = useAppSelector((state: RootState) => state.rooms);
     const user = useAppSelector((state: RootState) => state.user);
 
