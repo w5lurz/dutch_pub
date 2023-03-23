@@ -9,32 +9,32 @@ export default function NavBar() {
     return (
         <div className="bg-blue-400 p-2 px-4 flex gap-2 items-center justify-between sticky top-0 basis-auto">
             <div className="flex gap-2 items-center">
-                <Link to="/" className="text-lg font-medium mr-4">
+                <Link to="/" className="mr-4">
                     <DutchPubLogo />
                 </Link>
-                <Link to="/play" className="text-md font-medium">
+                <Link to="/play" className="text-base font-medium">
                     Play
                 </Link>
-                <Link to="/game" className="text-md font-medium">
+                <Link to="/game" className="text-base font-medium">
                     Game
                 </Link>
-                <Link to="/leaderboard" className="text-md font-medium">
+                <Link to="/leaderboard" className="text-base font-medium">
                     Leaderboard
                 </Link>
             </div>
             <div className="flex gap-2">
                 {!user?.email && (
-                    <Link to="/login" className="text-md">
+                    <Link to="/login" className="text-base">
                         Login
                     </Link>
                 )}
                 {!user?.email && (
-                    <Link to="/registration" className="text-md">
+                    <Link to="/registration" className="text-base">
                         Registration
                     </Link>
                 )}
                 {user?.email && (
-                    <Link to="/" className="text-md" onClick={handleLogout}>
+                    <Link to="/" className="text-base" onClick={handleLogout}>
                         Log out
                     </Link>
                 )}

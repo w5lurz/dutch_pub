@@ -12,6 +12,7 @@ export let roomsList = {
             { username: 'hehe', socketId: 'test3' },
         ],
         slots: 4,
+        visibility: 'private',
         socketRoomId: 'game-1',
     },
     2: {
@@ -19,6 +20,7 @@ export let roomsList = {
         owner: 'kutyi',
         players: [{ username: 'kutyi', socketId: 'test4' }],
         slots: 4,
+        visibility: 'private',
         socketRoomId: 'game-2',
     },
     3: {
@@ -29,6 +31,7 @@ export let roomsList = {
             { username: 'Julci', socketId: 'test6' },
         ],
         slots: 2,
+        visibility: 'private',
         socketRoomId: 'game-3',
     },
 };
