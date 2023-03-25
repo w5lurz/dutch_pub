@@ -15,8 +15,9 @@ export default function CreateRoomForm({ user, isAlreadyOwner = false, isInAnyRo
         return (
             <form className="space-y-4 md:space-y-6 w-1/4" onSubmit={handleCreateRoom}>
                 <div>
-                    <label htmlFor="roomname" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                        Room Name
+                    <label htmlFor="roomname" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white flex justify-between">
+                        <p>Room Name</p>
+                        <div>x</div>
                     </label>
                     <input
                         type="text"
