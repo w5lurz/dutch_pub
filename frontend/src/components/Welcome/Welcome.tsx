@@ -1,6 +1,6 @@
 export default function Welcome() {
     return (
-        <div className="bg-gray-50 dark:bg-gray-900 h-full">
+        <div className="bg-gray-50 dark:bg-gray-900 h-full dark:text-white">
             <h2 className="px-6 py-8">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus luctus vitae turpis id euismod. Pellentesque sodales
                 metus turpis, at aliquam dolor laoreet at. Etiam facilisis, felis nec porttitor mollis, mi sem dapibus turpis, in cursus
