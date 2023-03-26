@@ -14,16 +14,19 @@ export default function Game() {
     const opponentName = Object.keys(testGame.opponents)[0];
     console.log('OPPONENTER', opponent, testGame);
     return (
-        <div className="flex gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700 h-full">
+        <div className="flex gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700">
             <div className="p-2 w-1/5 shadow-md bg-gray-300">
                 <MessageToastsProvider>
                     <ChatInterface roomId={roomId} user={user} />
                 </MessageToastsProvider>
             </div>
 
-            <div className="flex flex-col grow">
+            <div className="flex flex-col grow h-full">
                 <div className="flex flex-col">
-                    <div className="p-6 -mb-[9rem] z-0 flex justify-center">{renderFlippedCards(opponent?.table, user, roomId)}</div>
+                    <h6 className={`${!active ? 'bg-green-200 rounded-md px-2' : ''} flex text-lg font-semibold self-center mt-4`}>
+                        {opponentName}
+                    </h6>
+                    <div className="p-6 -mb-[8rem] z-0 flex justify-center">{renderFlippedCards(opponent?.table, user, roomId)}</div>
                     <div className="px-6 pt-6 flex z-10 justify-center">
                         {opponent?.tableFlipped.map((card: TCard, i: number) => {
                             return (
@@ -31,10 +34,7 @@ export default function Game() {
                             );
                         })}
                     </div>
-                    <h6 className={`${!active ? 'bg-green-200 rounded-md px-2' : ''} flex text-lg font-semibold self-center mt-4`}>
-                        {opponentName}
-                    </h6>
-                    <div className="p-6 z-0 flex justify-center">{renderFlippedCards(opponent?.hand, user, roomId)}</div>
+                    <div className="p-6 z-10 flex justify-center -mt-10">{renderFlippedCards(opponent?.hand, user, roomId)}</div>
                 </div>
                 <div className="flex justify-center gap-6">
                     <div className="flex flex-col items-center">

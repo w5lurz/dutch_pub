@@ -55,7 +55,7 @@ export const HeartsIcon = () => (
 
 export const CardBackSide = () => (
     <svg
-        className="w-24 h-32 -m-2"
+        className="w-20 h-28 -m-2"
         xmlns="http://www.w3.org/2000/svg"
         height="94mm"
         preserveAspectRatio="none"
