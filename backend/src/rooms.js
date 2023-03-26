@@ -104,9 +104,9 @@ export const rooms = io => {
             };
 
             // Create new deck and shuffle it, init new game
-            const deck = shuffleDeck(initialDeck);
+            let deck = shuffleDeck(initialDeck);
             if (newRoom.players.length > 3) {
-                deck = [...deck, shuffleDeck(initialDeck)];
+                deck = [...deck, ...shuffleDeck(initialDeck)];
             }
             const newGame = {
                 players: {},

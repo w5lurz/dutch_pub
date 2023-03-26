@@ -34,6 +34,7 @@ export type Opponent = {
     hand: number;
     table: number;
     tableFlipped: Cards;
+    active?: boolean;
 };
 
 export type Opponents = { [key: string]: Opponent };
