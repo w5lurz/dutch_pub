@@ -37,6 +37,7 @@ export default function useGame() {
             console.log('GAME WON', username);
             dispatch(
                 setToast({
+                    id: roomId, // TODO ez nem bizti jo lesz
                     type: 'success',
                     message: `${username === user?.username ? 'You' : username} won the game! Congratulations!`,
                     duration: 3000,
@@ -53,6 +54,11 @@ export default function useGame() {
         socket.on('card-laid', cardLaidListener);
         socket.on('cards-drawn', cardsDrawnListener);
         socket.on('game-won', gameWonListener);
+        return () => {
+            socket.off('card-laid', cardLaidListener);
+            socket.off('cards-drawn', cardsDrawnListener);
+            socket.off('game-won', gameWonListener);
+        };
     }, []);
 
     useEffect(() => {

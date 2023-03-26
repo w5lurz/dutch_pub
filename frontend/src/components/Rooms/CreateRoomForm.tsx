@@ -13,10 +13,11 @@ export default function CreateRoomForm({ user, isAlreadyOwner = false, isInAnyRo
 
     if (isCreateRoomVisible && user) {
         return (
-            <form className="space-y-4 md:space-y-6" onSubmit={handleCreateRoom}>
+            <form className="space-y-4 md:space-y-6 w-1/4" onSubmit={handleCreateRoom}>
                 <div>
-                    <label htmlFor="roomname" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                        Room Name
+                    <label htmlFor="roomname" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white flex justify-between">
+                        <p>Room Name</p>
+                        <div>x</div>
                     </label>
                     <input
                         type="text"
@@ -27,19 +28,39 @@ export default function CreateRoomForm({ user, isAlreadyOwner = false, isInAnyRo
                         required
                     />
                 </div>
-                <div>
-                    <label htmlFor="slots" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                        Slots
-                    </label>
-                    <input
-                        type="number"
-                        name="slots"
-                        id="slots"
-                        min={2}
-                        max={4}
-                        className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                        required
-                    />
+                <div className="flex gap-2">
+                    <div className="w-full">
+                        <label htmlFor="slots" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Slots
+                        </label>
+                        <input
+                            type="number"
+                            name="slots"
+                            id="slots"
+                            min={2}
+                            max={4}
+                            className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            required
+                        />
+                    </div>
+                    <div className="w-full">
+                        <label htmlFor="slots" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Visibility
+                        </label>
+                        <select
+                            name="visibility"
+                            id="visibility"
+                            className="font-semibold bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            required
+                        >
+                            <option value="private" className="font-semibold">
+                                Private
+                            </option>
+                            <option value="public" className="font-semibold">
+                                Public
+                            </option>
+                        </select>
+                    </div>
                 </div>
                 <button
                     type="submit"

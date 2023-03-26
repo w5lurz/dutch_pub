@@ -1,4 +1,5 @@
 import { games, roomsList } from './rooms';
+import { roomMessages } from './chat';
 
 import db from './models';
 const PlayedGame = db.played_game;
@@ -105,12 +106,17 @@ export const game = io => {
                         currentGame.players[username].userCards.tableFlipped.length === 0 &&
                         currentGame.players[username].userCards.table.length === 0)
                 ) {
+                    const gameId = `game-${roomId}`;
                     let { [roomId]: omit, ...rest } = roomsList;
                     // roomsList = rest; TODO NEEDED BUT not working
-                    io.to(`game-${roomId}`).emit('game-won', username, roomsList);
+                    io.to(gameId).emit('game-won', username, roomsList);
 
                     // TODO write to db
                     console.log('GAMEWON', card);
+                    // TODO DELETE ROOM
+                    io.in(gameId).socketsLeave(gameId);
+                    let { [gameId]: deleted, ...restRoomMessages } = roomMessages;
+                    roomMessages = restRoomMessages;
                     console.log('GAMEWON1', roomsList);
                     await PlayedGame.create({
                         winner: username,

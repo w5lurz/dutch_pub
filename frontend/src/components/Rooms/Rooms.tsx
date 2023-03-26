@@ -9,7 +9,7 @@ export default function Rooms() {
     console.log('CLIENT ROOMS', rooms, currentRoom, isInAnyRoom, isAlreadyOwner);
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-900">
+        <div className="bg-gray-50 dark:bg-gray-900 h-full">
             <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-auto lg:py-8 gap-4">
                 {Object.keys(rooms).length !== 0 ? (
                     Object.entries(rooms).map(([key, value]: [string, TRoom]) => {
@@ -60,7 +60,7 @@ export default function Rooms() {
                 ) : (
                     <>
                         <h2 className="text-lg">No Room created yet!</h2>
-                        <p>
+                        <p className="text-base">
                             You can create a new room by clicking on the Create room button - however if you cannot see it you may had not
                             logged in yet.
                         </p>

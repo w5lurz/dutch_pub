@@ -42,7 +42,7 @@ export default function LeaderBoardTable() {
                     </table>
                 </div>
             ) : (
-                <h6 className="text-base font-semibold">No Games played yet!</h6>
+                <p className="text-base">No Games played yet!</p>
             )}
         </div>
     );

@@ -1,4 +1,7 @@
-export const calculateColorClasses = (colorName: string) => {
+export const calculateColorClasses = (colorName: string, disabled?: boolean) => {
+    if (disabled) {
+        return ' bg-gray-300 border-gray-500 cursor-not-allowed';
+    }
     switch (colorName) {
         case 'green':
             return ' bg-green-300 border-green-500 hover:bg-green-500 hover:border-green-300';

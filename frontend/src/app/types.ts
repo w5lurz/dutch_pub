@@ -1,3 +1,5 @@
+import { RefObject } from 'react';
+
 export type User = {
     id: number;
     username: string;
@@ -12,6 +14,7 @@ export type TRoom = {
     owner: string;
     players: Array<Player>;
     slots: number;
+    visibility: boolean;
     inGame?: boolean;
 };
 
@@ -47,7 +50,7 @@ export type Game = {
 };
 
 export type TToast = {
-    // id: number;
+    id: number;
     type: 'success' | 'info' | 'warning' | 'error';
     message: string;
     duration: number;
@@ -66,3 +69,16 @@ export type GeneralState = {
 };
 
 export type TLeaderBoard = Array<{ rank: number; winner: string; wins: number; favouriteFriend: string; latestWin: string }>;
+
+export type MessageToastsContextType = {
+    add: (toast: Omit<TToast, 'id'>) => void;
+    remove: (toastId: number, ref: RefObject<HTMLDivElement>) => void;
+    position: ToastPositionType;
+};
+
+export type ChatMessage = {
+    id: number;
+    senderName: string;
+    message: string;
+    time: string;
+};
