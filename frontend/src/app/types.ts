@@ -75,3 +75,10 @@ export type MessageToastsContextType = {
     remove: (toastId: number, ref: RefObject<HTMLDivElement>) => void;
     position: ToastPositionType;
 };
+
+export type ChatMessage = {
+    id: number;
+    senderName: string;
+    message: string;
+    time: string;
+};

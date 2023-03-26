@@ -39,7 +39,7 @@ export const MessageToastsProvider = ({ children }: { children: ReactNode }) => 
     };
 
     return (
-        <div className="">
+        <div className="flex flex-col justify-between h-full">
             <MessageToastsContext.Provider value={{ add, remove, position }}>
                 {children}
                 {/* message toast list */}

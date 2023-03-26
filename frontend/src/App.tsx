@@ -15,9 +15,9 @@ function App() {
     return (
         <SocketContext.Provider value={socket}>
             <Toast />
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-screen max-h-screen">
                 <NavBar />
-                <div className="grow">
+                <div className="grow max-h-full">
                     <Routes>
                         <Route key="welcome" path="/" element={<Welcome />}></Route>
                         <Route key="play" path="/play" element={<Rooms />}></Route>

@@ -7,7 +7,7 @@ export default function NavBar() {
 
     // TODO user smthg else instead of email
     return (
-        <div className="bg-blue-400 p-2 px-4 flex gap-2 items-center justify-between sticky top-0 basis-auto z-50">
+        <div className="bg-blue-400 p-2 px-4 flex gap-2 items-center justify-between sticky top-0 basis-auto h-14 z-50">
             <div className="flex gap-2 items-center">
                 <Link to="/" className="mr-4">
                     <DutchPubLogo />
