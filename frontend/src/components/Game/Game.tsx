@@ -1,4 +1,4 @@
-import { TCard } from '../../app/types';
+import { TCard, Opponent } from '../../app/types';
 import useGame from '../../hooks/useGame';
 import { MessageToastsProvider } from '../../hooks/useMessageToast';
 import { renderFlippedCards } from '../util/UtilComponents';
@@ -10,31 +10,45 @@ export default function Game() {
     // sm:max-w-md
     const { testGame, active, user, roomId } = useGame();
 
-    const opponent = Object.values(testGame.opponents)[0];
-    const opponentName = Object.keys(testGame.opponents)[0];
-    console.log('OPPONENTER', opponent, testGame);
+    console.log('OPPONENTER', testGame);
     return (
-        <div className="flex gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700">
+        <div className="flex gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700 h-full">
             <div className="p-2 w-1/5 shadow-md bg-gray-300">
                 <MessageToastsProvider>
                     <ChatInterface roomId={roomId} user={user} />
                 </MessageToastsProvider>
             </div>
-
             <div className="flex flex-col grow h-full">
-                <div className="flex flex-col">
-                    <h6 className={`${!active ? 'bg-green-200 rounded-md px-2' : ''} flex text-lg font-semibold self-center mt-4`}>
-                        {opponentName}
-                    </h6>
-                    <div className="p-6 -mb-[8rem] z-0 flex justify-center">{renderFlippedCards(opponent?.table, user, roomId)}</div>
-                    <div className="px-6 pt-6 flex z-10 justify-center">
-                        {opponent?.tableFlipped.map((card: TCard, i: number) => {
-                            return (
-                                <Card key={`${card.color}-${card.value}`} card={card} active={active} i={i} user={user} roomId={roomId} />
-                            );
-                        })}
-                    </div>
-                    <div className="p-6 z-10 flex justify-center -mt-10">{renderFlippedCards(opponent?.hand, user, roomId)}</div>
+                <div className="flex justify-evenly">
+                    {Object.entries(testGame.opponents).map(([key, opponent]: [string, Opponent]) => (
+                        <div key={`opponent-${key}`} className="flex flex-col">
+                            <h6
+                                className={`${
+                                    opponent.active ? 'bg-green-200 rounded-md px-2' : ''
+                                } flex text-lg font-semibold self-center mt-4`}
+                            >
+                                {key}
+                            </h6>
+                            <div className="p-6 -mb-[8rem] z-0 flex justify-center">
+                                {renderFlippedCards(opponent?.table, user, roomId)}
+                            </div>
+                            <div className="px-6 pt-6 flex z-10 justify-center">
+                                {opponent?.tableFlipped.map((card: TCard, i: number) => {
+                                    return (
+                                        <Card
+                                            key={`${card.color}-${card.value}`}
+                                            card={card}
+                                            active={opponent.active}
+                                            i={i}
+                                            user={user}
+                                            roomId={roomId}
+                                        />
+                                    );
+                                })}
+                            </div>
+                            <div className="p-6 z-10 flex justify-center -mt-16">{renderFlippedCards(opponent?.hand, user, roomId)}</div>
+                        </div>
+                    ))}
                 </div>
                 <div className="flex justify-center gap-6">
                     <div className="flex flex-col items-center">

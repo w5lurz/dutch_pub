@@ -183,6 +183,7 @@ export const sendUiDataToSocket = (io, room, game, message, roomId) => {
                 playerSpecificGameData.opponents[otherPlayer.username].tableFlipped = [
                     ...game.players[otherPlayer.username].userCards.tableFlipped,
                 ];
+                playerSpecificGameData.opponents[otherPlayer.username].active = game.players[otherPlayer.username].active;
             }
         });
         playerSpecificGameData.laidCards = game.laidCards ? game.laidCards : null;
@@ -204,7 +205,7 @@ const setActivePlayerNext = (players, username) => {
     console.log('SET NEXT2', players);
 };
 
-export const deck = [
+export let deck = [
     // Clubs
     { name: 'Start Over', value: 2, color: 'clubs', isMagicCard: true }, // value itt hogy legyen?
     { name: '3', value: 3, color: 'clubs' },
