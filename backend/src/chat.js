@@ -1,4 +1,4 @@
-let roomMessages = {}; // TODO delete me if game ended
+export let roomMessages = {}; // TODO delete me if game ended
 
 export const chat = io => {
     io.on('connection', socket => {
