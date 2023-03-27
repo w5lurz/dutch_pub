@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../app/api';
+import { setToast } from '../app/generalSlice';
 import { useAppDispatch } from '../app/hooks';
 import { setUser } from '../app/userSlice';
 
@@ -24,11 +25,12 @@ export default function useLogin() {
                     email: userData.email,
                 }),
             );
-            // dispatch(setIsSnackbarOpen({ isSnackbarOpen: true, snackbarText: 'Sikeres bejelentkezés!' }));
+            dispatch(setToast({ id: 'login-success', type: 'success', message: 'You successfully logged in!', duration: 3000 }));
             navigate('/');
         } else {
-            console.log('nooononono');
-            // dispatch(setIsSnackbarOpen({ isSnackbarOpen: true, snackbarText: 'Hiba a bejelentkezés során!', severity: 'error' }));
+            const userData = await response.json();
+            console.error('Error while logging in ', userData?.message);
+            dispatch(setToast({ id: 'login-failed', type: 'error', message: userData?.message, duration: 3000 }));
         }
     };
 

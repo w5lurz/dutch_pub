@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../app/api';
+import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { RootState } from '../app/store';
 import { setUser } from '../app/userSlice';
@@ -13,9 +14,11 @@ export default function useNavBar() {
         try {
             await logoutUser();
             dispatch(setUser(null));
+            dispatch(setToast({ id: 'logout-success', type: 'success', message: 'You successfully logged out!', duration: 3000 }));
             navigate('/');
         } catch (e: any) {
-            console.error(e.toString());
+            console.error(e.toString()); // TODO TEST ME
+            dispatch(setToast({ id: 'login-failed', type: 'error', message: e.toString(), duration: 3000 }));
         }
     };
     return { user, handleLogout };

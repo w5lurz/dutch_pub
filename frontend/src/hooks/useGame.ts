@@ -26,18 +26,18 @@ export default function useGame() {
 
     useEffect(() => {
         const cardLaidListener = (game: Game) => {
-            dispatch(updateGame(game));
+            dispatch(updateGame(game)); // TODO add toast?
         };
 
         const cardsDrawnListener = (game: Game) => {
-            dispatch(updateGame(game));
+            dispatch(updateGame(game)); // TODO ADD sad toast
         };
 
         const gameWonListener = (username: string, roomsList: TRooms) => {
             console.log('GAME WON', username);
             dispatch(
                 setToast({
-                    id: roomId, // TODO ez nem bizti jo lesz
+                    id: `game-${roomId}-ended`, // TODO ez nem bizti jo lesz
                     type: 'success',
                     message: `${username === user?.username ? 'You' : username} won the game! Congratulations!`,
                     duration: 3000,

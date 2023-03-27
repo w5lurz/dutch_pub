@@ -30,21 +30,21 @@ export default function Rooms() {
                                                     <Button
                                                         label="Join"
                                                         color="green"
-                                                        handleOnClick={() => handleJoinRoom(user?.username ?? 'NO USERNAME', +key)}
+                                                        handleOnClick={() => handleJoinRoom(user?.username ?? 'NO USERNAME', +key, name)}
                                                     />
                                                 )}
                                                 {currentRoom && currentRoom?.name === name && owner !== user?.username && (
                                                     <Button
                                                         label="Leave"
                                                         color="yellow"
-                                                        handleOnClick={() => handleLeaveRoom(user?.username ?? 'NO USERNAME', +key)}
+                                                        handleOnClick={() => handleLeaveRoom(user?.username ?? 'NO USERNAME', +key, name)}
                                                     />
                                                 )}
                                                 {owner === user?.username && (
-                                                    <Button label="Delete" color="red" handleOnClick={() => handleDeleteRoom(+key)} />
+                                                    <Button label="Delete" color="red" handleOnClick={() => handleDeleteRoom(+key, name)} />
                                                 )}
                                                 {owner === user?.username && players.length > 1 && (
-                                                    <Button label="Start" color="blue" handleOnClick={() => handleStartRoom(+key)} />
+                                                    <Button label="Start" color="blue" handleOnClick={() => handleStartRoom(+key, name)} />
                                                 )}
                                             </div>
                                         </div>

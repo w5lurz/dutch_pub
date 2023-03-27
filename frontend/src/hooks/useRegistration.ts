@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-// import { useDispatch } from 'react-redux';
-// import { setIsSnackbarOpen } from '../../general/generalSlice';
+import { setToast } from '../app/generalSlice';
+import { useAppDispatch } from '../app/hooks';
 
 export default function useRegistration() {
     let navigate = useNavigate();
-    // const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
 
     const handleSubmit = async (event: any) => {
         event.preventDefault();
@@ -29,12 +29,19 @@ export default function useRegistration() {
         });
 
         if (response.status === 201) {
-            console.log('SUCCESSFUL LOGIN');
-            // dispatch(setIsSnackbarOpen({ isSnackbarOpen: true, snackbarText: 'Sikeres regisztráció!' }));
+            dispatch(
+                setToast({
+                    id: 'registration-success',
+                    type: 'success',
+                    message: 'You successfully Registered your new user!',
+                    duration: 3000,
+                }),
+            );
             navigate('/login');
         } else {
-            console.error('nonono');
-            // dispatch(setIsSnackbarOpen({ isSnackbarOpen: true, snackbarText: 'Hiba a regisztráció során!', severity: 'error' }));
+            const userData = await response.json();
+            console.error('Error while registration ', userData?.message);
+            dispatch(setToast({ id: 'registration-failed', type: 'error', message: userData?.message, duration: 3000 }));
         }
     };
 

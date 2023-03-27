@@ -1,6 +1,7 @@
-import { useContext, useEffect } from 'react';
+import { useCallback, useContext, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { useAppSelector } from '../app/hooks';
+import { setToast } from '../app/generalSlice';
+import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { RootState } from '../app/store';
 import { TCard, User } from '../app/types';
 import { getFirstArrayItem, getSecondArrayItem } from '../components/util/utilFunctions';
@@ -9,6 +10,7 @@ import { SocketContext } from './useApp';
 export default function useCard(roomId: number, user: User) {
     const socket: Socket = useContext(SocketContext)!;
 
+    const dispatch = useAppDispatch();
     const laidCards = useAppSelector((state: RootState) => state.game.laidCards);
 
     const handleCardOnClick = (card: TCard | number, cardIndex: number, roomId: number, user: User) => {
@@ -42,9 +44,11 @@ export default function useCard(roomId: number, user: User) {
         }
     };
 
-    useEffect(() => {}, []);
+    const addWarningToast = useCallback(() => {
+        dispatch(setToast({ id: 'place-card-failed', type: 'warning', message: 'You cannot place that card!', duration: 3000 }));
+    }, []);
 
-    return { handleCardOnClick };
+    return { handleCardOnClick, addWarningToast };
 }
 
 /* console.log(
