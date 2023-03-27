@@ -17,7 +17,6 @@ export default function MessageToast({ toast, remove }: { toast: TToast; remove:
     useEffect(() => {
         if (duration) {
             dismissRef.current = setTimeout(() => {
-                console.log('USEEFFECT');
                 remove(id, wrapperRef);
             }, duration);
         }

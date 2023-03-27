@@ -51,11 +51,11 @@ export type Game = {
 };
 
 export type TToast = {
-    id: number;
+    id: string | number; // TODO number not needed
     type: 'success' | 'info' | 'warning' | 'error';
     message: string;
     duration: number;
-    position: ToastPositionType;
+    position?: ToastPositionType;
     // icon?: ReactNode | boolean;
 };
 

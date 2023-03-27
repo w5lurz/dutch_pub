@@ -1,23 +1,43 @@
 import useToast from '../../hooks/useToast';
 import { animationVariables, positionClasses, wrapperClasses } from './utils';
 
+const renderToastMessageStart = (type: 'success' | 'info' | 'warning' | 'error') => {
+    if (type === 'success') {
+        return <span className="font-medium">🎉Hurray!</span>;
+    }
+    if (type === 'info') {
+        return <span className="font-medium">ℹ️You must know about this.</span>;
+    }
+    if (type === 'warning') {
+        return <span className="font-medium">⚠️Keep the next thing in mind!</span>;
+    }
+    if (type === 'error') {
+        return <span className="font-medium">❌Oh no!</span>;
+    } // TODO ADD SAD if cards drawn
+    return 'Maybe wrong Toast type specified!';
+};
+
 export default function Toast() {
-    const { toast } = useToast();
-    return toast ? (
-        <div className={positionClasses[toast?.position] + ' fixed w-screen max-w-xs z-50'}>
-            <div
-                style={{ ['--elm-translate' as any]: animationVariables[toast?.position] }}
-                className={
-                    wrapperClasses[toast?.type] +
-                    ' w-max p-4 text-base flex justify-between items-center overflow-hidden rounded-md shadow-lg my-3 relative'
-                }
-                role="alert"
-            >
-                🎉
-                <div>
-                    <span className="font-medium">Hurray!</span> {toast.message}
+    const { toast, wrapperRef, dismissRef } = useToast();
+    if (toast) {
+        const { type, position = 'topCenter', message } = toast;
+        return (
+            <div className={positionClasses[position] + ' fixed w-screen max-w-xs z-[100]'}>
+                <div
+                    style={{ ['--elm-translate' as any]: animationVariables[position] }}
+                    className={
+                        wrapperClasses[type] +
+                        'animate-toastIn' +
+                        ' w-max p-4 text-base flex justify-between items-center overflow-hidden rounded-md shadow-lg my-3 relative'
+                    }
+                    ref={wrapperRef}
+                    role="alert"
+                >
+                    <div>
+                        {renderToastMessageStart(type)} {message}
+                    </div>
                 </div>
             </div>
-        </div>
-    ) : null;
+        );
+    } else return null;
 }
