@@ -6,6 +6,7 @@ export const wrapperClasses: Record<RequiredToastProps['type'], string> = {
     warning:
         'text-yellow-800 border border-yellow-300 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 dark:border-yellow-800',
     error: 'text-red-800 border border-red-300 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400 dark:border-red-800',
+    sad: 'text-yellow-800 border border-yellow-300 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 dark:border-yellow-800',
 };
 
 export const animationVariables: Record<ToastPositionType, string> = {

@@ -52,7 +52,7 @@ export type Game = {
 
 export type TToast = {
     id: string | number; // TODO number not needed
-    type: 'success' | 'info' | 'warning' | 'error';
+    type: 'success' | 'info' | 'warning' | 'error' | 'sad';
     message: string;
     duration: number;
     position?: ToastPositionType;

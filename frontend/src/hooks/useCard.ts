@@ -40,7 +40,7 @@ export default function useCard(roomId: number, user: User) {
             console.log('LAYING CARD', card, user?.username);
             socket.emit('lay-card', { card, cardIndex, roomId, username: user?.username });
         } else {
-            // TODO warning here or make it disabled
+            dispatch(setToast({ id: 'lay-card-failed', type: 'sad', message: 'You cannot lay that card.', duration: 3000 }));
         }
     };
 

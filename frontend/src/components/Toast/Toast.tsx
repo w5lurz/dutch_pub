@@ -1,7 +1,7 @@
 import useToast from '../../hooks/useToast';
 import { animationVariables, positionClasses, wrapperClasses } from './utils';
 
-const renderToastMessageStart = (type: 'success' | 'info' | 'warning' | 'error') => {
+const renderToastMessageStart = (type: 'success' | 'info' | 'warning' | 'error' | 'sad') => {
     if (type === 'success') {
         return <span className="font-medium">🎉Hurray!</span>;
     }
@@ -9,11 +9,14 @@ const renderToastMessageStart = (type: 'success' | 'info' | 'warning' | 'error')
         return <span className="font-medium">ℹ️You must know about this.</span>;
     }
     if (type === 'warning') {
-        return <span className="font-medium">⚠️Keep the next thing in mind!</span>;
+        return <span className="font-medium">⚠️Hello there!</span>;
     }
     if (type === 'error') {
         return <span className="font-medium">❌Oh no!</span>;
-    } // TODO ADD SAD if cards drawn
+    }
+    if (type === 'sad') {
+        return <span className="font-medium">😔We&apos;re sorry!</span>;
+    }
     return 'Maybe wrong Toast type specified!';
 };
 
