@@ -1,5 +1,9 @@
 export let roomMessages = {}; // TODO delete me if game ended
 
+export const modifyRoomMessages = newMessages => {
+    roomMessages = newMessages;
+};
+
 export const chat = io => {
     io.on('connection', socket => {
         socket.on('send-message', async ({ roomId, username, message }) => {

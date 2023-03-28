@@ -1,5 +1,5 @@
-import { games, roomsList } from './rooms';
-import { roomMessages } from './chat';
+import { games, modifyRooms, roomsList } from './rooms';
+import { modifyRoomMessages, roomMessages } from './chat';
 
 import db from './models';
 const PlayedGame = db.played_game;
@@ -11,7 +11,7 @@ export const game = io => {
         socket.on('lay-card', async ({ card, cardIndex, roomId, username }) => {
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];
-            const originalCard = card;
+            const originalCard = card; // TODO needed?
             let currentLaidCard = card;
 
             // Deleting laid card from hand
@@ -98,25 +98,24 @@ export const game = io => {
                     // Setting active player to next
                     setActivePlayerNext(currentGame.players, username);
                 }
-
+                console.log('ORIG1', originalCard);
                 // TODO SET WINNER HERE
                 if (
-                    originalCard === 0 ||
-                    (currentGame.players[username].userCards.hand.length === 0 &&
-                        currentGame.players[username].userCards.tableFlipped.length === 0 &&
-                        currentGame.players[username].userCards.table.length === 0)
+                    currentGame.players[username].userCards.hand.length === 0 &&
+                    currentGame.players[username].userCards.tableFlipped.length === 0 &&
+                    currentGame.players[username].userCards.table.length === 0
                 ) {
                     const gameId = `game-${roomId}`;
                     let { [roomId]: omit, ...rest } = roomsList;
-                    // roomsList = rest; TODO NEEDED BUT not working
+                    console.log('REST1', rest);
+                    modifyRooms(rest);
                     io.to(gameId).emit('game-won', username, roomsList);
 
-                    // TODO write to db
                     console.log('GAMEWON', card);
                     // TODO DELETE ROOM
                     io.in(gameId).socketsLeave(gameId);
                     let { [gameId]: deleted, ...restRoomMessages } = roomMessages;
-                    roomMessages = restRoomMessages;
+                    modifyRoomMessages(restRoomMessages);
                     console.log('GAMEWON1', roomsList);
                     await PlayedGame.create({
                         winner: username,

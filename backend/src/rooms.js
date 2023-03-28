@@ -36,6 +36,10 @@ export let roomsList = {
     },
 };
 
+export const modifyRooms = newRooms => {
+    roomsList = newRooms;
+};
+
 export const rooms = io => {
     io.on('connection', socket => {
         console.log('Client connected', socket.id);
