@@ -18,7 +18,7 @@ export default function Game() {
                     <ChatInterface roomId={roomId} user={user} />
                 </MessageToastsProvider>
             </div>
-            <div className="flex flex-col grow h-full">
+            <div className="flex flex-col grow h-full justify-between">
                 <div className="flex justify-evenly">
                     {Object.entries(testGame.opponents).map(([key, opponent]: [string, Opponent]) => (
                         <div key={`opponent-${key}`} className="flex flex-col">

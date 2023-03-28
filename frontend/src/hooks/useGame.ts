@@ -67,24 +67,34 @@ export default function useGame() {
         let canLayCard = false;
         if (handCards?.length === 0 && flippedCards?.length === 0 && tableCards) {
             canLayCard = true;
+            console.log('CANLAY1', canLayCard);
         } else {
             const cardsToCheck = handCards && handCards.length > 0 ? handCards : flippedCards;
+            console.log('CANLAY2', canLayCard);
             cardsToCheck.forEach((card: TCard) => {
                 canLayCard =
                     canLayCard ||
                     !currentLaidCards ||
-                    (lastLaidCard.value <= card.value &&
-                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
-                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) ||
-                    (currentLaidCards && !lastLaidCard.isTeaseCard && card.isMagicCard) ||
-                    (currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard) ||
+                    (lastLaidCard?.value <= card.value &&
+                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
+                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2))) ||
+                    (currentLaidCards && !lastLaidCard?.isTeaseCard && card.isMagicCard) ||
+                    (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && card.isMagicCard) ||
                     (currentLaidCards &&
-                        lastLaidCard.isMagicCard &&
-                        lastLaidCard.value === 0 &&
+                        lastLaidCard?.isMagicCard &&
+                        lastLaidCard?.value === 0 &&
                         getSecondArrayItem(currentLaidCards).value <= card.value) ||
                     !getSecondArrayItem(currentLaidCards) ||
-                    (currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value) ||
-                    (currentLaidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7);
+                    (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 2 && lastLaidCard?.value <= card.value) ||
+                    (currentLaidCards && lastLaidCard?.isTeaseCard && card.value >= 3 && card.value <= 7);
+                console.log(
+                    'CANLAY3',
+                    canLayCard,
+                    !currentLaidCards,
+                    lastLaidCard?.value <= card.value &&
+                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
+                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
+                );
             });
         }
         if (!canLayCard && active) {

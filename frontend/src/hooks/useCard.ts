@@ -24,7 +24,8 @@ export default function useCard(roomId: number, user: User) {
         } else {
             canLayCard =
                 !laidCards ||
-                (lastLaidCard.value <= card.value && !lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
+                (lastLaidCard.value <= card.value &&
+                    ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) || (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) ||
                 (laidCards && !lastLaidCard.isTeaseCard && card.isMagicCard) ||
                 (laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard) ||
                 (laidCards &&
