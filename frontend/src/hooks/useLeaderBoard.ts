@@ -3,10 +3,12 @@ import { getLeaderBoard } from '../app/api';
 import { TLeaderBoard } from '../app/types';
 
 export default function useLeaderBoard() {
+    const [status, setStatus] = useState<string>('idle');
     const [leaderBoardData, setLeaderBoardData] = useState<TLeaderBoard>([]);
 
     useEffect(() => {
         (async () => {
+            setStatus('fetching');
             try {
                 const response = await getLeaderBoard();
                 const responseInJson = await response.json();
@@ -18,8 +20,9 @@ export default function useLeaderBoard() {
             } catch (e: any) {
                 console.error(e.toString());
             }
+            setStatus('fetched');
         })();
     }, []);
 
-    return { leaderBoardData };
+    return { status, leaderBoardData };
 }

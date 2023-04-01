@@ -1,10 +1,26 @@
 import useLeaderBoard from '../../hooks/useLeaderBoard';
 
 export default function LeaderBoardTable() {
-    const { leaderBoardData } = useLeaderBoard();
+    const { status, leaderBoardData } = useLeaderBoard();
     return (
-        <div className="relative overflow-auto">
-            {leaderBoardData && leaderBoardData.length > 0 ? (
+        <div className="w-1/2 relative overflow-auto">
+            {status === 'fetching' && (
+                <div role="status" className="p-4 border border-gray-200 rounded shadow animate-pulse md:p-6 dark:border-gray-700">
+                    <div className="h-2.5 bg-gray-200 rounded-full dark:bg-gray-700 w-32 mb-2.5"></div>
+                    <div className="w-48 h-2 mb-10 bg-gray-200 rounded-full dark:bg-gray-700"></div>
+                    <div className="flex items-baseline mt-4 space-x-6">
+                        <div className="w-full bg-gray-200 rounded-t-lg h-72 dark:bg-gray-700"></div>
+                        <div className="w-full h-56 bg-gray-200 rounded-t-lg dark:bg-gray-700"></div>
+                        <div className="w-full bg-gray-200 rounded-t-lg h-72 dark:bg-gray-700"></div>
+                        <div className="w-full h-64 bg-gray-200 rounded-t-lg dark:bg-gray-700"></div>
+                        <div className="w-full bg-gray-200 rounded-t-lg h-80 dark:bg-gray-700"></div>
+                        <div className="w-full bg-gray-200 rounded-t-lg h-72 dark:bg-gray-700"></div>
+                        <div className="w-full bg-gray-200 rounded-t-lg h-80 dark:bg-gray-700"></div>
+                    </div>
+                    <span className="sr-only">Loading...</span>
+                </div>
+            )}
+            {status === 'fetched' && leaderBoardData?.length > 0 && (
                 <div className="shadow-sm overflow-hidden my-8 rounded-md">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 bg-blue-300 dark:bg-gray-700 dark:text-gray-400">
@@ -41,9 +57,8 @@ export default function LeaderBoardTable() {
                         </tbody>
                     </table>
                 </div>
-            ) : (
-                <p className="text-base">No Games played yet!</p>
             )}
+            {status === 'fetched' && leaderBoardData?.length === 0 && <p className="text-base">No Games played yet!</p>}
         </div>
     );
 }
