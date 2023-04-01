@@ -3,8 +3,10 @@ import { RefObject } from 'react';
 export type User = {
     id: number;
     username: string;
-    email: string;
+    email?: string;
     inGame?: number;
+    isGuest?: boolean;
+    socketId?: string;
 } | null;
 
 export type Player = { username: string; socketId: string };
@@ -15,6 +17,7 @@ export type TRoom = {
     players: Array<Player>;
     slots: number;
     visibility: boolean;
+    isPrivate: boolean;
     inGame?: boolean;
 };
 

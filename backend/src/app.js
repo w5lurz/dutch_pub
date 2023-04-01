@@ -12,6 +12,7 @@ import playedGamesRoutes from './routes/played_game.routes';
 import { rooms } from './rooms';
 import { game } from './game';
 import { chat } from './chat';
+import { guests } from './guests';
 
 const { json } = bodyParser;
 
@@ -24,13 +25,13 @@ app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 
 app.use(json());
 
-app.use(
-    cookieSession({
-        name: 'app-session',
-        secret: 'COOKIE_SECRET', // should use as secret environment variable
-        httpOnly: true,
-    }),
-);
+const cookieSessionMiddleWare = cookieSession({
+    name: 'app-session',
+    secret: 'COOKIE_SECRET', // should use as secret environment variable
+    httpOnly: true,
+});
+
+app.use(cookieSessionMiddleWare);
 
 app.use(function (req, res, next) {
     res.header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept');
@@ -62,6 +63,12 @@ const io = new Server(server, {
     },
 });
 
+// TODO IS this needed?
+// convert a connect middleware to a Socket.IO middleware
+const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
+
+io.use(wrap(cookieSessionMiddleWare));
+
 /* io.on('connection', socket => {
     console.log('a user connected', socket.id);
     socket.on('test', () => console.log('TETETESTTS'));
@@ -73,3 +80,4 @@ const io = new Server(server, {
 rooms(io);
 game(io);
 chat(io);
+guests(io);

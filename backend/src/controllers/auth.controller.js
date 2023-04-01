@@ -1,9 +1,17 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-import db from '../models';
 import { secret } from '../config/auth.config';
+import { getMaxId } from '../utils/utils';
+
+import db from '../models';
 const User = db.user;
+
+export let guestsList = [];
+
+export const modifyGuestsList = newGuests => {
+    guestsList = newGuests;
+};
 
 export const signUp = async (req, res) => {
     // Save User to Database
@@ -48,6 +56,28 @@ export const loginUser = async (req, res, next) => {
             username: user.username,
             email: user.email,
         });
+    } catch (error) {
+        return res.status(500).send({ message: error.message });
+    }
+};
+
+export const addGuest = async (req, res, next) => {
+    try {
+        console.log('GUESTL', req.body);
+        const guestUsername = req.body.username;
+        const socketId = req.body.socketId;
+        console.log('GUESTL', guestUsername, socketId, req.body, req);
+
+        const users = await User.findAll();
+        const id = getMaxId(guestsList);
+        if (!guestsList.find(guest => guest.username === guestUsername) && !users.find(user => user.username === guestUsername)) {
+            const newGuest = { id, username: guestUsername, socketId, isGuest: true };
+            guestsList = [...guestsList, newGuest];
+            console.log('GUESTL', guestsList, newGuest, users);
+            return res.status(200).send(newGuest);
+        } else {
+            return res.status(403).send({ message: 'This username is already taken!' });
+        }
     } catch (error) {
         return res.status(500).send({ message: error.message });
     }

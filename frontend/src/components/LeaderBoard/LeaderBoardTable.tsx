@@ -7,7 +7,7 @@ export default function LeaderBoardTable() {
             {leaderBoardData && leaderBoardData.length > 0 ? (
                 <div className="shadow-sm overflow-hidden my-8 rounded-md">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 bg-green-100 dark:bg-gray-700 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 bg-blue-300 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
                                 <th scope="col" className="px-6 py-3">
                                     Rank
