@@ -10,7 +10,8 @@ export default function Welcome() {
                 This App is a socket-based Multiplayer Card Game. You can create rooms, delete it, join them, leave them, start them and
                 play the game. To play a game you do not necessary need to create an account, you can play as a guest too. On the
                 Leaderboard page you can check the most successful players and their favourite friend. After logging in your session will be
-                saved for an hour so don&apos;t forget to Log out! Play games with your friends and try to win!
+                saved for an hour so don&apos;t forget to Log out! You can even chat with your friends while playing. Play games with your
+                friends and try to win!
             </p>
 
             <div className="my-8">

@@ -13,11 +13,7 @@ export default function Game() {
     console.log('OPPONENTER', testGame);
     return (
         <div className="flex gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700 h-full">
-            <div className="p-2 w-1/5 shadow-md bg-gray-300">
-                <MessageToastsProvider>
-                    <ChatInterface roomId={roomId} user={user} />
-                </MessageToastsProvider>
-            </div>
+            <ChatInterface roomId={roomId} user={user} />
             <div className="flex flex-col grow h-full justify-between">
                 <div className="flex justify-evenly">
                     {Object.entries(testGame.opponents).map(([key, opponent]: [string, Opponent]) => (
