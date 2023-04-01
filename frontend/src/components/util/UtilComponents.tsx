@@ -89,131 +89,62 @@ export const CardIcon = (iconName: string) => {
 };
 
 export const DutchPubLogo = () => (
-    <svg id="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 564.41 459.03" className="h-10 w-10">
-        <line style={{ strokeWidth: '16', fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }} x1="4.5" x2="4.5" y2="459.03" />
-        <line style={{ strokeWidth: '16', fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }} x1="559.91" x2="559.91" y2="459.03" />
-        <line
-            style={{ strokeWidth: '16', fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="4.5"
-            y1="216.66"
-            x2="559.91"
-            y2="216.66"
-        />
+    <svg id="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 564.41 459.03" className="h-10 w-10 stroke-blue-300">
+        <line style={{ strokeWidth: '16', fill: 'none', strokeMiterlimit: 10 }} x1="4.5" x2="4.5" y2="459.03" />
+        <line style={{ strokeWidth: '16', fill: 'none', strokeMiterlimit: 10 }} x1="559.91" x2="559.91" y2="459.03" />
+        <line style={{ strokeWidth: '16', fill: 'none', strokeMiterlimit: 10 }} x1="4.5" y1="216.66" x2="559.91" y2="216.66" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="306.76 176.35 227.04 176.35 227.04 96.93 306.76 96.93 306.76 193.85"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="152.47"
-            y1="31.85"
-            x2="152.47"
-            y2="182.28"
-        />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="194.9"
-            y1="31.85"
-            x2="194.9"
-            y2="182.28"
-        />
-        <rect
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x="45.52"
-            y="95.61"
-            width="79.71"
-            height="79.42"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="152.47" y1="31.85" x2="152.47" y2="182.28" />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="194.9" y1="31.85" x2="194.9" y2="182.28" />
+        <rect className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x="45.52" y="95.61" width="79.71" height="79.42" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="342.76 96.93 342.76 107.07 342.76 182.28"
         />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="342.76 107.07 421.18 107.07 421.18 182.28"
         />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="518.89 107.07 446.9 107.07 446.9 182.28 518.89 182.28 518.89 31.85"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="28.29"
-            y1="245.58"
-            x2="28.29"
-            y2="425.57"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="28.29" y1="245.58" x2="28.29" y2="425.57" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="34.72 335.58 73.29 335.58 162.65 246.22"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="162.65"
-            y1="425.57"
-            x2="72.97"
-            y2="335.9"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="162.65" y1="425.57" x2="72.97" y2="335.9" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="226.29 377.71 146.58 377.71 146.58 298.29 226.29 298.29 226.29 395.21"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="226.29"
-            y1="234.01"
-            x2="194.15"
-            y2="275.3"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="226.29" y1="234.01" x2="194.15" y2="275.3" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="253.34 290.9 253.34 313.53 253.34 395.21"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="253.34"
-            y1="313.53"
-            x2="317.22"
-            y2="313.53"
-        />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="336.1"
-            y1="245.55"
-            x2="336.1"
-            y2="424.91"
-        />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="352.52"
-            y1="268.47"
-            x2="320.58"
-            y2="268.47"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="253.34" y1="313.53" x2="317.22" y2="313.53" />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="336.1" y1="245.55" x2="336.1" y2="424.91" />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="352.52" y1="268.47" x2="320.58" y2="268.47" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="362.28 290.9 362.28 356.2 430.22 356.2 430.22 290.9 430.22 418.18 362.28 418.18 362.28 391.71"
         />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="536.12 377.71 456.41 377.71 456.41 298.29 536.12 298.29 536.12 395.21"
         />
     </svg>
