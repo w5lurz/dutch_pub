@@ -6,7 +6,8 @@ import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
-import { Game, TCard, TRooms } from '../app/types';
+import { Game, TCard, TRooms, User } from '../app/types';
+import { setUser } from '../app/userSlice';
 import { getFirstArrayItem, getSecondArrayItem } from '../components/util/utilFunctions';
 import { SocketContext } from './useApp';
 
@@ -47,6 +48,7 @@ export default function useGame() {
             setTimeout(() => {
                 dispatch(setRooms(roomsList));
                 dispatch(updateGame(initialState));
+                dispatch(setUser({ ...user, inGame: undefined } as User));
                 navigate('/leaderboard');
             }, 3000);
         };

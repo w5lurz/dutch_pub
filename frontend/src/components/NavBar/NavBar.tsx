@@ -13,31 +13,43 @@ export default function NavBar() {
     return (
         <div className="bg-gray-700 p-2 px-4 flex gap-2 items-center justify-between sticky top-0 basis-auto h-14 z-50 text-gray-700">
             <div className="flex space-x-4 items-center justify-center">
-                <NavLink to="/" className="mx-4">
-                    <DutchPubLogo />
-                </NavLink>
-                <NavLink to="/play" className={calcClasses}>
-                    Play
-                </NavLink>
-                <NavLink to="/game" className={calcClasses}>
-                    Game
-                </NavLink>
-                <NavLink to="/leaderboard" className={calcClasses}>
-                    Leaderboard
-                </NavLink>
+                {user?.inGame ? (
+                    <div className="mx-4">
+                        <DutchPubLogo />
+                    </div>
+                ) : (
+                    <NavLink to="/" className="mx-4">
+                        <DutchPubLogo />
+                    </NavLink>
+                )}
+                {!user?.inGame && (
+                    <NavLink to="/play" className={calcClasses}>
+                        Play
+                    </NavLink>
+                )}
+                {!user?.inGame && (
+                    <NavLink to="/game" className={calcClasses}>
+                        Game
+                    </NavLink>
+                )}
+                {!user?.inGame && (
+                    <NavLink to="/leaderboard" className={calcClasses}>
+                        Leaderboard
+                    </NavLink>
+                )}
             </div>
             <div className="flex gap-6">
-                {!user?.email && (
+                {!user?.email && !user?.inGame && (
                     <NavLink to="/login" className={calcClasses}>
                         Login
                     </NavLink>
                 )}
-                {!user?.email && (
+                {!user?.email && !user?.inGame && (
                     <NavLink to="/registration" className={calcClasses}>
                         Registration
                     </NavLink>
                 )}
-                {user?.email && (
+                {user?.email && !user?.inGame && (
                     <NavLink to="/" className="text-base font-medium text-gray-300 px-3 py-1" onClick={handleLogout}>
                         Log out
                     </NavLink>
