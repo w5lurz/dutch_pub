@@ -57,7 +57,7 @@ export default function ChatInterface({ roomId, user }: ChatInterfaceProps) {
                 <div className="absolute inset-y-0 left-2 bottom-2 flex items-end">
                     <button
                         type="button"
-                        className="inline-flex items-center justify-center rounded-md p-2 text-blue-700 hover:bg-blue-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                        className="inline-flex z-30 items-center justify-center rounded-md p-2 text-blue-700 hover:bg-blue-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                         aria-controls="mobile-menu"
                         aria-expanded="false"
                         onClick={() => setIsChatOpen(true)}
