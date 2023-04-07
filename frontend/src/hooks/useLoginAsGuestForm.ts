@@ -8,8 +8,11 @@ import { SocketContext } from './useApp';
 
 export default function useLoginAsGuestForm() {
     const socket: Socket = useContext(SocketContext)!;
-    const dispatch = useAppDispatch();
+
     const [socketId, setSocketId] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(false);
+
+    const dispatch = useAppDispatch();
     console.log('SASER', socketId);
     useEffect(() => {
         socket.emit('get-socketid');
@@ -26,26 +29,32 @@ export default function useLoginAsGuestForm() {
 
         const data = new FormData(event.currentTarget);
         const guestUsername = data.get('guest-username') as string;
-
-        const response = await addGuest(guestUsername, socketId);
-        if (response.status === 200) {
-            const guestData = await response.json();
-            console.log(guestData);
-            dispatch(
-                setUser({
-                    id: guestData.id,
-                    username: guestData.username,
-                    socketId: guestData.socketId,
-                    isGuest: guestData.isGuest,
-                }),
-            );
-            dispatch(setToast({ id: 'add-guest-success', type: 'success', message: 'Your Guest account added!', duration: 3000 }));
-        } else {
-            const guestData = await response.json();
-            console.error('Error while adding Guest ', guestData?.message);
-            dispatch(setToast({ id: 'add-guest-failed', type: 'error', message: guestData?.message, duration: 3000 }));
+        setLoading(true);
+        try {
+            const response = await addGuest(guestUsername, socketId);
+            if (response.status === 200) {
+                const guestData = await response.json();
+                console.log(guestData);
+                dispatch(
+                    setUser({
+                        id: guestData.id,
+                        username: guestData.username,
+                        socketId: guestData.socketId,
+                        isGuest: guestData.isGuest,
+                    }),
+                );
+                dispatch(setToast({ id: 'add-guest-success', type: 'success', message: 'Your Guest account added!', duration: 3000 }));
+            } else {
+                const guestData = await response.json();
+                console.error('Error while adding Guest ', guestData?.message);
+                dispatch(setToast({ id: 'add-guest-failed', type: 'error', message: guestData?.message, duration: 3000 }));
+            }
+        } catch (e: any) {
+            console.error('Error while adding Guest ', e.toString());
+            dispatch(setToast({ id: 'add-guest-failed', type: 'error', message: 'Cannot add Guest!', duration: 3000 }));
         }
+        setLoading(false);
     };
 
-    return { handleSubmit };
+    return { loading, handleSubmit };
 }

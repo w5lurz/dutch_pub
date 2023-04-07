@@ -58,7 +58,8 @@ export default function LeaderBoardTable() {
                     </table>
                 </div>
             )}
-            {status === 'fetched' && leaderBoardData?.length === 0 && <p className="text-base">No Games played yet!</p>}
+            {status === 'fetched' && leaderBoardData?.length === 0 && <p className="text-base text-center">No Games played yet!</p>}
+            {status === 'error' && leaderBoardData?.length === 0 && <p className="text-base text-center">Erro fetching data!</p>}
         </div>
     );
 }

@@ -1,8 +1,10 @@
+import { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import useLoginAsGuestForm from '../../hooks/useLoginAsGuestForm';
+import { CircularProgress } from '../util/UtilComponents';
 
 export default function LoginAsGuestForm() {
-    const { handleSubmit } = useLoginAsGuestForm();
+    const { loading, handleSubmit } = useLoginAsGuestForm();
 
     return (
         <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto h-full lg:py-0">
@@ -11,7 +13,16 @@ export default function LoginAsGuestForm() {
                     <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
                         Sign in as a Guest
                     </h1>
-                    <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
+                    <form
+                        className="space-y-4 md:space-y-6"
+                        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+                            if (!loading) {
+                                handleSubmit(e);
+                            } else {
+                                e.preventDefault();
+                            }
+                        }}
+                    >
                         <div>
                             <label htmlFor="guest-username" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                                 Username
@@ -29,7 +40,7 @@ export default function LoginAsGuestForm() {
                             type="submit"
                             className="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                         >
-                            Sign in
+                            {loading ? <CircularProgress /> : 'Sign in'}
                         </button>
                         <p className="text-sm font-light text-gray-500 dark:text-gray-400">
                             As a Guest you’ll only be able to play in public games. You’d prefer creating a normal account?{' '}
