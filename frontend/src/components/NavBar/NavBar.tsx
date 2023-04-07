@@ -38,7 +38,7 @@ export default function NavBar() {
                     </NavLink>
                 )}
                 {user?.email && (
-                    <NavLink to="/" className={calcClasses} onClick={handleLogout}>
+                    <NavLink to="/" className="text-base font-medium text-gray-300 px-3 py-1" onClick={handleLogout}>
                         Log out
                     </NavLink>
                 )}

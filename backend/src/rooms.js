@@ -2,7 +2,8 @@ import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game';
 
 export let games = {};
 
-export let roomsList = {
+export let roomsList = {};
+/* export let roomsList = {
     1: {
         name: 'First Room',
         owner: 'kiskutya',
@@ -34,7 +35,7 @@ export let roomsList = {
         visibility: 'private',
         socketRoomId: 'game-3',
     },
-};
+}; */
 
 export const modifyRooms = newRooms => {
     roomsList = newRooms;
@@ -49,7 +50,7 @@ export const rooms = io => {
         });
 
         socket.on('create-room', ({ name, owner, slots }) => {
-            const newKey = +Object.keys(roomsList)[Object.keys(roomsList).length - 1] + 1;
+            const newKey = Object.keys(roomsList).length === 0 ? 1 : +Object.keys(roomsList)[Object.keys(roomsList).length - 1] + 1;
             const socketRoomId = `game-${newKey}`;
             const newRoom = {
                 name,

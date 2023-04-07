@@ -22,7 +22,7 @@ export default function Welcome() {
                         be redirected to the Game page.
                     </p>
                     <h6 className="text-base font-semibold">Start</h6>
-                    <p className="text-base my-2">
+                    <span className="text-base my-2">
                         A deck or decks of french card will get randomly sorted (depending on how many of you are playing). When the game
                         starts a random player will be assigned as the first one to lay a card. Everyone will get some cards to start with:
                         <ul className="list-disc ml-6 my-4">
@@ -38,7 +38,7 @@ export default function Welcome() {
                                 before your hand gets empty
                             </li>
                         </ul>
-                    </p>
+                    </span>
                     <h6 className="text-base font-semibold">Laying a card</h6>
                     <p className="text-base my-2">
                         Every card has a value and some of them are Magic Cards - and there is the Tease card. There are several rules which

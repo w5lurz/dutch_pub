@@ -83,17 +83,24 @@ export default function useGame() {
                     (currentLaidCards &&
                         lastLaidCard?.isMagicCard &&
                         lastLaidCard?.value === 0 &&
-                        getSecondArrayItem(currentLaidCards).value <= card.value) ||
-                    !getSecondArrayItem(currentLaidCards) ||
+                        (getSecondArrayItem(currentLaidCards).value <= card.value || !getSecondArrayItem(currentLaidCards))) ||
                     (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 2 && lastLaidCard?.value <= card.value) ||
                     (currentLaidCards && lastLaidCard?.isTeaseCard && card.value >= 3 && card.value <= 7);
                 console.log(
                     'CANLAY3',
                     canLayCard,
+                    currentLaidCards,
                     !currentLaidCards,
                     lastLaidCard?.value <= card.value &&
                         ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
                             (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
+                    currentLaidCards && !lastLaidCard?.isTeaseCard && card.isMagicCard,
+                    currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && card.isMagicCard,
+                    currentLaidCards &&
+                        lastLaidCard?.isMagicCard &&
+                        lastLaidCard?.value === 0 &&
+                        getSecondArrayItem(currentLaidCards).value <= card.value,
+                    !getSecondArrayItem(currentLaidCards ?? []),
                 );
             });
         }
