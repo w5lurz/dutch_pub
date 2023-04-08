@@ -72,7 +72,7 @@ export default function ChatInterface({ roomId, user }: ChatInterfaceProps) {
             )}
 
             {isChatOpen && (
-                <div className="p-2 w-1/5 shadow-md bg-gray-300 h-full">
+                <div className="p-2 basis-48 grow-0 shrink-0 shadow-md bg-gray-300 h-full">
                     <div className="flex flex-col justify-between h-full">
                         <button
                             type="button"
