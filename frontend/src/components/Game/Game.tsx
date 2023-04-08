@@ -1,6 +1,5 @@
 import { TCard, Opponent } from '../../app/types';
 import useGame from '../../hooks/useGame';
-import { MessageToastsProvider } from '../../hooks/useMessageToast';
 import { renderFlippedCards } from '../util/UtilComponents';
 import Card from './components/Card';
 import ChatInterface from './components/ChatInterface';
@@ -12,7 +11,7 @@ export default function Game() {
 
     console.log('OPPONENTER', testGame);
     return (
-        <div className="flex gap-4 bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700 h-full">
+        <div className="flex bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700 h-full">
             <ChatInterface roomId={roomId} user={user} />
             <div className="flex flex-col grow h-full justify-between">
                 <div className="flex justify-evenly">
