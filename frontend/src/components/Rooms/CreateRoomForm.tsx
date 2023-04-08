@@ -13,7 +13,7 @@ export default function CreateRoomForm({ user, isAlreadyOwner = false, isInAnyRo
 
     if (isCreateRoomVisible && user) {
         return (
-            <form className="space-y-4 md:space-y-6 w-1/4" onSubmit={handleCreateRoom}>
+            <form className="space-y-4 md:space-y-6" onSubmit={handleCreateRoom}>
                 <div>
                     <label htmlFor="roomname" className="mb-2 text-sm font-medium text-gray-900 dark:text-white flex justify-between">
                         <p>Room Name</p>

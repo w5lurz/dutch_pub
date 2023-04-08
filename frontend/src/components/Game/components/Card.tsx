@@ -9,10 +9,10 @@ type CardProps = {
     roomId: number;
     user: User;
     canTouch?: boolean;
-    isHandCard?: boolean;
+    writePlus?: boolean;
 };
 
-export default function Card({ card, active, i, roomId, user, canTouch = false, isHandCard = false }: CardProps) {
+export default function Card({ card, active, i, roomId, user, canTouch = false, writePlus = false }: CardProps) {
     const { handleCardOnClick, addWarningToast } = useCard(roomId, user);
 
     if (typeof card === 'number') {
@@ -31,6 +31,7 @@ export default function Card({ card, active, i, roomId, user, canTouch = false, 
                     }
                 }}
             >
+                {writePlus && <p className="flex justify-center items-center w-14 h-24 absolute text-white">+{i}</p>}
                 <CardBackSide />
             </div>
         ); // <div className={'flex flex-col -m-2 bg-gray-600 shadow-md rounded p-2 w-24 h-32 gap-2'}></div>;

@@ -184,8 +184,16 @@ export const CircularProgress = () => (
 
 export const renderFlippedCards = (count: number, user: User, roomId: number, active: boolean = false, canTouch: boolean = false) => {
     let arr = [];
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < 2; i++) {
         arr.push(<Card key={`flipped-${i}`} card={i} active={active} i={i} user={user} roomId={roomId} canTouch={canTouch} />);
+    }
+    if (count === 3) {
+        arr.push(<Card key={`flipped-${3}`} card={3} active={active} i={3} user={user} roomId={roomId} canTouch={canTouch} />);
+    }
+    if (count > 3) {
+        arr.push(
+            <Card key={`flipped-${3}`} card={3} active={active} i={count - 3} user={user} roomId={roomId} canTouch={canTouch} writePlus />,
+        );
     }
     return arr;
 };
