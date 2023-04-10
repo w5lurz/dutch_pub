@@ -4,6 +4,7 @@ import cookieSession from 'cookie-session';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
+import dotenv from 'dotenv';
 
 import db from './models';
 import usersRouters from './routes/user.routes';
@@ -13,6 +14,10 @@ import { rooms } from './rooms';
 import { game } from './game';
 import { chat } from './chat';
 import { guests } from './guests';
+
+console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
+dotenv.config();
+console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 
 const { json } = bodyParser;
 
@@ -44,12 +49,15 @@ app.use('/api/users', usersRouters);
 
 app.use('/api/games', playedGamesRoutes);
 
+// const path = require('path');
+// const __dirname = dirname(__filename);
+
 // Error-handling middleware below
 // app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message });
 });
-
+console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 db.sequelize.sync(); // {force: true}
 
 server.listen(port, () => {
@@ -58,7 +66,7 @@ server.listen(port, () => {
 
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:3000',
+        origin: process.env.BASE_URL,
         credentials: true,
     },
 });
@@ -81,3 +89,16 @@ rooms(io);
 game(io);
 chat(io);
 guests(io);
+
+/* app.get('/*', (req, res) => {
+    res.sendFile('/frontend/public/index.html', { root: 'c:/_Work/SULI2020/szakdolgozat/dutch_pub/' });
+}); */
+
+// if (process.env.NODE_ENV === 'production') {
+// const root = require('path').join(__dirname, 'client', 'build');
+const root = process.env.FRONTEND_ROOT;
+app.use(express.static(root));
+app.get('*', (req, res) => {
+    res.sendFile('index.html', { root });
+});
+// }

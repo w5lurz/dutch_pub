@@ -4,13 +4,13 @@ import dbConfig from '../config/db.config.js';
 import User from './user.model';
 import PlayedGame from './played_game.model';
 
-const { DB, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool } = dbConfig;
-
+const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool } = dbConfig;
+console.log('SAS', process.env.DB_HOST, process.env.DB_PORT);
 const sequelize = new Sequelize(DB, USER, PASSWORD, {
     host: HOST,
     dialect: _dialect,
     operatorsAliases: false,
-
+    port: PORT,
     pool: {
         max: _pool.max,
         min: _pool.min,

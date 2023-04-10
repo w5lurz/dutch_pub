@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import useNavBar from '../../hooks/useNavBar';
+import { isDevEnv } from '../../utils/config';
 import { DutchPubLogo } from '../util/UtilComponents';
 
 const calcClasses = ({ isActive }: { isActive: boolean }) =>
@@ -9,7 +10,6 @@ export default function NavBar() {
     const { user, handleLogout } = useNavBar();
 
     // TODO user smthg else instead of email
-    // const calcActiveClasses = (isActive: boolean): string => (isActive ? 'bg-blue-300 rounded-sm' : 'text-base font-medium');
     return (
         <div className="bg-gray-700 p-2 px-4 flex gap-2 items-center justify-between sticky top-0 basis-auto h-14 z-50 text-gray-700">
             <div className="flex space-x-4 items-center justify-center">
@@ -27,7 +27,7 @@ export default function NavBar() {
                         Play
                     </NavLink>
                 )}
-                {!user?.inGame && (
+                {!user?.inGame && isDevEnv && (
                     <NavLink to="/game" className={calcClasses}>
                         Game
                     </NavLink>
