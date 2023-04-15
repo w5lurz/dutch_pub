@@ -36,12 +36,14 @@ export const game = io => {
                 currentGame.players[username].userCards.hand.length === 0 &&
                 currentGame.players[username].userCards.tableFlipped.length === 0
             ) {
+                console.log('LASTLAID', username, card);
+                console.log('LASTLAID', currentGame.players[username].userCards.table);
                 currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
                 currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
                 const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                console.log('LASTLAID', lastLaidCard, currentLaidCard);
+                console.log('LASTLAID1', lastLaidCard, currentLaidCard);
                 const secondLaidCard = currentGame.laidCards ? currentGame.laidCards[1] : null;
-                console.log('LASTLAID1', secondLaidCard, currentLaidCard);
+                console.log('LASTLAID12', secondLaidCard, currentLaidCard);
                 isValidLastLaidCard =
                     !lastLaidCard || // false
                     (lastLaidCard.value <= currentLaidCard.value && // false
@@ -164,7 +166,14 @@ const isLastFourCardsSame = (laidCards, card) =>
     laidCards[0].value === laidCards[1].value &&
     laidCards[1].value === laidCards[2].value;
 
-export const sendUiDataToSocket = (io, room, game, message, roomId) => {
+export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
+    const rooms = io.of('/').adapter.rooms;
+    console.log(rooms);
+    console.log(rooms[`game-${roomId}`]);
+    const sockets = await io.fetchSockets();
+    console.log('SOCKETS 2', sockets[0].username);
+    console.log('SOCKETS 2', sockets[1].username);
+
     room.players.forEach(player => {
         const playerSpecificGameData = {
             userCards: {},
@@ -174,6 +183,8 @@ export const sendUiDataToSocket = (io, room, game, message, roomId) => {
             ...game.players[player.username].userCards,
             table: game.players[player.username].userCards.table.length,
         };
+        // TODO
+
         room.players.forEach(otherPlayer => {
             if (player.socketId !== otherPlayer.socketId) {
                 playerSpecificGameData.opponents[otherPlayer.username] = {};
@@ -189,6 +200,10 @@ export const sendUiDataToSocket = (io, room, game, message, roomId) => {
         playerSpecificGameData.burntCards = game.burntCards ? game.burntCards : null;
         playerSpecificGameData.deck = game.deck.length;
         playerSpecificGameData.active = game.players[player.username].active;
+        /* room1 = [
+            { id: 1, socketId: 'asdasd' },
+            { id: 2, socketId: 'asdasd1', newSocketId: 'asdccc' },
+        ]; */
         io.to(player.socketId).emit(message, playerSpecificGameData, roomsList, roomId);
     });
 };

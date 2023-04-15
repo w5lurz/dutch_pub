@@ -15,12 +15,14 @@ export const modifyGuestsList = newGuests => {
 
 export const signUp = async (req, res) => {
     // Save User to Database
+    console.log('SIGNUP');
     try {
         await User.create({
             username: req.body.username,
             email: req.body.email,
             password: bcrypt.hashSync(req.body.password, 8),
         });
+        console.log('SIGNUP2');
 
         res.status(201).send({ message: `User ${req.body.username} registered successfully!` });
     } catch (error) {

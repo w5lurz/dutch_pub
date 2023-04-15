@@ -4,7 +4,6 @@ import cookieSession from 'cookie-session';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
-import dotenv from 'dotenv';
 
 import db from './models';
 import usersRouters from './routes/user.routes';
@@ -15,9 +14,9 @@ import { game } from './game';
 import { chat } from './chat';
 import { guests } from './guests';
 
-console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
-dotenv.config();
-console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
+console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
+// dotenv.config({ path: '.env' });
+console.log('SAS4', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 
 const { json } = bodyParser;
 
@@ -25,6 +24,8 @@ const app = express();
 
 const port = 3030;
 const server = http.Server(app);
+
+db.sequelize.sync(); // {force: true}
 
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 
@@ -58,7 +59,6 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message });
 });
 console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
-db.sequelize.sync(); // {force: true}
 
 server.listen(port, () => {
     console.log('Backend started - Listening on port 3030');
@@ -68,6 +68,12 @@ const io = new Server(server, {
     cors: {
         origin: process.env.BASE_URL,
         credentials: true,
+    },
+    connectionStateRecovery: {
+        // the backup duration of the sessions and the packets
+        maxDisconnectionDuration: 2 * 60 * 1000,
+        // whether to skip middlewares upon successful recovery
+        skipMiddlewares: true,
     },
 });
 
