@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 export default {
     HOST: process.env.DB_HOST,
     USER: process.env.DB_USER,
@@ -5,6 +9,7 @@ export default {
     DB: process.env.DB_NAME,
     PORT: process.env.DB_PORT,
     dialect: 'mysql',
+    reconnect: true,
     pool: {
         max: 5,
         min: 0,

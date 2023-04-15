@@ -53,6 +53,6 @@ To learn React, check out the [React documentation](https://reactjs.org/).
 
 args: [ 'build', '-t', 'LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE_NAME', '.' ]
 step1: build ez alatta:
-gcloud builds submit --tag europe-west6-docker.pkg.dev/dutch-card/dutch-card/app
+gcloud builds submit --tag europe-west6-docker.pkg.dev/dutch-card/dutch-card/app --machine-type=e2-highcpu-32
 step2: https://console.cloud.google.com/run/detail/europe-west6/dutch-card/revisions?project=dutch-card
 edit and deploy new revision

@@ -56,10 +56,27 @@ export default function useGame() {
         socket.on('card-laid', cardLaidListener);
         socket.on('cards-drawn', cardsDrawnListener);
         socket.on('game-won', gameWonListener);
+
+        // DISCONNECTNEL is megvannak ezek
+        const userDisconnectedListener = () => console.log('Socket disconnecting...', user, roomId);
+        // CONNECTNEL is megvannak ezek
+        const userConnectedListener = () => {
+            console.log('Socket connecting...', user, roomId);
+            if (socket.recovered) {
+                console.log('Socket RECOVERED...', socket);
+            }
+        };
+        const userReconnectedListener = () => console.log('Reconnecting...', user, roomId);
+        socket.on('disconnect', userDisconnectedListener);
+        socket.on('connect', userConnectedListener);
+        socket.on('reconnect', userReconnectedListener);
         return () => {
             socket.off('card-laid', cardLaidListener);
             socket.off('cards-drawn', cardsDrawnListener);
             socket.off('game-won', gameWonListener);
+            socket.off('disconnect', userDisconnectedListener);
+            socket.off('connect', userConnectedListener);
+            socket.off('reconnect', userReconnectedListener);
         };
     }, []);
 
@@ -107,6 +124,7 @@ export default function useGame() {
             });
         }
         if (!canLayCard && active) {
+            // todo FELHUZTAL LAPOKAT
             console.log('DRAWINGCARD', roomId, user?.username);
             socket.emit('draw-cards', { roomId, username: user?.username });
         }

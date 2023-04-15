@@ -1,11 +1,11 @@
 import { createContext, useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { io, Socket } from 'socket.io-client';
 import { getUser } from '../app/api';
 import { useAppDispatch } from '../app/hooks';
 // import { setSocket } from '../app/socketSlice';
 import { RootState } from '../app/store';
 import { setUser } from '../app/userSlice';
+import { isDevEnv } from '../utils/config';
 
 export const SocketContext = createContext(null);
 
@@ -27,13 +27,14 @@ export default function useApp() {
                 console.error(e.toString());
             }
         })();
-        const newSocket: Socket = io('http://localhost:3030', { withCredentials: true });
+        const newSocket: Socket = io(process.env.REACT_APP_BASE_URL ?? 'http://localhost:3030', { withCredentials: true });
         console.log('SOCKET', socket);
         newSocket.emit('test');
         // dispatch(setSocket(newSocket));
         setSocket(newSocket);
 
         return () => {
+            console.log('Closing socket connection..');
             newSocket.close();
         };
     }, []);
