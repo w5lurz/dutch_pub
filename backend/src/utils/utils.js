@@ -7,3 +7,5 @@ export const getMaxId = arr => {
     });
     return max + 1;
 };
+
+export const isDevEnv = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';

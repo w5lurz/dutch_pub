@@ -3,18 +3,21 @@ import Sequelize from 'sequelize';
 import dbConfig from '../config/db.config.js';
 import User from './user.model';
 import PlayedGame from './played_game.model';
+import { isDevEnv } from '../utils/utils.js';
 
 const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool, reconnect } = dbConfig;
 console.log('SAS2', process.env.DB_HOST, process.env.DB_PORT);
 const sequelize = new Sequelize(DB, USER, PASSWORD, {
-    host: '/cloudsql/dutch-card:europe-west6:dutch-pub',
+    host: isDevEnv ? HOST : '/cloudsql/dutch-card:europe-west6:dutch-pub',
     dialect: _dialect,
     operatorsAliases: false,
     port: PORT,
     reconnect,
-    dialectOptions: {
-        socketPath: '/cloudsql/dutch-card:europe-west6:dutch-pub',
-    },
+    ...(!isDevEnv && {
+        dialectOptions: {
+            socketPath: '/cloudsql/dutch-card:europe-west6:dutch-pub',
+        },
+    }),
     pool: {
         max: _pool.max,
         min: _pool.min,
