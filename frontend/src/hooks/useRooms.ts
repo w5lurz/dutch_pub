@@ -7,7 +7,7 @@ import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
 import { Game, Player, TRoom, TRooms, User } from '../app/types';
-import { setUser } from '../app/userSlice';
+import { setInGame } from '../app/userSlice';
 import { SocketContext } from './useApp';
 
 export default function useRooms() {
@@ -43,7 +43,7 @@ export default function useRooms() {
             console.log('Game started', roomsListed, game);
             navigate('/game');
             dispatch(setRooms(roomsListed));
-            dispatch(setUser({ ...user, inGame: roomId } as User));
+            dispatch(setInGame(roomId));
             dispatch(updateGame(game));
         };
 
