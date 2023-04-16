@@ -1,6 +1,7 @@
 import { Player, TRoom } from '../../app/types';
 import useRooms from '../../hooks/useRooms';
 import Button from '../util/Button';
+import { isPrivate } from '../util/utilFunctions';
 import CreateRoomForm from './CreateRoomForm';
 import LoginAsGuestForm from './LoginAsGuestForm';
 
@@ -17,7 +18,8 @@ export default function Rooms() {
                 <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-auto lg:py-8 gap-4">
                     {Object.keys(rooms).length !== 0 ? (
                         Object.entries(rooms).map(([key, value]: [string, TRoom]) => {
-                            const { name, owner, players, slots, inGame = false, isPrivate = false } = value;
+                            const { name, owner, players, slots, inGame = false, visibility = 'private' } = value;
+                            console.log('ASD', user.isGuest, visibility);
                             return (
                                 <div
                                     key={key}
@@ -32,7 +34,7 @@ export default function Rooms() {
                                                 <div className="flex gap-2">
                                                     {players.length < slots &&
                                                         !isInAnyRoom &&
-                                                        ((isPrivate && !user.isGuest) || !isPrivate) && (
+                                                        ((isPrivate(visibility) && !user.isGuest) || !isPrivate(visibility)) && (
                                                             <Button
                                                                 label="Join"
                                                                 color="green"

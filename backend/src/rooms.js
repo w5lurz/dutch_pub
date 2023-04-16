@@ -62,7 +62,7 @@ export const rooms = io => {
             socket.emit('rooms-listed', roomsList);
         });
 
-        socket.on('create-room', ({ name, owner, slots }) => {
+        socket.on('create-room', ({ name, owner, slots, visibility }) => {
             const newKey = Object.keys(roomsList).length === 0 ? 1 : +Object.keys(roomsList)[Object.keys(roomsList).length - 1] + 1;
             const socketRoomId = `game-${newKey}`;
             const newRoom = {
@@ -71,6 +71,7 @@ export const rooms = io => {
                 players: [{ username: owner, socketId: socket?.id }],
                 slots,
                 socketRoomId,
+                visibility,
             };
             roomsList = { ...roomsList, [newKey]: newRoom };
 

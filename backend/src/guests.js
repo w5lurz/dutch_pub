@@ -11,7 +11,7 @@ export const guests = io => {
             if (guestsList.find(guest => guest.socketId === socket.id)) {
                 modifyGuestsList(guestsList.filter(guest => guest.socketId !== socket.id));
             }
-            console.log('Client disconnected2', socket.id, guestsList);
+            console.log('Client disconnected2', socket.id, socket.data.username, socket.data.roomId, guestsList);
         });
     });
 };

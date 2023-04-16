@@ -16,8 +16,7 @@ export type TRoom = {
     owner: string;
     players: Array<Player>;
     slots: number;
-    visibility: boolean;
-    isPrivate: boolean;
+    visibility: string;
     inGame?: boolean;
 };
 

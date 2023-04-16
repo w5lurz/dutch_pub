@@ -13,7 +13,7 @@ export const game = io => {
             const currentGame = games[roomId];
             const originalCard = card; // TODO needed?
             let currentLaidCard = card;
-
+            console.log('LAY CARD1', card, cardIndex, roomId, username);
             // Deleting laid card from hand
             if (currentGame.players[username].userCards.hand.length !== 0) {
                 currentGame.players[username].userCards.hand = currentGame.players[username].userCards.hand.filter(
