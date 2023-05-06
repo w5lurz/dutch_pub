@@ -14,9 +14,8 @@ export default function useToast() {
     const remove = (ref: RefObject<HTMLDivElement>) => {
         ref?.current?.classList.add('animate-toastOut');
 
-        //remove element after animation is done
+        // Remove element after animation is done
         ref?.current?.addEventListener('animationend', () => {
-            // lets remove it
             dispatch(setToast(null));
         });
     };

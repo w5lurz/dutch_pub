@@ -123,7 +123,6 @@ export const game = io => {
                         winner: username,
                         players: currentRoom.players.map(player => player.username).join(','),
                     });
-                } else {
                 }
 
                 // Send new game data to sockets

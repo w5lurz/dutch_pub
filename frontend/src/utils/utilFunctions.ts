@@ -16,22 +16,6 @@ export const calculateColorClasses = (colorName: string, disabled?: boolean) => 
     }
 };
 
-export const calculateBorderClasses = (i: number, length: number) => {
-    // if (i === 0) {
-    //     return ' border-l-2';
-    // }
-    console.log(i, length);
-    let multiplier = 32;
-    let position = 0;
-    if (i !== 0) {
-        position = i * multiplier;
-        const sas = ' left-' + position;
-        console.log(position, multiplier, 'SAS', sas);
-        return sas;
-    }
-    return ' left-0';
-};
-
 export const getFirstArrayItem = <T extends Array<any>>(arr: T) => arr[0];
 export const getSecondArrayItem = <T extends Array<any>>(arr: T) => arr && arr.length >= 2 && arr[1];
 

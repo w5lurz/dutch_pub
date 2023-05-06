@@ -1,5 +1,5 @@
 import React from 'react';
-import { calculateColorClasses } from './utilFunctions';
+import { calculateColorClasses } from '../../utils/utilFunctions';
 
 type ButtonProps = {
     label?: string;

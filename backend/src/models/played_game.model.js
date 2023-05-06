@@ -23,13 +23,5 @@ export default function (sequelize, Sequelize) {
         { timestamps: false },
     );
 
-    // eslint-disable-next-line no-unused-vars
-    /* users.associate = function (models) {
-        // Define associations here
-        // See https://sequelize.org/master/manual/assocs.html
-        const { tasklists } = models;
-        users.hasMany(tasklists);
-    }; */
-
     return PlayedGame;
 }

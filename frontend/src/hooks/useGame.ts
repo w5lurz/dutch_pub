@@ -8,7 +8,7 @@ import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
 import { Game, TCard, TRooms, User } from '../app/types';
 import { setUser } from '../app/userSlice';
-import { getFirstArrayItem, getSecondArrayItem } from '../components/util/utilFunctions';
+import { getFirstArrayItem, getSecondArrayItem } from '../utils/utilFunctions';
 import { SocketContext } from './useApp';
 
 export default function useGame() {

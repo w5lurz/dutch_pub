@@ -4,7 +4,7 @@ import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { RootState } from '../app/store';
 import { TCard, User } from '../app/types';
-import { getFirstArrayItem, getSecondArrayItem } from '../components/util/utilFunctions';
+import { getFirstArrayItem, getSecondArrayItem } from '../utils/utilFunctions';
 import { SocketContext } from './useApp';
 
 export default function useCard(roomId: number, user: User) {
@@ -51,20 +51,3 @@ export default function useCard(roomId: number, user: User) {
 
     return { handleCardOnClick, addWarningToast };
 }
-
-/* console.log(
-            'CARD CLICKED',
-            card,
-            laidCards,
-            lastLaidCard,
-            // getSecondArrayItem(laidCards!),
-            lastLaidCard && lastLaidCard.value <= card.value && !lastLaidCard.isMagicCard,
-            laidCards && !lastLaidCard.isTeaseCard && card.isMagicCard,
-            laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard,
-            laidCards &&
-                lastLaidCard.isMagicCard &&
-                lastLaidCard.value === 0 &&
-                (getSecondArrayItem(laidCards).value <= card.value || !getSecondArrayItem(laidCards)),
-            laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value,
-            laidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7,
-        ); */

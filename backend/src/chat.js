@@ -1,4 +1,4 @@
-export let roomMessages = {}; // TODO delete me if game ended
+export let roomMessages = {};
 
 export const modifyRoomMessages = newMessages => {
     roomMessages = newMessages;

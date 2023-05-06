@@ -1,7 +1,7 @@
 import { Player, TRoom } from '../../app/types';
 import useRooms from '../../hooks/useRooms';
 import Button from '../util/Button';
-import { isPrivate } from '../util/utilFunctions';
+import { isPrivate } from '../../utils/utilFunctions';
 import CreateRoomForm from './CreateRoomForm';
 import LoginAsGuestForm from './LoginAsGuestForm';
 

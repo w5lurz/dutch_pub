@@ -25,7 +25,7 @@ export type TRooms = { [key: number]: TRoom };
 export type TCard = {
     name: string;
     value: number;
-    color: string; // TODO enum
+    color: string;
     isMagicCard?: boolean;
     isTeaseCard?: boolean;
 };
