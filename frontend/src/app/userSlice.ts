@@ -13,8 +13,11 @@ const userSlice = createSlice({
             // ez most igy jo?
             return newState;
         },
+        setInGame(state, action: PayloadAction<number>) {
+            state!.inGame = action.payload;
+        },
     },
 });
 
-export const { setUser } = userSlice.actions;
+export const { setUser, setInGame } = userSlice.actions;
 export default userSlice.reducer;

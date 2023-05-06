@@ -3,8 +3,10 @@ import { RefObject } from 'react';
 export type User = {
     id: number;
     username: string;
-    email: string;
+    email?: string;
     inGame?: number;
+    isGuest?: boolean;
+    socketId?: string;
 } | null;
 
 export type Player = { username: string; socketId: string };
@@ -14,7 +16,7 @@ export type TRoom = {
     owner: string;
     players: Array<Player>;
     slots: number;
-    visibility: boolean;
+    visibility: string;
     inGame?: boolean;
 };
 
@@ -23,7 +25,7 @@ export type TRooms = { [key: number]: TRoom };
 export type TCard = {
     name: string;
     value: number;
-    color: string; // TODO enum
+    color: string;
     isMagicCard?: boolean;
     isTeaseCard?: boolean;
 };
@@ -51,11 +53,11 @@ export type Game = {
 };
 
 export type TToast = {
-    id: number;
-    type: 'success' | 'info' | 'warning' | 'error';
+    id: string | number; // TODO number not needed
+    type: 'success' | 'info' | 'warning' | 'error' | 'sad';
     message: string;
     duration: number;
-    position: ToastPositionType;
+    position?: ToastPositionType;
     // icon?: ReactNode | boolean;
 };
 

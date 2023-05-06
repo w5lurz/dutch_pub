@@ -6,8 +6,9 @@ import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
-import { Game, TCard, TRooms } from '../app/types';
-import { getFirstArrayItem, getSecondArrayItem } from '../components/util/utilFunctions';
+import { Game, TCard, TRooms, User } from '../app/types';
+import { setUser } from '../app/userSlice';
+import { getFirstArrayItem, getSecondArrayItem } from '../utils/utilFunctions';
 import { SocketContext } from './useApp';
 
 export default function useGame() {
@@ -26,18 +27,18 @@ export default function useGame() {
 
     useEffect(() => {
         const cardLaidListener = (game: Game) => {
-            dispatch(updateGame(game));
+            dispatch(updateGame(game)); // TODO add toast?
         };
 
         const cardsDrawnListener = (game: Game) => {
-            dispatch(updateGame(game));
+            dispatch(updateGame(game)); // TODO ADD sad toast
         };
 
         const gameWonListener = (username: string, roomsList: TRooms) => {
             console.log('GAME WON', username);
             dispatch(
                 setToast({
-                    id: roomId, // TODO ez nem bizti jo lesz
+                    id: `game-${roomId}-ended`, // TODO ez nem bizti jo lesz
                     type: 'success',
                     message: `${username === user?.username ? 'You' : username} won the game! Congratulations!`,
                     duration: 3000,
@@ -47,6 +48,7 @@ export default function useGame() {
             setTimeout(() => {
                 dispatch(setRooms(roomsList));
                 dispatch(updateGame(initialState));
+                dispatch(setUser({ ...user, inGame: undefined } as User));
                 navigate('/leaderboard');
             }, 3000);
         };
@@ -54,10 +56,27 @@ export default function useGame() {
         socket.on('card-laid', cardLaidListener);
         socket.on('cards-drawn', cardsDrawnListener);
         socket.on('game-won', gameWonListener);
+
+        // DISCONNECTNEL is megvannak ezek
+        const userDisconnectedListener = () => console.log('Socket disconnecting...', user, roomId);
+        // CONNECTNEL is megvannak ezek
+        const userConnectedListener = () => {
+            console.log('Socket connecting...', user, roomId);
+            if (socket.recovered) {
+                console.log('Socket RECOVERED...', socket);
+            }
+        };
+        const userReconnectedListener = () => console.log('Reconnecting...', user, roomId);
+        socket.on('disconnect', userDisconnectedListener);
+        socket.on('connect', userConnectedListener);
+        socket.on('reconnect', userReconnectedListener);
         return () => {
             socket.off('card-laid', cardLaidListener);
             socket.off('cards-drawn', cardsDrawnListener);
             socket.off('game-won', gameWonListener);
+            socket.off('disconnect', userDisconnectedListener);
+            socket.off('connect', userConnectedListener);
+            socket.off('reconnect', userReconnectedListener);
         };
     }, []);
 
@@ -67,27 +86,45 @@ export default function useGame() {
         let canLayCard = false;
         if (handCards?.length === 0 && flippedCards?.length === 0 && tableCards) {
             canLayCard = true;
+            console.log('CANLAY1', canLayCard);
         } else {
             const cardsToCheck = handCards && handCards.length > 0 ? handCards : flippedCards;
+            console.log('CANLAY2', canLayCard);
             cardsToCheck.forEach((card: TCard) => {
                 canLayCard =
                     canLayCard ||
                     !currentLaidCards ||
-                    (lastLaidCard.value <= card.value &&
-                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
-                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) ||
-                    (currentLaidCards && !lastLaidCard.isTeaseCard && card.isMagicCard) ||
-                    (currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard) ||
+                    (lastLaidCard?.value <= card.value &&
+                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
+                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2))) ||
+                    (currentLaidCards && !lastLaidCard?.isTeaseCard && card.isMagicCard) ||
+                    (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && card.isMagicCard) ||
                     (currentLaidCards &&
-                        lastLaidCard.isMagicCard &&
-                        lastLaidCard.value === 0 &&
-                        getSecondArrayItem(currentLaidCards).value <= card.value) ||
-                    !getSecondArrayItem(currentLaidCards) ||
-                    (currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value) ||
-                    (currentLaidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7);
+                        lastLaidCard?.isMagicCard &&
+                        lastLaidCard?.value === 0 &&
+                        (getSecondArrayItem(currentLaidCards).value <= card.value || !getSecondArrayItem(currentLaidCards))) ||
+                    (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 2 && lastLaidCard?.value <= card.value) ||
+                    (currentLaidCards && lastLaidCard?.isTeaseCard && card.value >= 3 && card.value <= 7);
+                console.log(
+                    'CANLAY3',
+                    canLayCard,
+                    currentLaidCards,
+                    !currentLaidCards,
+                    lastLaidCard?.value <= card.value &&
+                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
+                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
+                    currentLaidCards && !lastLaidCard?.isTeaseCard && card.isMagicCard,
+                    currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && card.isMagicCard,
+                    currentLaidCards &&
+                        lastLaidCard?.isMagicCard &&
+                        lastLaidCard?.value === 0 &&
+                        getSecondArrayItem(currentLaidCards).value <= card.value,
+                    !getSecondArrayItem(currentLaidCards ?? []),
+                );
             });
         }
         if (!canLayCard && active) {
+            // todo FELHUZTAL LAPOKAT
             console.log('DRAWINGCARD', roomId, user?.username);
             socket.emit('draw-cards', { roomId, username: user?.username });
         }

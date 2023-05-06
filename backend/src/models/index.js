@@ -3,14 +3,21 @@ import Sequelize from 'sequelize';
 import dbConfig from '../config/db.config.js';
 import User from './user.model';
 import PlayedGame from './played_game.model';
+import { isDevEnv } from '../utils/utils.js';
 
-const { DB, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool } = dbConfig;
+const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool, reconnect } = dbConfig;
 
 const sequelize = new Sequelize(DB, USER, PASSWORD, {
-    host: HOST,
+    host: isDevEnv ? HOST : '/cloudsql/dutch-card:europe-west6:dutch-pub',
     dialect: _dialect,
     operatorsAliases: false,
-
+    port: PORT,
+    reconnect,
+    ...(!isDevEnv && {
+        dialectOptions: {
+            socketPath: '/cloudsql/dutch-card:europe-west6:dutch-pub',
+        },
+    }),
     pool: {
         max: _pool.max,
         min: _pool.min,
@@ -26,18 +33,5 @@ db.sequelize = sequelize;
 
 db.user = User(sequelize, Sequelize);
 db.played_game = PlayedGame(sequelize, Sequelize);
-
-/* db.role.belongsToMany(db.user, {
-    through: 'user_roles',
-    foreignKey: 'roleId',
-    otherKey: 'userId',
-});
-db.user.belongsToMany(db.role, {
-    through: 'user_roles',
-    foreignKey: 'userId',
-    otherKey: 'roleId',
-});
-
-db.ROLES = ['user', 'admin', 'moderator']; */
 
 export default db;

@@ -1,4 +1,5 @@
 # dutch_pub
+
 Web-based multiplayer card game
 
 # Getting Started with Create React App
@@ -47,3 +48,11 @@ You don’t have to ever use `eject`. The curated feature set is suitable for sm
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+## Docker-related
+
+args: [ 'build', '-t', 'LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE_NAME', '.' ]
+step1: build ez alatta:
+gcloud builds submit --tag europe-west6-docker.pkg.dev/dutch-card/dutch-card/app --machine-type=e2-highcpu-32
+step2: https://console.cloud.google.com/run/detail/europe-west6/dutch-card/revisions?project=dutch-card
+edit and deploy new revision

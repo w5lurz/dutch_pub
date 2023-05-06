@@ -1,3 +1,4 @@
+import { MouseEventHandler } from 'react';
 import { User } from '../../app/types';
 import Card from '../Game/components/Card';
 
@@ -73,6 +74,33 @@ export const CardBackSide = () => (
     </svg>
 );
 
+export const ChatIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
+        />
+    </svg>
+);
+
+export const hamburgerButton = (handleOnClick: Function) => (
+    <button
+        type="button"
+        className="inline-flex items-center p-2 ml-3 text-sm rounded-lg md:hidden focus:outline-none focus:ring-2 text-gray-400 hover:bg-gray-700 focus:ring-gray-600"
+        onClick={() => handleOnClick()}
+    >
+        <span className="sr-only">Open main menu</span>
+        <svg className="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path
+                fillRule="evenodd"
+                d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                clipRule="evenodd"
+            ></path>
+        </svg>
+    </button>
+);
+
 export const CardIcon = (iconName: string) => {
     switch (iconName) {
         case 'spade':
@@ -89,140 +117,99 @@ export const CardIcon = (iconName: string) => {
 };
 
 export const DutchPubLogo = () => (
-    <svg id="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 564.41 459.03" className="h-10 w-10">
-        <line style={{ strokeWidth: '16', fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }} x1="4.5" x2="4.5" y2="459.03" />
-        <line style={{ strokeWidth: '16', fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }} x1="559.91" x2="559.91" y2="459.03" />
-        <line
-            style={{ strokeWidth: '16', fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="4.5"
-            y1="216.66"
-            x2="559.91"
-            y2="216.66"
-        />
+    <svg id="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 564.41 459.03" className="h-10 w-10 stroke-blue-300">
+        <line style={{ strokeWidth: '16', fill: 'none', strokeMiterlimit: 10 }} x1="4.5" x2="4.5" y2="459.03" />
+        <line style={{ strokeWidth: '16', fill: 'none', strokeMiterlimit: 10 }} x1="559.91" x2="559.91" y2="459.03" />
+        <line style={{ strokeWidth: '16', fill: 'none', strokeMiterlimit: 10 }} x1="4.5" y1="216.66" x2="559.91" y2="216.66" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="306.76 176.35 227.04 176.35 227.04 96.93 306.76 96.93 306.76 193.85"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="152.47"
-            y1="31.85"
-            x2="152.47"
-            y2="182.28"
-        />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="194.9"
-            y1="31.85"
-            x2="194.9"
-            y2="182.28"
-        />
-        <rect
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x="45.52"
-            y="95.61"
-            width="79.71"
-            height="79.42"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="152.47" y1="31.85" x2="152.47" y2="182.28" />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="194.9" y1="31.85" x2="194.9" y2="182.28" />
+        <rect className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x="45.52" y="95.61" width="79.71" height="79.42" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="342.76 96.93 342.76 107.07 342.76 182.28"
         />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="342.76 107.07 421.18 107.07 421.18 182.28"
         />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="518.89 107.07 446.9 107.07 446.9 182.28 518.89 182.28 518.89 31.85"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="28.29"
-            y1="245.58"
-            x2="28.29"
-            y2="425.57"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="28.29" y1="245.58" x2="28.29" y2="425.57" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="34.72 335.58 73.29 335.58 162.65 246.22"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="162.65"
-            y1="425.57"
-            x2="72.97"
-            y2="335.9"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="162.65" y1="425.57" x2="72.97" y2="335.9" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="226.29 377.71 146.58 377.71 146.58 298.29 226.29 298.29 226.29 395.21"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="226.29"
-            y1="234.01"
-            x2="194.15"
-            y2="275.3"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="226.29" y1="234.01" x2="194.15" y2="275.3" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="253.34 290.9 253.34 313.53 253.34 395.21"
         />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="253.34"
-            y1="313.53"
-            x2="317.22"
-            y2="313.53"
-        />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="336.1"
-            y1="245.55"
-            x2="336.1"
-            y2="424.91"
-        />
-        <line
-            className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
-            x1="352.52"
-            y1="268.47"
-            x2="320.58"
-            y2="268.47"
-        />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="253.34" y1="313.53" x2="317.22" y2="313.53" />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="336.1" y1="245.55" x2="336.1" y2="424.91" />
+        <line className="stroke-[12px]" style={{ fill: 'none', strokeMiterlimit: 10 }} x1="352.52" y1="268.47" x2="320.58" y2="268.47" />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="362.28 290.9 362.28 356.2 430.22 356.2 430.22 290.9 430.22 418.18 362.28 418.18 362.28 391.71"
         />
         <polyline
             className="stroke-[12px]"
-            style={{ fill: 'none', stroke: '#1d1d1b', strokeMiterlimit: 10 }}
+            style={{ fill: 'none', strokeMiterlimit: 10 }}
             points="536.12 377.71 456.41 377.71 456.41 298.29 536.12 298.29 536.12 395.21"
         />
     </svg>
 );
 
+export const CircularProgress = () => (
+    <div role="status" className="flex justify-center">
+        <svg
+            aria-hidden="true"
+            className="w-5 h-5 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
+            viewBox="0 0 100 101"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <path
+                d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+                fill="currentColor"
+            />
+            <path
+                d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+                fill="currentFill"
+            />
+        </svg>
+        <span className="sr-only">Loading...</span>
+    </div>
+);
+
 export const renderFlippedCards = (count: number, user: User, roomId: number, active: boolean = false, canTouch: boolean = false) => {
-    let arr = [];
+    let arr: Array<any> = []; // TODO type
+    if (count === 0) return arr;
     for (let i = 0; i < count; i++) {
-        arr.push(<Card key={`flipped-${i}`} card={i} active={active} i={i} user={user} roomId={roomId} canTouch={canTouch} />);
+        if (i === 3) break;
+        if (i === 2 && count > 3) {
+            arr.push(<Card key={`flipped-${i}`} card={i} active={active} i={count - 3} user={user} roomId={roomId} canTouch={canTouch} />);
+        } else {
+            arr.push(<Card key={`flipped-${i}`} card={i} active={active} i={i} user={user} roomId={roomId} canTouch={canTouch} />);
+        }
     }
     return arr;
 };

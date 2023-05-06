@@ -8,7 +8,7 @@ export default function UserBoard({ userCards, active, user, roomId }: UserBoard
     console.log('USERGAME', userCards);
     return (
         <div className="flex flex-col">
-            <div className="px-6 pt-6 flex justify-center -mb-10 z-20">
+            <div className={`px-6 pt-6 flex justify-center ${userCards.tableFlipped?.length === 0 ? '-mb-4' : '-mb-10'} z-20`}>
                 {userCards.hand.map((card: TCard, i: number) => {
                     return (
                         <Card key={`${card.color}-${card.value}`} card={card} active={active} i={i} user={user} roomId={roomId} canTouch />

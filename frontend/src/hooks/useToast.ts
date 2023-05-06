@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { RefObject, useEffect, useRef } from 'react';
 import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { RootState } from '../app/store';
@@ -8,13 +8,29 @@ export default function useToast() {
     const dispatch = useAppDispatch();
     const toast: TToast | null = useAppSelector((state: RootState) => state.general.toast);
 
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const dismissRef = useRef<ReturnType<typeof setTimeout>>();
+
+    const remove = (ref: RefObject<HTMLDivElement>) => {
+        ref?.current?.classList.add('animate-toastOut');
+
+        // Remove element after animation is done
+        ref?.current?.addEventListener('animationend', () => {
+            dispatch(setToast(null));
+        });
+    };
+
     useEffect(() => {
         if (toast?.duration) {
-            setTimeout(() => {
-                dispatch(setToast(null));
+            dismissRef.current = setTimeout(() => {
+                remove(wrapperRef);
             }, toast?.duration);
         }
-    });
 
-    return { toast };
+        return () => {
+            clearTimeout(dismissRef.current);
+        };
+    }, [toast]);
+
+    return { toast, wrapperRef, dismissRef };
 }

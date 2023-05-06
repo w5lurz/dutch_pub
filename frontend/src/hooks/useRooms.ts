@@ -2,11 +2,12 @@ import { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { updateGame } from '../app/gameSlice';
+import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
 import { Game, Player, TRoom, TRooms, User } from '../app/types';
-import { setUser } from '../app/userSlice';
+import { setInGame } from '../app/userSlice';
 import { SocketContext } from './useApp';
 
 export default function useRooms() {
@@ -42,7 +43,7 @@ export default function useRooms() {
             console.log('Game started', roomsListed, game);
             navigate('/game');
             dispatch(setRooms(roomsListed));
-            dispatch(setUser({ ...user, inGame: roomId } as User));
+            dispatch(setInGame(roomId));
             dispatch(updateGame(game));
         };
 
@@ -61,22 +62,54 @@ export default function useRooms() {
         };
     }, []);
 
-    const handleDeleteRoom = (roomId: number) => {
+    const handleDeleteRoom = (roomId: number, name: string) => {
         socket.emit('delete-room', roomId);
+        dispatch(
+            setToast({
+                id: `delete-room-${roomId}-success`,
+                type: 'success',
+                message: `You successfully deleted Room ${name}!`,
+                duration: 3000,
+            }),
+        );
     };
 
-    const handleJoinRoom = (username: string, roomId: number) => {
+    const handleJoinRoom = (username: string, roomId: number, name: string) => {
         console.log('JOIN ROOM', username, roomId);
         socket.emit('join-room', { username, roomId });
+        dispatch(
+            setToast({
+                id: `join-room-${roomId}-success`,
+                type: 'success',
+                message: `You successfully joined Room ${name}!`,
+                duration: 3000,
+            }),
+        );
     };
 
-    const handleLeaveRoom = (username: string, roomId: number) => {
+    const handleLeaveRoom = (username: string, roomId: number, name: string) => {
         console.log('JOIN ROOM', username, roomId);
         socket.emit('leave-room', { username, roomId });
+        dispatch(
+            setToast({
+                id: `leave-room-${roomId}-success`,
+                type: 'success',
+                message: `You successfully left Room ${name}!`,
+                duration: 3000,
+            }),
+        );
     };
 
-    const handleStartRoom = (roomId: number) => {
+    const handleStartRoom = (roomId: number, name: string) => {
         socket.emit('start-game', roomId, socket?.id);
+        dispatch(
+            setToast({
+                id: `start-room-${roomId}-success`,
+                type: 'success',
+                message: `You started game from Room ${name}!`,
+                duration: 3000,
+            }),
+        );
     };
 
     const isInAnyRoom = Object.values(rooms).some(

@@ -1,5 +1,5 @@
-import { games, roomsList } from './rooms';
-import { roomMessages } from './chat';
+import { games, modifyRooms, roomsList } from './rooms';
+import { modifyRoomMessages, roomMessages } from './chat';
 
 import db from './models';
 const PlayedGame = db.played_game;
@@ -11,9 +11,9 @@ export const game = io => {
         socket.on('lay-card', async ({ card, cardIndex, roomId, username }) => {
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];
-            const originalCard = card;
+            const originalCard = card; // TODO needed?
             let currentLaidCard = card;
-
+            console.log('LAY CARD1', card, cardIndex, roomId, username);
             // Deleting laid card from hand
             if (currentGame.players[username].userCards.hand.length !== 0) {
                 currentGame.players[username].userCards.hand = currentGame.players[username].userCards.hand.filter(
@@ -36,12 +36,14 @@ export const game = io => {
                 currentGame.players[username].userCards.hand.length === 0 &&
                 currentGame.players[username].userCards.tableFlipped.length === 0
             ) {
+                console.log('LASTLAID', username, card);
+                console.log('LASTLAID', currentGame.players[username].userCards.table);
                 currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
                 currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
                 const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                console.log('LASTLAID', lastLaidCard, currentLaidCard);
+                console.log('LASTLAID1', lastLaidCard, currentLaidCard);
                 const secondLaidCard = currentGame.laidCards ? currentGame.laidCards[1] : null;
-                console.log('LASTLAID1', secondLaidCard, currentLaidCard);
+                console.log('LASTLAID12', secondLaidCard, currentLaidCard);
                 isValidLastLaidCard =
                     !lastLaidCard || // false
                     (lastLaidCard.value <= currentLaidCard.value && // false
@@ -98,31 +100,29 @@ export const game = io => {
                     // Setting active player to next
                     setActivePlayerNext(currentGame.players, username);
                 }
-
+                console.log('ORIG1', originalCard);
                 // TODO SET WINNER HERE
                 if (
-                    originalCard === 0 ||
-                    (currentGame.players[username].userCards.hand.length === 0 &&
-                        currentGame.players[username].userCards.tableFlipped.length === 0 &&
-                        currentGame.players[username].userCards.table.length === 0)
+                    currentGame.players[username].userCards.hand.length === 0 &&
+                    currentGame.players[username].userCards.tableFlipped.length === 0 &&
+                    currentGame.players[username].userCards.table.length === 0
                 ) {
                     const gameId = `game-${roomId}`;
                     let { [roomId]: omit, ...rest } = roomsList;
-                    // roomsList = rest; TODO NEEDED BUT not working
+                    console.log('REST1', rest);
+                    modifyRooms(rest);
                     io.to(gameId).emit('game-won', username, roomsList);
 
-                    // TODO write to db
                     console.log('GAMEWON', card);
                     // TODO DELETE ROOM
                     io.in(gameId).socketsLeave(gameId);
                     let { [gameId]: deleted, ...restRoomMessages } = roomMessages;
-                    roomMessages = restRoomMessages;
+                    modifyRoomMessages(restRoomMessages);
                     console.log('GAMEWON1', roomsList);
                     await PlayedGame.create({
                         winner: username,
                         players: currentRoom.players.map(player => player.username).join(','),
                     });
-                } else {
                 }
 
                 // Send new game data to sockets
@@ -165,7 +165,14 @@ const isLastFourCardsSame = (laidCards, card) =>
     laidCards[0].value === laidCards[1].value &&
     laidCards[1].value === laidCards[2].value;
 
-export const sendUiDataToSocket = (io, room, game, message, roomId) => {
+export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
+    const rooms = io.of('/').adapter.rooms;
+    console.log(rooms);
+    console.log(rooms[`game-${roomId}`]);
+    const sockets = await io.fetchSockets();
+    console.log('SOCKETS 2', sockets[0].username);
+    console.log('SOCKETS 2', sockets[1].username);
+
     room.players.forEach(player => {
         const playerSpecificGameData = {
             userCards: {},
@@ -175,6 +182,8 @@ export const sendUiDataToSocket = (io, room, game, message, roomId) => {
             ...game.players[player.username].userCards,
             table: game.players[player.username].userCards.table.length,
         };
+        // TODO
+
         room.players.forEach(otherPlayer => {
             if (player.socketId !== otherPlayer.socketId) {
                 playerSpecificGameData.opponents[otherPlayer.username] = {};
@@ -190,6 +199,10 @@ export const sendUiDataToSocket = (io, room, game, message, roomId) => {
         playerSpecificGameData.burntCards = game.burntCards ? game.burntCards : null;
         playerSpecificGameData.deck = game.deck.length;
         playerSpecificGameData.active = game.players[player.username].active;
+        /* room1 = [
+            { id: 1, socketId: 'asdasd' },
+            { id: 2, socketId: 'asdasd1', newSocketId: 'asdccc' },
+        ]; */
         io.to(player.socketId).emit(message, playerSpecificGameData, roomsList, roomId);
     });
 };
@@ -219,7 +232,7 @@ export let deck = [
     { name: 'J', value: 11, color: 'clubs' },
     { name: 'Q', value: 12, color: 'clubs' },
     { name: 'K', value: 13, color: 'clubs' },
-    { name: 'Call next', value: 14, color: 'clubs', isMagicCard: true },
+    { name: 'Call Next', value: 14, color: 'clubs', isMagicCard: true },
     // Diamonds
     { name: 'Start Over', value: 2, color: 'diamonds', isMagicCard: true }, // value itt hogy legyen?
     { name: '3', value: 3, color: 'diamonds' },
@@ -233,7 +246,7 @@ export let deck = [
     { name: 'J', value: 11, color: 'diamonds' },
     { name: 'Q', value: 12, color: 'diamonds' },
     { name: 'K', value: 13, color: 'diamonds' },
-    { name: 'Call next', value: 14, color: 'diamonds', isMagicCard: true },
+    { name: 'Call Next', value: 14, color: 'diamonds', isMagicCard: true },
     // Hearts
     { name: 'Start Over', value: 2, color: 'hearts', isMagicCard: true }, // value itt hogy legyen?
     { name: '3', value: 3, color: 'hearts' },
@@ -247,7 +260,7 @@ export let deck = [
     { name: 'J', value: 11, color: 'hearts' },
     { name: 'Q', value: 12, color: 'hearts' },
     { name: 'K', value: 13, color: 'hearts' },
-    { name: 'Call next', value: 14, color: 'hearts', isMagicCard: true },
+    { name: 'Call Next', value: 14, color: 'hearts', isMagicCard: true },
     // Spades
     { name: 'Start Over', value: 2, color: 'spades', isMagicCard: true }, // value itt hogy legyen?
     { name: '3', value: 3, color: 'spades' },
@@ -261,7 +274,7 @@ export let deck = [
     { name: 'J', value: 11, color: 'spades' },
     { name: 'Q', value: 12, color: 'spades' },
     { name: 'K', value: 13, color: 'spades' },
-    { name: 'Call next', value: 14, color: 'spades', isMagicCard: true },
+    { name: 'Call Next', value: 14, color: 'spades', isMagicCard: true },
 ];
 
 export const shuffleDeck = deck => [...deck].sort(() => Math.random() - 0.5);
@@ -281,7 +294,7 @@ const gameCards = {
         hand: [
             { name: 'Q', value: 12, color: 'spades' },
             { name: 'K', value: 13, color: 'spades' },
-            { name: 'Call next', value: 14, color: 'spades', isMagicCard: true },
+            { name: 'Call Next', value: 14, color: 'spades', isMagicCard: true },
         ],
     },
     opponents: {

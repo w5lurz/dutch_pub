@@ -13,11 +13,21 @@ export default function CreateRoomForm({ user, isAlreadyOwner = false, isInAnyRo
 
     if (isCreateRoomVisible && user) {
         return (
-            <form className="space-y-4 md:space-y-6 w-1/4" onSubmit={handleCreateRoom}>
+            <form className="space-y-4 md:space-y-6" onSubmit={handleCreateRoom}>
                 <div>
-                    <label htmlFor="roomname" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white flex justify-between">
+                    <label htmlFor="roomname" className="mb-2 text-sm font-medium text-gray-900 dark:text-white flex justify-between">
                         <p>Room Name</p>
-                        <div>x</div>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-6 h-6 hover:stroke-red-600 hover:cursor-pointer"
+                            onClick={() => setIsCreateRoomVisible(false)}
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </label>
                     <input
                         type="text"

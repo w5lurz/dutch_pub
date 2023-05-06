@@ -9,11 +9,11 @@ type CardProps = {
     roomId: number;
     user: User;
     canTouch?: boolean;
-    isHandCard?: boolean;
+    writePlus?: boolean;
 };
 
-export default function Card({ card, active, i, roomId, user, canTouch = false, isHandCard = false }: CardProps) {
-    const { handleCardOnClick } = useCard(roomId, user);
+export default function Card({ card, active, i, roomId, user, canTouch = false, writePlus = false }: CardProps) {
+    const { handleCardOnClick, addWarningToast } = useCard(roomId, user);
 
     if (typeof card === 'number') {
         // -ml-4
@@ -24,9 +24,14 @@ export default function Card({ card, active, i, roomId, user, canTouch = false, 
                 onClick={() => {
                     console.log(canTouch, active);
                     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                    canTouch && active && handleCardOnClick(card as number, i, roomId, user);
+                    if (canTouch && active) {
+                        handleCardOnClick(card as number, i, roomId, user);
+                    } else {
+                        addWarningToast();
+                    }
                 }}
             >
+                {writePlus && i !== 0 && <p className="flex justify-center items-center w-14 h-24 absolute text-white">+{i}</p>}
                 <CardBackSide />
             </div>
         ); // <div className={'flex flex-col -m-2 bg-gray-600 shadow-md rounded p-2 w-24 h-32 gap-2'}></div>;
@@ -39,7 +44,13 @@ export default function Card({ card, active, i, roomId, user, canTouch = false, 
             className={`${canTouch && active ? 'hover:cursor-pointer hover:bg-blue-50' : ''}${
                 !active ? 'cursor-not-allowed' : ''
             } -m-2 flex flex-col rounded bg-gray-50 shadow-md p-2 w-20 h-28 gap-2`}
-            onClick={() => canTouch && active && handleCardOnClick(card as TCard, i, roomId, user)}
+            onClick={() => {
+                if (canTouch && active) {
+                    handleCardOnClick(card as TCard, i, roomId, user);
+                } else {
+                    addWarningToast();
+                }
+            }}
         >
             <div className="flex flex-col justify-start items-center">
                 <p className="text-sm">{card.value}</p>
