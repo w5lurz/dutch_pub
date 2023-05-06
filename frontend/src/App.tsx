@@ -17,7 +17,7 @@ function App() {
             <Toast />
             <div className="flex flex-col h-screen max-h-screen">
                 <NavBar />
-                <div className="grow">
+                <div className="grow mt-14">
                     <Routes>
                         <Route key="welcome" path="/" element={<Welcome />}></Route>
                         <Route key="play" path="/play" element={<Rooms />}></Route>

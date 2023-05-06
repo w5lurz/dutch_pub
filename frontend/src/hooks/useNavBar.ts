@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../app/api';
 import { setToast } from '../app/generalSlice';
@@ -6,6 +7,8 @@ import { RootState } from '../app/store';
 import { setUser } from '../app/userSlice';
 
 export default function useNavBar() {
+    const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+
     let navigate = useNavigate();
     const dispatch = useAppDispatch();
     const user = useAppSelector((state: RootState) => state.user);
@@ -21,5 +24,10 @@ export default function useNavBar() {
             dispatch(setToast({ id: 'login-failed', type: 'error', message: e.toString(), duration: 3000 }));
         }
     };
-    return { user, handleLogout };
+
+    const handleHamburgerOnClick = () => {
+        setIsMenuOpen(isOpen => !isOpen);
+    };
+
+    return { user, isMenuOpen, handleHamburgerOnClick, handleLogout };
 }
