@@ -59,7 +59,7 @@ export default function NavBar() {
                         <DutchPubLogo />
                     </NavLink>
                 )}
-                {hamburgerButton(handleHamburgerOnClick)}
+                {!user?.inGame && hamburgerButton(handleHamburgerOnClick)}
                 <div className={`${isMenuOpen ? '' : 'hidden '}w-full md:block md:w-auto`}>
                     <MenuItems user={user} handleLogout={handleLogout} />
                 </div>

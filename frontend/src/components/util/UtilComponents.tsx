@@ -1,4 +1,3 @@
-import { MouseEventHandler } from 'react';
 import { User } from '../../app/types';
 import Card from '../Game/components/Card';
 
