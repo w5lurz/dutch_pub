@@ -3,7 +3,7 @@ import useLeaderBoard from '../../hooks/useLeaderBoard';
 export default function LeaderBoardTable() {
     const { status, leaderBoardData } = useLeaderBoard();
     return (
-        <div className="w-1/2 relative overflow-auto">
+        <div className="max-w-3/4 relative overflow-auto">
             {status === 'fetching' && (
                 <div role="status" className="p-4 border border-gray-200 rounded shadow animate-pulse md:p-6 dark:border-gray-700">
                     <div className="h-2.5 bg-gray-200 rounded-full dark:bg-gray-700 w-32 mb-2.5"></div>
@@ -25,19 +25,19 @@ export default function LeaderBoardTable() {
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 bg-blue-300 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
-                                <th scope="col" className="px-6 py-3">
+                                <th scope="col" className="px-6 py-3 text-center">
                                     Rank
                                 </th>
-                                <th scope="col" className="px-6 py-3">
+                                <th scope="col" className="px-6 py-3 text-center">
                                     Wins
                                 </th>
                                 <th scope="col" className="px-6 py-3">
                                     Username
                                 </th>
-                                <th scope="col" className="px-6 py-3">
+                                <th scope="col" className="px-6 py-3 hidden md:table-cell">
                                     Favourite Friend
                                 </th>
-                                <th scope="col" className="px-6 py-3">
+                                <th scope="col" className="px-6 py-3 hidden md:table-cell">
                                     Latest win
                                 </th>
                             </tr>
@@ -50,8 +50,8 @@ export default function LeaderBoardTable() {
                                     </th>
                                     <td className="px-6 py-4 text-center">{row.wins}</td>
                                     <td className="px-6 py-4 font-medium">{row.winner}</td>
-                                    <td className="px-6 py-4">{row.favouriteFriend}</td>
-                                    <td className="px-6 py-4">{new Date(row.latestWin).toLocaleString()}</td>
+                                    <td className="px-6 py-4 hidden md:table-cell">{row.favouriteFriend}</td>
+                                    <td className="px-6 py-4 hidden md:table-cell">{new Date(row.latestWin).toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
