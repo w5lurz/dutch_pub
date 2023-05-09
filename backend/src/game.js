@@ -60,9 +60,10 @@ export const game = io => {
             }
             if (!isValidLastLaidCard) {
                 // const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                console.log('LAST ROUND1', isValidLastLaidCard);
+                currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
+                console.log('LAST ROUND1', isValidLastLaidCard, currentLaidCard);
                 // Setting hand with drawn cards
-                currentGame.players[username].userCards.hand = [...currentGame.laidCards];
+                currentGame.players[username].userCards.hand = [currentLaidCard, ...currentGame.laidCards];
 
                 // Setting laidCards to null (given to hand)
                 currentGame.laidCards = null;
