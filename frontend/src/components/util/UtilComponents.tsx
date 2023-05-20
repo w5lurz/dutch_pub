@@ -205,7 +205,18 @@ export const renderFlippedCards = (count: number, user: User, roomId: number, ac
     for (let i = 0; i < count; i++) {
         if (i === 3) break;
         if (i === 2 && count > 3) {
-            arr.push(<Card key={`flipped-${i}`} card={i} active={active} i={count - 3} user={user} roomId={roomId} canTouch={canTouch} />);
+            arr.push(
+                <Card
+                    key={`flipped-${i}`}
+                    card={i}
+                    active={active}
+                    i={count - 3}
+                    writePlus
+                    user={user}
+                    roomId={roomId}
+                    canTouch={canTouch}
+                />,
+            );
         } else {
             arr.push(<Card key={`flipped-${i}`} card={i} active={active} i={i} user={user} roomId={roomId} canTouch={canTouch} />);
         }

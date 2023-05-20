@@ -67,10 +67,10 @@ export const game = io => {
                 console.log(
                     'LAST ROUNDasd',
                     !!!lastLaidCard,
-                    lastLaidCard.value <= currentLaidCard.value &&
-                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) ||
-                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2)),
-                    lastLaidCard.isMagicCard && lastLaidCard.value === 14 && currentLaidCard.isMagicCard,
+                    lastLaidCard?.value <= currentLaidCard?.value &&
+                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
+                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
+                    lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && currentLaidCard?.isMagicCard,
                 );
             }
             if (!isValidLastLaidCard) {
@@ -79,7 +79,9 @@ export const game = io => {
                 // currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
                 console.log('LAST ROUND1', isValidLastLaidCard, currentLaidCard, currentGame.players[username].userCards.table);
                 // Setting hand with drawn cards
-                currentGame.players[username].userCards.hand = [currentLaidCard, ...currentGame.laidCards];
+                currentGame.players[username].userCards.hand = [currentLaidCard, ...currentGame.laidCards].sort(
+                    (a, b) => a.value - b.value,
+                );
 
                 // Setting laidCards to null (given to hand)
                 currentGame.laidCards = null;
@@ -158,7 +160,7 @@ export const game = io => {
                     ? currentGame.players[username].userCards.hand
                     : []),
                 ...(currentGame.laidCards ? currentGame.laidCards : []),
-            ];
+            ].sort((a, b) => a.value - b.value);
 
             // Setting laidCards to null (given to hand)
             currentGame.laidCards = null;
@@ -199,7 +201,6 @@ export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
             ...game.players[player.username].userCards,
             table: game.players[player.username].userCards.table.length,
         };
-        // TODO
 
         room.players.forEach(otherPlayer => {
             if (player.socketId !== otherPlayer.socketId) {
@@ -216,10 +217,7 @@ export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
         playerSpecificGameData.burntCards = game.burntCards ? game.burntCards : null;
         playerSpecificGameData.deck = game.deck.length;
         playerSpecificGameData.active = game.players[player.username].active;
-        /* room1 = [
-            { id: 1, socketId: 'asdasd' },
-            { id: 2, socketId: 'asdasd1', newSocketId: 'asdccc' },
-        ]; */
+
         io.to(player.socketId).emit(message, playerSpecificGameData, roomsList, roomId);
     });
 };
@@ -295,34 +293,3 @@ export let deck = [
 ];
 
 export const shuffleDeck = deck => [...deck].sort(() => Math.random() - 0.5);
-
-const gameCards = {
-    userCards: {
-        table: [
-            { name: '5', value: 5, color: 'spades' },
-            { name: '6', value: 6, color: 'spades' },
-            { name: '7', value: 7, color: 'spades' },
-        ],
-        tableFlipped: [
-            { name: 'J', value: 11, color: 'spades' },
-            { name: 'Q', value: 12, color: 'spades' },
-            { name: 'K', value: 13, color: 'spades' },
-        ],
-        hand: [
-            { name: 'Q', value: 12, color: 'spades' },
-            { name: 'K', value: 13, color: 'spades' },
-            { name: 'Call Next', value: 14, color: 'spades', isMagicCard: true },
-        ],
-    },
-    opponents: {
-        kiskutya: {
-            table: 3,
-            tableFlipped: [
-                { name: 'J', value: 11, color: 'spades' },
-                { name: 'Q', value: 12, color: 'spades' },
-                { name: 'K', value: 13, color: 'spades' },
-            ],
-            hand: 3,
-        },
-    },
-};
