@@ -43,5 +43,16 @@ export default function useRegistration() {
         setLoading(false);
     };
 
-    return { loading, handleSubmit };
+    const pwOnChange = () => {
+        const password = document.querySelector('input[name=password]')! as HTMLInputElement;
+        const confirm = document.querySelector('input[name=confirm-password]')! as HTMLInputElement;
+
+        if (confirm.value === password.value) {
+            confirm.setCustomValidity('');
+        } else {
+            confirm.setCustomValidity('A jelszavak nem egyeznek!');
+        }
+    };
+
+    return { loading, handleSubmit, pwOnChange };
 }

@@ -53,12 +53,11 @@ export type Game = {
 };
 
 export type TToast = {
-    id: string | number; // TODO number not needed
+    id: string | number;
     type: 'success' | 'info' | 'warning' | 'error' | 'sad';
     message: string;
     duration: number;
     position?: ToastPositionType;
-    // icon?: ReactNode | boolean;
 };
 
 export type ToastPositionType = 'topLeft' | 'topCenter' | 'topRight' | 'bottomRight' | 'bottomCenter' | 'bottomLeft';

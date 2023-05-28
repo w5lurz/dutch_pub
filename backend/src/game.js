@@ -43,6 +43,8 @@ export const game = io => {
                 const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
                 console.log('LASTLAID1', lastLaidCard, currentLaidCard);
                 const secondLaidCard = currentGame.laidCards ? currentGame.laidCards[1] : null;
+                const thirdLaidCard = currentGame.laidCards ? currentGame.laidCards[2] : null;
+                const fourthLaidCard = currentGame.laidCards ? currentGame.laidCards[3] : null;
                 console.log('LASTLAID12', secondLaidCard, currentLaidCard);
                 isValidLastLaidCard =
                     !lastLaidCard || // false
@@ -53,16 +55,33 @@ export const game = io => {
                     (lastLaidCard.isMagicCard && lastLaidCard.value === 14 && currentLaidCard.isMagicCard) || // false
                     (lastLaidCard.isMagicCard &&
                         lastLaidCard.value === 0 &&
-                        (secondLaidCard?.value <= currentLaidCard.value || !secondLaidCard)) || // TODO NOT SECOND LAID CARD but the first card what is not an 8 before that
+                        ((secondLaidCard?.value <= currentLaidCard.value && secondLaidCard?.value !== 0) ||
+                            !secondLaidCard ||
+                            (thirdLaidCard?.value <= currentLaidCard.value && thirdLaidCard?.value !== 0) ||
+                            !thirdLaidCard ||
+                            (fourthLaidCard?.value <= currentLaidCard.value && fourthLaidCard?.value !== 0) ||
+                            !fourthLaidCard)) || // TODO NOT SECOND LAID CARD but the first card what is not an 8 before that
                     (lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= currentLaidCard.value) || // false
                     (lastLaidCard.isTeaseCard && currentLaidCard.value >= 3 && currentLaidCard.value <= 7); // false
                 console.log('LAST ROUND', isValidLastLaidCard, currentGame.laidCards);
+                console.log(
+                    'LAST ROUNDasd',
+                    !!!lastLaidCard,
+                    lastLaidCard?.value <= currentLaidCard?.value &&
+                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
+                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
+                    lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && currentLaidCard?.isMagicCard,
+                );
             }
             if (!isValidLastLaidCard) {
                 // const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                console.log('LAST ROUND1', isValidLastLaidCard);
+                // TODO this is filtered up, will be undefined, FIXMEE
+                // currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
+                console.log('LAST ROUND1', isValidLastLaidCard, currentLaidCard, currentGame.players[username].userCards.table);
                 // Setting hand with drawn cards
-                currentGame.players[username].userCards.hand = [...currentGame.laidCards];
+                currentGame.players[username].userCards.hand = [currentLaidCard, ...currentGame.laidCards].sort(
+                    (a, b) => a.value - b.value,
+                );
 
                 // Setting laidCards to null (given to hand)
                 currentGame.laidCards = null;
@@ -141,7 +160,7 @@ export const game = io => {
                     ? currentGame.players[username].userCards.hand
                     : []),
                 ...(currentGame.laidCards ? currentGame.laidCards : []),
-            ];
+            ].sort((a, b) => a.value - b.value);
 
             // Setting laidCards to null (given to hand)
             currentGame.laidCards = null;
@@ -182,7 +201,6 @@ export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
             ...game.players[player.username].userCards,
             table: game.players[player.username].userCards.table.length,
         };
-        // TODO
 
         room.players.forEach(otherPlayer => {
             if (player.socketId !== otherPlayer.socketId) {
@@ -199,10 +217,7 @@ export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
         playerSpecificGameData.burntCards = game.burntCards ? game.burntCards : null;
         playerSpecificGameData.deck = game.deck.length;
         playerSpecificGameData.active = game.players[player.username].active;
-        /* room1 = [
-            { id: 1, socketId: 'asdasd' },
-            { id: 2, socketId: 'asdasd1', newSocketId: 'asdccc' },
-        ]; */
+
         io.to(player.socketId).emit(message, playerSpecificGameData, roomsList, roomId);
     });
 };
@@ -278,34 +293,3 @@ export let deck = [
 ];
 
 export const shuffleDeck = deck => [...deck].sort(() => Math.random() - 0.5);
-
-const gameCards = {
-    userCards: {
-        table: [
-            { name: '5', value: 5, color: 'spades' },
-            { name: '6', value: 6, color: 'spades' },
-            { name: '7', value: 7, color: 'spades' },
-        ],
-        tableFlipped: [
-            { name: 'J', value: 11, color: 'spades' },
-            { name: 'Q', value: 12, color: 'spades' },
-            { name: 'K', value: 13, color: 'spades' },
-        ],
-        hand: [
-            { name: 'Q', value: 12, color: 'spades' },
-            { name: 'K', value: 13, color: 'spades' },
-            { name: 'Call Next', value: 14, color: 'spades', isMagicCard: true },
-        ],
-    },
-    opponents: {
-        kiskutya: {
-            table: 3,
-            tableFlipped: [
-                { name: 'J', value: 11, color: 'spades' },
-                { name: 'Q', value: 12, color: 'spades' },
-                { name: 'K', value: 13, color: 'spades' },
-            ],
-            hand: 3,
-        },
-    },
-};

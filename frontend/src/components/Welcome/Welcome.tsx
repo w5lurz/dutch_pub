@@ -30,12 +30,12 @@ export default function Welcome() {
                                 <strong>Hand</strong> - 3 cards to your hand
                             </li>
                             <li>
-                                <strong>Flipped on Table</strong> - 3 cards to the desk flipped, which you cannot see or play before your
-                                hand and your cards on top of these are all played
+                                <strong>Flipped on Table</strong> - 3 cards onto your Table cards, which everyone can see but cannot be
+                                played before your hand gets empty
                             </li>
                             <li>
-                                <strong>Table</strong> - 3 cards to your Flipped on Table cards, which everyone can see but cannot be played
-                                before your hand gets empty
+                                <strong>Table</strong> - 3 cards to the desk flipped, which you cannot see or play before your hand and your
+                                cards on top of these are all played
                             </li>
                         </ul>
                     </span>

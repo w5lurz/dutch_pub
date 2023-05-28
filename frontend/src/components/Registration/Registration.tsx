@@ -4,7 +4,7 @@ import useRegistration from '../../hooks/useRegistration';
 import { CircularProgress } from '../util/UtilComponents';
 
 export default function Registration() {
-    const { loading, handleSubmit } = useRegistration();
+    const { loading, handleSubmit, pwOnChange } = useRegistration();
 
     return (
         <section className="bg-gray-50 dark:bg-gray-900 h-full">
@@ -46,7 +46,7 @@ export default function Registration() {
                                     name="email"
                                     id="email"
                                     className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                    placeholder="name@company.com"
+                                    placeholder="name@domain.com"
                                     required
                                 />
                             </div>
@@ -59,6 +59,7 @@ export default function Registration() {
                                     name="password"
                                     id="password"
                                     placeholder="••••••••"
+                                    onChange={pwOnChange}
                                     className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                     required
                                 />
@@ -72,6 +73,7 @@ export default function Registration() {
                                     name="confirm-password"
                                     id="confirm-password"
                                     placeholder="••••••••"
+                                    onChange={pwOnChange}
                                     className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                     required
                                 />
