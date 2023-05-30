@@ -200,7 +200,7 @@ export const CircularProgress = () => (
 );
 
 export const renderFlippedCards = (count: number, user: User, roomId: number, active: boolean = false, canTouch: boolean = false) => {
-    let arr: Array<any> = []; // TODO type
+    let arr: Array<any> = [];
     if (count === 0) return arr;
     for (let i = 0; i < count; i++) {
         if (i === 3) break;

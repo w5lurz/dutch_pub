@@ -21,21 +21,20 @@ export default function useGame() {
     const flippedCards = useAppSelector((state: RootState) => state.game.userCards.tableFlipped);
     const tableCards = useAppSelector((state: RootState) => state.game.userCards.table);
     const active = useAppSelector((state: RootState) => state.game.active);
-    const testGame = useAppSelector((state: RootState) => state.game);
+    const currentGame = useAppSelector((state: RootState) => state.game);
     const user = useAppSelector((state: RootState) => state.user);
     const roomId = user?.inGame as number;
 
     useEffect(() => {
         const cardLaidListener = (game: Game) => {
-            dispatch(updateGame(game)); // TODO add toast?
+            dispatch(updateGame(game));
         };
 
         const cardsDrawnListener = (game: Game) => {
-            dispatch(updateGame(game)); // TODO ADD sad toast
+            dispatch(updateGame(game));
         };
 
         const gameWonListener = (username: string, roomsList: TRooms) => {
-            console.log('GAME WON', username);
             dispatch(
                 setToast({
                     id: `game-${roomId}-ended`, // TODO ez nem bizti jo lesz
@@ -57,9 +56,7 @@ export default function useGame() {
         socket.on('cards-drawn', cardsDrawnListener);
         socket.on('game-won', gameWonListener);
 
-        // DISCONNECTNEL is megvannak ezek
         const userDisconnectedListener = () => console.log('Socket disconnecting...', user, roomId);
-        // CONNECTNEL is megvannak ezek
         const userConnectedListener = () => {
             console.log('Socket connecting...', user, roomId);
             if (socket.recovered) {
@@ -70,6 +67,7 @@ export default function useGame() {
         socket.on('disconnect', userDisconnectedListener);
         socket.on('connect', userConnectedListener);
         socket.on('reconnect', userReconnectedListener);
+
         return () => {
             socket.off('card-laid', cardLaidListener);
             socket.off('cards-drawn', cardsDrawnListener);
@@ -86,10 +84,8 @@ export default function useGame() {
         let canLayCard = false;
         if (handCards?.length === 0 && flippedCards?.length === 0 && tableCards) {
             canLayCard = true;
-            console.log('CANLAY1', canLayCard);
         } else {
             const cardsToCheck = handCards && handCards.length > 0 ? handCards : flippedCards;
-            console.log('CANLAY2', canLayCard);
             cardsToCheck.forEach((card: TCard) => {
                 canLayCard =
                     canLayCard ||
@@ -105,47 +101,12 @@ export default function useGame() {
                         (getSecondArrayItem(currentLaidCards).value <= card.value || !getSecondArrayItem(currentLaidCards))) ||
                     (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 2 && lastLaidCard?.value <= card.value) ||
                     (currentLaidCards && lastLaidCard?.isTeaseCard && card.value >= 3 && card.value <= 7);
-                console.log(
-                    'CANLAY3',
-                    canLayCard,
-                    currentLaidCards,
-                    !currentLaidCards,
-                    lastLaidCard?.value <= card.value &&
-                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
-                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
-                    currentLaidCards && !lastLaidCard?.isTeaseCard && card.isMagicCard,
-                    currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && card.isMagicCard,
-                    currentLaidCards &&
-                        lastLaidCard?.isMagicCard &&
-                        lastLaidCard?.value === 0 &&
-                        getSecondArrayItem(currentLaidCards).value <= card.value,
-                    !getSecondArrayItem(currentLaidCards ?? []),
-                );
             });
         }
         if (!canLayCard && active) {
-            // todo FELHUZTAL LAPOKAT
-            console.log('DRAWINGCARD', roomId, user?.username);
             socket.emit('draw-cards', { roomId, username: user?.username });
         }
     }, [laidCards, handCards, active]);
 
-    return { testGame, active, user, roomId };
+    return { currentGame, active, user, roomId };
 }
-
-/* console.log(
-                'CAN LAY',
-                card,
-                lastLaidCard,
-                canLayCard,
-                !currentLaidCards,
-                lastLaidCard && lastLaidCard.value <= card.value && !lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard,
-                currentLaidCards && !lastLaidCard.isTeaseCard && card.isMagicCard,
-                currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard,
-                currentLaidCards &&
-                    lastLaidCard.isMagicCard &&
-                    lastLaidCard.value === 0 &&
-                    getSecondArrayItem(currentLaidCards).value <= card.value,
-                currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value,
-                currentLaidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7,
-            ); */

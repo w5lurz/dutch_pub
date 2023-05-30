@@ -11,7 +11,7 @@ import Toast from './components/Toast/Toast';
 
 function App() {
     const { socket } = useApp();
-    // TODO protected routes???
+
     return (
         <SocketContext.Provider value={socket}>
             <Toast />

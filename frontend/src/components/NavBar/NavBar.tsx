@@ -1,14 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import useNavBar from '../../hooks/useNavBar';
-import { isDevEnv } from '../../utils/config';
 import { DutchPubLogo, hamburgerButton } from '../util/UtilComponents';
 import { User } from '../../app/types';
-
-/* {!user?.inGame && isDevEnv && (
-                    <NavLink to="/game" className={calcClasses}>
-                        Game
-                    </NavLink>
-                )} */
 
 const calcClasses = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'text-white text-base font-medium rounded-md bg-gray-800 px-3 py-1' : 'text-base font-medium text-gray-300 px-3 py-1';
@@ -46,7 +39,6 @@ const MenuItems = ({ user, handleLogout }: { user: User; handleLogout: () => Pro
 export default function NavBar() {
     const { user, isMenuOpen, handleHamburgerOnClick, handleLogout } = useNavBar();
 
-    // TODO user smthg else instead of email
     return (
         <nav className="bg-gray-700 w-full fixed top-0 left-0 z-50">
             <div className="bg-gray-700 p-2 px-4 flex flex-wrap items-center justify-between basis-auto text-gray-700 mx-auto">

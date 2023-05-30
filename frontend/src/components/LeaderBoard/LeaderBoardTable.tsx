@@ -2,6 +2,7 @@ import useLeaderBoard from '../../hooks/useLeaderBoard';
 
 export default function LeaderBoardTable() {
     const { status, leaderBoardData } = useLeaderBoard();
+
     return (
         <div className="max-w-3/4 relative overflow-auto">
             {status === 'fetching' && (
@@ -59,7 +60,7 @@ export default function LeaderBoardTable() {
                 </div>
             )}
             {status === 'fetched' && leaderBoardData?.length === 0 && <p className="text-base text-center">No Games played yet!</p>}
-            {status === 'error' && leaderBoardData?.length === 0 && <p className="text-base text-center">Erro fetching data!</p>}
+            {status === 'error' && leaderBoardData?.length === 0 && <p className="text-base text-center">Error fetching data!</p>}
         </div>
     );
 }

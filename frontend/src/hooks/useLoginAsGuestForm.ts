@@ -13,7 +13,6 @@ export default function useLoginAsGuestForm() {
     const [loading, setLoading] = useState<boolean>(false);
 
     const dispatch = useAppDispatch();
-    console.log('SASER', socketId);
     useEffect(() => {
         socket.emit('get-socketid');
         socket.on('got-socketid', socketId => {
@@ -34,7 +33,6 @@ export default function useLoginAsGuestForm() {
             const response = await addGuest(guestUsername, socketId);
             if (response.status === 200) {
                 const guestData = await response.json();
-                console.log(guestData);
                 dispatch(
                     setUser({
                         id: guestData.id,

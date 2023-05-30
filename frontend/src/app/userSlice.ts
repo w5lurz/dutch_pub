@@ -10,7 +10,6 @@ const userSlice = createSlice({
     reducers: {
         setUser(state, action: PayloadAction<User>) {
             const newState = action.payload;
-            // ez most igy jo?
             return newState;
         },
         setInGame(state, action: PayloadAction<number>) {

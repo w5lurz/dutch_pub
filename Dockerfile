@@ -1,3 +1,4 @@
+#Stage 1
 FROM node:16.14.2 AS builder
 WORKDIR /app
 COPY /frontend/package*.json ./

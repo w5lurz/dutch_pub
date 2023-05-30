@@ -15,11 +15,9 @@ export default function useCard(roomId: number, user: User) {
 
     const handleCardOnClick = (card: TCard | number, cardIndex: number, roomId: number, user: User) => {
         const lastLaidCard = laidCards ? getFirstArrayItem(laidCards) : null;
-        // TODO move to util
         let canLayCard = false;
-        console.log('HANDLE', canLayCard);
+
         if (typeof card === 'number') {
-            console.log('HANDLE1', canLayCard);
             canLayCard = true;
         } else {
             canLayCard =
@@ -34,11 +32,8 @@ export default function useCard(roomId: number, user: User) {
                     (getSecondArrayItem(laidCards).value <= card.value || !getSecondArrayItem(laidCards))) ||
                 (laidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value) ||
                 (laidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7);
-            console.log('HANDLE2', canLayCard);
         }
-        console.log('HANDLE3', canLayCard);
         if (canLayCard) {
-            console.log('LAYING CARD', card, user?.username);
             socket.emit('lay-card', { card, cardIndex, roomId, username: user?.username });
         } else {
             dispatch(setToast({ id: 'lay-card-failed', type: 'sad', message: 'You cannot lay that card.', duration: 3000 }));

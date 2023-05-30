@@ -14,10 +14,6 @@ import { game } from './game';
 import { chat } from './chat';
 import { guests } from './guests';
 
-console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
-// dotenv.config({ path: '.env' });
-console.log('SAS4', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
-
 // to refresh and purify db data {force: true}
 
 const { json } = bodyParser;
@@ -61,8 +57,6 @@ server.listen(port, () => {
     console.log('Backend started - Listening on port 3030');
 });
 
-console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
-
 const io = new Server(server, {
     cors: {
         origin: process.env.BASE_URL,
@@ -76,32 +70,13 @@ const io = new Server(server, {
     },
 });
 
-// TODO IS this needed?
-// convert a connect middleware to a Socket.IO middleware
-// const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
-
-// io.use(wrap(cookieSessionMiddleWare));
-
-/* io.on('connection', socket => {
-    console.log('a user connected', socket.id);
-    socket.on('test', () => console.log('TETETESTTS'));
-    socket.on('disconnect', () => {
-        console.log('user disconnected');
-    });
-}); */
-
 rooms(io);
 game(io);
 chat(io);
 guests(io);
-
-// if (process.env.NODE_ENV === 'production') {
-// const root = require('path').join(__dirname, 'client', 'build');
 
 const root = process.env.FRONTEND_ROOT;
 app.use(express.static(root));
 app.get('*', (req, res) => {
     res.sendFile('index.html', { root });
 });
-
-// }

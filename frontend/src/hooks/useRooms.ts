@@ -20,27 +20,22 @@ export default function useRooms() {
 
     useEffect(() => {
         const roomsListedListener = (roomsListed: TRooms) => {
-            console.log('ROOMS LISTED');
             dispatch(setRooms(roomsListed));
         };
 
         const joinedRoomListener = (roomsListed: TRooms) => {
-            console.log('JOINED ROOM');
             dispatch(setRooms(roomsListed));
         };
 
         const leftRoomListener = (roomsListed: TRooms) => {
-            console.log('LEFT ROOM');
             dispatch(setRooms(roomsListed));
         };
 
         const deletedRoomListener = (roomsListed: TRooms) => {
-            console.log('DELETED ROOM');
             dispatch(setRooms(roomsListed));
         };
 
         const gameStartedListener = (game: Game, roomsListed: TRooms, roomId: number) => {
-            console.log('Game started', roomsListed, game);
             navigate('/game');
             dispatch(setRooms(roomsListed));
             dispatch(setInGame(roomId));
@@ -53,6 +48,7 @@ export default function useRooms() {
         socket.on('left-room', leftRoomListener);
         socket.on('room-deleted', deletedRoomListener);
         socket.on('game-started', gameStartedListener);
+
         return () => {
             socket.off('rooms-listed', roomsListedListener);
             socket.off('joined-room', joinedRoomListener);
@@ -75,7 +71,6 @@ export default function useRooms() {
     };
 
     const handleJoinRoom = (username: string, roomId: number, name: string) => {
-        console.log('JOIN ROOM', username, roomId);
         socket.emit('join-room', { username, roomId });
         dispatch(
             setToast({
@@ -88,7 +83,6 @@ export default function useRooms() {
     };
 
     const handleLeaveRoom = (username: string, roomId: number, name: string) => {
-        console.log('JOIN ROOM', username, roomId);
         socket.emit('leave-room', { username, roomId });
         dispatch(
             setToast({
@@ -115,7 +109,6 @@ export default function useRooms() {
     const isInAnyRoom = Object.values(rooms).some(
         (room: TRoom) =>
             !!room.players.find((player: Player) => {
-                console.log(player, user);
                 return player.username === user?.username || player.username === 'NO USERNAME';
             }),
     );

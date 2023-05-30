@@ -64,8 +64,6 @@ export type ToastPositionType = 'topLeft' | 'topCenter' | 'topRight' | 'bottomRi
 
 export type RequiredToastProps = Required<TToast>;
 
-// export type Banner = { type: 'success' | 'info' | 'warning' | 'error'; message: string; duration: number; position: ToastPositionType };
-
 export type GeneralState = {
     toast: TToast | null;
 };

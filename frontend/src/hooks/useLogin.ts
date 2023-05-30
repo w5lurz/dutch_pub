@@ -19,9 +19,7 @@ export default function useLogin() {
             const response = await loginUser(data.get('username') as string, data.get('password') as string);
             if (response.status === 200) {
                 const userData = await response.json();
-                console.log(userData);
                 dispatch(
-                    // TODO what to set, nothing needed
                     setUser({
                         id: userData.id,
                         username: userData.username,

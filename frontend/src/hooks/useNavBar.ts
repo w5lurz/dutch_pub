@@ -20,7 +20,7 @@ export default function useNavBar() {
             dispatch(setToast({ id: 'logout-success', type: 'success', message: 'You successfully logged out!', duration: 3000 }));
             navigate('/');
         } catch (e: any) {
-            console.error(e.toString()); // TODO TEST ME
+            console.error(e.toString());
             dispatch(setToast({ id: 'login-failed', type: 'error', message: e.toString(), duration: 3000 }));
         }
     };

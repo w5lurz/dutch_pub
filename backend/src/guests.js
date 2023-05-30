@@ -7,11 +7,10 @@ export const guests = io => {
         });
 
         socket.on('disconnect', () => {
-            console.log('Client disconnected1', socket.id, guestsList);
             if (guestsList.find(guest => guest.socketId === socket.id)) {
                 modifyGuestsList(guestsList.filter(guest => guest.socketId !== socket.id));
             }
-            console.log('Client disconnected2', socket.id, socket.data.username, socket.data.roomId, guestsList);
+            console.log('Client disconnected', socket.id, socket.data.username, socket.data.roomId, guestsList);
         });
     });
 };

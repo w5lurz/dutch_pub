@@ -9,10 +9,4 @@ router.get('/all', allAccess);
 
 router.get('/user', [verifyToken], userBoard);
 
-/**
- *
- * router.patch("/:id", updateTodo);
- * router.delete("/:id", deleteTodo);
- */
-
 export default router;

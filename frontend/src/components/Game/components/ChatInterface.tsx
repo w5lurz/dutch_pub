@@ -31,7 +31,6 @@ export default function ChatInterface({ roomId, user }: ChatInterfaceProps) {
     };
 
     useEffect(() => {
-        // TODO maybe get messages on first render if user redirects
         const messageReceivedListener = (roomMessages: Array<ChatMessage>) => {
             setMessages(roomMessages);
             if (!isChatOpen) {
@@ -45,7 +44,7 @@ export default function ChatInterface({ roomId, user }: ChatInterfaceProps) {
                 );
             }
         };
-        socket.on('message-sent', messageReceivedListener); // TODO FIX
+        socket.on('message-sent', messageReceivedListener);
         return () => {
             socket.off('message-sent', messageReceivedListener);
         };

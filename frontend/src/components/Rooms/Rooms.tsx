@@ -8,7 +8,6 @@ import LoginAsGuestForm from './LoginAsGuestForm';
 export default function Rooms() {
     const { rooms, user, isInAnyRoom, currentRoom, isAlreadyOwner, handleDeleteRoom, handleJoinRoom, handleLeaveRoom, handleStartRoom } =
         useRooms();
-    console.log('CLIENT ROOMS', rooms, currentRoom, isInAnyRoom, isAlreadyOwner);
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 dark:text-white h-full">
@@ -19,7 +18,6 @@ export default function Rooms() {
                     {Object.keys(rooms).length !== 0 ? (
                         Object.entries(rooms).map(([key, value]: [string, TRoom]) => {
                             const { name, owner, players, slots, inGame = false, visibility = 'private' } = value;
-                            console.log('ASD', user.isGuest, visibility);
                             return (
                                 <div
                                     key={key}

@@ -6,16 +6,14 @@ import ChatInterface from './components/ChatInterface';
 import UserBoard from './components/UserBoard';
 
 export default function Game() {
-    // sm:max-w-md
-    const { testGame, active, user, roomId } = useGame();
+    const { currentGame, active, user, roomId } = useGame();
 
-    console.log('OPPONENTER', testGame);
     return (
         <div className="flex bg-white shadow dark:border md:mt-0 xl:p-0 dark:bg-gray-800 dark:border-gray-700 h-full">
             <ChatInterface roomId={roomId} user={user} />
             <div className="flex flex-col grow h-full justify-between">
                 <div className="flex justify-evenly">
-                    {Object.entries(testGame.opponents).map(([key, opponent]: [string, Opponent]) => (
+                    {Object.entries(currentGame.opponents).map(([key, opponent]: [string, Opponent]) => (
                         <div key={`opponent-${key}`} className="flex flex-col">
                             <h6
                                 className={`${
@@ -47,17 +45,23 @@ export default function Game() {
                 </div>
                 <div className="flex justify-center gap-6">
                     <div className="flex flex-col items-center">
-                        <h6 className="mb-2 font-bold">Deck ({testGame.deck})</h6>
-                        <Card card={testGame.deck} active={active} i={0} user={user} roomId={roomId} />
+                        <h6 className="mb-2 font-bold">Deck ({currentGame.deck})</h6>
+                        <Card card={currentGame.deck} active={active} i={0} user={user} roomId={roomId} />
                     </div>
                     <div className="flex flex-col items-center">
                         <h6 className="mb-2 font-bold">Laid Cards</h6>
-                        <Card card={testGame.laidCards ? testGame.laidCards[0] : null} active={active} i={0} user={user} roomId={roomId} />
+                        <Card
+                            card={currentGame.laidCards ? currentGame.laidCards[0] : null}
+                            active={active}
+                            i={0}
+                            user={user}
+                            roomId={roomId}
+                        />
                     </div>
                     <div className="flex flex-col items-center">
                         <h6 className="mb-2 font-bold">Burnt Cards</h6>
                         <Card
-                            card={testGame.burntCards ? testGame.burntCards[0] : null}
+                            card={currentGame.burntCards ? currentGame.burntCards[0] : null}
                             active={active}
                             i={0}
                             user={user}
@@ -65,7 +69,7 @@ export default function Game() {
                         />
                     </div>
                 </div>
-                <UserBoard userCards={testGame.userCards} active={active} user={user} roomId={roomId} />
+                <UserBoard userCards={currentGame.userCards} active={active} user={user} roomId={roomId} />
             </div>
         </div>
     );
