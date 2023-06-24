@@ -17,6 +17,7 @@ export default function (sequelize, Sequelize) {
             },
             game_date: {
                 type: DataTypes.DATE,
+                defaultValue: sequelize.fn('NOW'),
                 allowNull: true,
             },
         },
