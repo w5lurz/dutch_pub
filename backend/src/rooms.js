@@ -1,4 +1,4 @@
-import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game';
+import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
 
 export let games = {};
 

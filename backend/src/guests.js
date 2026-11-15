@@ -1,4 +1,4 @@
-import { guestsList, modifyGuestsList } from './controllers/auth.controller';
+import { guestsList, modifyGuestsList } from './controllers/auth.controller.js';
 
 export const guests = io => {
     io.on('connection', socket => {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { all, leaderBoard } from '../controllers/played_game.controller';
+import { all, leaderBoard } from '../controllers/played_game.controller.js';
 
 const router = Router();
 

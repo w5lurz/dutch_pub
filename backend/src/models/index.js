@@ -1,8 +1,8 @@
 import Sequelize from 'sequelize';
 
 import dbConfig from '../config/db.config.js';
-import User from './user.model';
-import PlayedGame from './played_game.model';
+import User from './user.model.js';
+import PlayedGame from './played_game.model.js';
 import { isDevEnv } from '../utils/utils.js';
 
 const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool, reconnect } = dbConfig;

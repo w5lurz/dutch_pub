@@ -1,7 +1,7 @@
-import { games, modifyRooms, roomsList } from './rooms';
-import { modifyRoomMessages, roomMessages } from './chat';
+import { games, modifyRooms, roomsList } from './rooms.js';
+import { modifyRoomMessages, roomMessages } from './chat.js';
 
-import db from './models';
+import db from './models/index.js';
 const PlayedGame = db.played_game;
 
 const handleClearAll = () => {};
