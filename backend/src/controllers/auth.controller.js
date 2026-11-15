@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-import { secret } from '../config/auth.config';
-import { getMaxId } from '../utils/utils';
+import { secret } from '../config/auth.config.js';
+import { getMaxId } from '../utils/utils.js';
 
-import db from '../models';
+import db from '../models/index.js';
 const User = db.user;
 
 export let guestsList = [];

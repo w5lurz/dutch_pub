@@ -1,4 +1,4 @@
-import db from '../models';
+import db from '../models/index.js';
 const PlayedGame = db.played_game;
 
 export const all = async (req, res) => {
