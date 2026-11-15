@@ -5,14 +5,14 @@ import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
 
-import db from './models';
-import usersRouters from './routes/user.routes';
-import authRouters from './routes/auth.routes';
-import playedGamesRoutes from './routes/played_game.routes';
-import { rooms } from './rooms';
-import { game } from './game';
-import { chat } from './chat';
-import { guests } from './guests';
+import db from './models/index.js';
+import usersRouters from './routes/user.routes.js';
+import authRouters from './routes/auth.routes.js';
+import playedGamesRoutes from './routes/played_game.routes.js';
+import { rooms } from './rooms.js';
+import { game } from './game.js';
+import { chat } from './chat.js';
+import { guests } from './guests.js';
 
 console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 // dotenv.config({ path: '.env' });
@@ -32,6 +32,10 @@ db.sequelize.sync();
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 
 app.use(json());
+
+if (!process.env.COOKIE_SECRET) {
+    throw new Error('COOKIE_SECRET environment variable is not set');
+}
 
 const cookieSessionMiddleWare = cookieSession({
     name: 'app-session',
