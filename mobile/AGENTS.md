@@ -36,6 +36,9 @@ Docs: https://docs.expo.dev/eas/index.md
 
 ## Rules
 
+- NativeWind: never add `shadow-*`, `ring-*`, `transition-*` / `animate-*` classes conditionally (e.g. only when `selected`). They are built from CSS variables / animations, so adding them after a component's first render makes NativeWind "upgrade" (remount) it. In dev that logs a warning which serializes the props and crashes with "Couldn't find a LinkingContext context". Keep such classes static, or toggle colour/border classes instead. Likewise, only use `active:`/`focus:` classes on `Pressable`/`TextInput`, never added later to a `View`.
+- NativeWind: never pass a **function** `style` to `Pressable` (`style={({ pressed }) => ...}`). NativeWind's Pressable wrapper drops it, so any size/layout in it is lost. Use `active:` classes, or track pressed state with `onPressIn`/`onPressOut` and pass a plain style.
+
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md

@@ -1,28 +1,51 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import type { ChatMessage, GameState } from '@dutch-pub/shared';
+import * as Haptics from 'expo-haptics';
+import type { ChatMessage, Game, GameState, TRooms } from '@dutch-pub/shared';
 
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setMessages } from '@/store/chatSlice';
 import { initialState as emptyGame, updateGame } from '@/store/gameSlice';
+import { setToast } from '@/store/generalSlice';
 import { setRooms } from '@/store/roomsSlice';
 import { setInGame } from '@/store/userSlice';
 
+/** How long the "won the game" toast stays before the game is cleared (as on the web). */
+const GAME_WON_DELAY_MS = 3000;
+
+const haptic = (type: Haptics.NotificationFeedbackType) => {
+    Haptics.notificationAsync(type).catch(() => {}); // unsupported on some platforms (web)
+};
+
 /**
- * Keeps the store in sync with the server across reconnects (PLAN.md Step 4).
- * - On every (re)connect of a signed-in user it asks for `get-game-state`. The server
- *   has already re-bound the user's seat to the new socket by then.
- * - When the app returns to the foreground it re-syncs too (events may have been
- *   missed while JS was suspended), or reconnects if the socket dropped.
+ * Mirrors every server event into the store, so screens only read the store and emit.
+ * - Rooms: `rooms-listed`, `joined-room`, `left-room`, `room-deleted`.
+ * - Game: `game-started` (sets `user.inGame`, which redirects to /game), `card-laid`,
+ *   `cards-drawn`, `game-won` (toast, then clears the game after 3 s), `lay-card-rejected`.
+ * - Chat: `message-sent`. Re-sync: `game-state`.
+ * - On every (re)connect it emits `list-rooms`, and `get-game-state` for a signed-in user
+ *   (the server has already re-bound the user's seat to the new socket by then).
+ * - When the app returns to the foreground it re-syncs too (events may have been missed
+ *   while JS was suspended), or reconnects if the socket dropped.
  * Mount once, inside <SocketProvider>.
  */
 export function GameSync() {
     const { socket, connected } = useSocket();
     const dispatch = useAppDispatch();
     const signedIn = useAppSelector(state => state.user !== null);
+    const username = useAppSelector(state => state.user?.username);
+
+    // Read inside listeners without re-subscribing (which would cancel the game-won timer).
+    const usernameRef = useRef(username);
+    useEffect(() => {
+        usernameRef.current = username;
+    }, [username]);
 
     useEffect(() => {
+        let gameWonTimer: ReturnType<typeof setTimeout> | undefined;
+
+        const onRooms = (rooms: TRooms) => dispatch(setRooms(rooms));
         const onGameState = (state: GameState) => {
             dispatch(setRooms(state.rooms));
             dispatch(setMessages(state.messages));
@@ -30,15 +53,71 @@ export function GameSync() {
             // `inGame` = the room whose game is running (as on the web).
             dispatch(setInGame(state.game && state.roomId !== null ? state.roomId : undefined));
         };
+        const onGameStarted = (game: Game, rooms: TRooms, roomId: number) => {
+            dispatch(setRooms(rooms));
+            dispatch(updateGame(game));
+            dispatch(setInGame(roomId));
+        };
+        const onGameUpdated = (game: Game, rooms: TRooms) => {
+            dispatch(updateGame(game));
+            dispatch(setRooms(rooms));
+        };
+        const onGameWon = (winner: string, rooms: TRooms) => {
+            dispatch(
+                setToast({
+                    id: `game-won-${Date.now()}`,
+                    type: 'success',
+                    message: `${winner === usernameRef.current ? 'You' : winner} won the game! Congratulations!`,
+                    duration: GAME_WON_DELAY_MS,
+                }),
+            );
+            haptic(Haptics.NotificationFeedbackType.Success);
+            clearTimeout(gameWonTimer);
+            gameWonTimer = setTimeout(() => {
+                dispatch(setRooms(rooms));
+                dispatch(updateGame(emptyGame));
+                dispatch(setInGame(undefined));
+            }, GAME_WON_DELAY_MS);
+        };
+        const onLayCardRejected = (reason: string) => {
+            dispatch(setToast({ id: `lay-card-rejected-${Date.now()}`, type: 'sad', message: reason, duration: 3000 }));
+            haptic(Haptics.NotificationFeedbackType.Error);
+        };
         const onMessageSent = (messages: ChatMessage[]) => dispatch(setMessages(messages));
 
+        socket.on('rooms-listed', onRooms);
+        socket.on('joined-room', onRooms);
+        socket.on('left-room', onRooms);
+        socket.on('room-deleted', onRooms);
+        socket.on('game-started', onGameStarted);
+        socket.on('card-laid', onGameUpdated);
+        socket.on('cards-drawn', onGameUpdated);
+        socket.on('game-won', onGameWon);
+        socket.on('lay-card-rejected', onLayCardRejected);
         socket.on('game-state', onGameState);
         socket.on('message-sent', onMessageSent);
         return () => {
+            clearTimeout(gameWonTimer);
+            socket.off('rooms-listed', onRooms);
+            socket.off('joined-room', onRooms);
+            socket.off('left-room', onRooms);
+            socket.off('room-deleted', onRooms);
+            socket.off('game-started', onGameStarted);
+            socket.off('card-laid', onGameUpdated);
+            socket.off('cards-drawn', onGameUpdated);
+            socket.off('game-won', onGameWon);
+            socket.off('lay-card-rejected', onLayCardRejected);
             socket.off('game-state', onGameState);
             socket.off('message-sent', onMessageSent);
         };
     }, [socket, dispatch]);
+
+    // Room list for everyone (also anonymous users), on every (re)connect.
+    useEffect(() => {
+        if (connected) {
+            socket.emit('list-rooms');
+        }
+    }, [socket, connected]);
 
     useEffect(() => {
         if (connected && signedIn) {
@@ -53,6 +132,8 @@ export function GameSync() {
                 socket.connect(); // `connect` then triggers the re-sync above
             } else if (signedIn) {
                 socket.emit('get-game-state');
+            } else {
+                socket.emit('list-rooms');
             }
         });
         return () => subscription.remove();

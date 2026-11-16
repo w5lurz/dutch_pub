@@ -18,7 +18,7 @@ const errorMessage = async (res: Response, fallback: string) => {
 };
 
 /**
- * Login / guest / logout / restore for the mobile app (token based, see PLAN.md Step 3).
+ * Login / registration / guest / logout / restore for the mobile app (token based, see PLAN.md Step 3).
  * Each change reconnects the socket so the server sees the new identity.
  */
 export function useSession() {
@@ -47,6 +47,17 @@ export function useSession() {
         },
         [startSession],
     );
+
+    /** Creates a registered user. No session is started: the user logs in afterwards, as on the web. */
+    const register = useCallback(async (username: string, email: string, password: string): Promise<Result> => {
+        try {
+            const res = await api.registration(username, email, password);
+            if (res.status !== 201) return { ok: false, message: await errorMessage(res, 'Error while registration!') };
+            return { ok: true };
+        } catch {
+            return { ok: false, message: 'Cannot reach the server.' };
+        }
+    }, []);
 
     const joinAsGuest = useCallback(
         async (username: string): Promise<Result> => {
@@ -85,5 +96,5 @@ export function useSession() {
         }
     }, [dispatch]);
 
-    return { logIn, joinAsGuest, logOut, restoreSession };
+    return { logIn, register, joinAsGuest, logOut, restoreSession };
 }

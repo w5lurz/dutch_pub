@@ -39,9 +39,12 @@ Always add dependencies with `npx expo install <package>`, which picks versions 
 
 | Path | Contents |
 |---|---|
-| `src/app/` | Screens and layouts (Expo Router: every file is a route) |
-| `src/components/` | Reusable UI components |
-| `src/providers/` | Context providers (socket connection) |
+| `src/app/` | Screens and layouts (Expo Router: every file is a route): root Stack with `login`, `registration`, `game` |
+| `src/app/(tabs)/` | Bottom tabs: Home (`index`), `play`, `leaderboard`, `account` |
+| `src/components/` | Reusable app components (toast, connection banner, …) |
+| `src/components/ui/` | UI primitives: `Button`, `TextField`, `Screen`, `SegmentedControl` (import from `@/components/ui`) |
+| `src/components/icons/` | SVG icons ported from the web (logo, card suits, card back, chat, close) |
+| `src/providers/` | Context providers: socket connection, `GameSync` (mirrors every server event into the store) |
 | `src/store/` | Redux store and slices (same as the web app) |
 | `src/lib/` | Config, API client, app-level types |
 
