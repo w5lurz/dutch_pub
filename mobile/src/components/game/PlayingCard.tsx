@@ -40,18 +40,19 @@ function CardFace({ card, width, size }: { card: TCard; width: number; size: Car
     const red = RED_SUITS.has(card.color);
     const textColor = red ? 'text-red-600' : 'text-gray-900';
     // Number cards' name is just the value; show the name for J / Q / K and the special cards.
-    const showName = size !== 'sm' && card.name !== String(card.value);
+    const compact = size === 'sm' || size === 'xs';
+    const showName = !compact && card.name !== String(card.value);
 
     return (
         <View
             className={`flex-1 items-center rounded-md border border-gray-300 bg-gray-50 shadow-sm ${
-                size === 'sm' ? 'justify-center gap-0.5 p-0.5' : 'justify-between p-1'
+                compact ? 'justify-center gap-0.5 p-0.5' : 'justify-between p-1'
             }`}
         >
             <Text style={{ fontSize: Math.max(10, Math.round(width * 0.24)) }} className={`font-bold ${textColor}`}>
                 {card.value}
             </Text>
-            <CardIcon suit={card.color} size={Math.round(width * (size === 'sm' ? 0.42 : 0.34))} />
+            <CardIcon suit={card.color} size={Math.round(width * (compact ? 0.42 : 0.34))} />
             {showName ? (
                 <Text
                     numberOfLines={2}
@@ -62,7 +63,7 @@ function CardFace({ card, width, size }: { card: TCard; width: number; size: Car
                 >
                     {card.name}
                 </Text>
-            ) : size === 'sm' ? null : (
+            ) : compact ? null : (
                 // Keeps value + icon at the same height as on named cards.
                 <View style={{ height: Math.max(8, Math.round(width * 0.15)) }} />
             )}

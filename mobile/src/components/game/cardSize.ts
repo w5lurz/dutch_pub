@@ -1,9 +1,9 @@
 import { useWindowDimensions } from 'react-native';
 
-export type CardSize = 'sm' | 'md' | 'lg';
+export type CardSize = 'xs' | 'sm' | 'md' | 'lg';
 
 /** Size relative to 'md'. */
-const SCALE: Record<CardSize, number> = { sm: 0.6, md: 1, lg: 1.15 };
+const SCALE: Record<CardSize, number> = { xs: 0.45, sm: 0.6, md: 1, lg: 1.15 };
 
 /** Height / width of a playing card (the web uses w-20 h-28). */
 export const CARD_ASPECT = 1.4;
