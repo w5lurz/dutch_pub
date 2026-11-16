@@ -10,12 +10,9 @@ export const signGuestToken = guest =>
 
 const bearerToken = header => (typeof header === 'string' && header.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined);
 
-/**
- * Accepts `Authorization: Bearer <token>` (mobile) or the token stored in the session
- * cookie (web). Sets `req.userId` and `req.auth` (the decoded token).
- */
+/** Requires `Authorization: Bearer <token>`. Sets `req.userId` and `req.auth` (the decoded token). */
 export const verifyToken = (req, res, next) => {
-    const token = bearerToken(req.headers.authorization) ?? req.session?.token;
+    const token = bearerToken(req.headers.authorization);
 
     if (!token) {
         return res.status(403).send({

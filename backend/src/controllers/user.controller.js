@@ -8,7 +8,7 @@ export const allAccess = async (req, res) => {
     res.status(200).send(users);
 };
 
-/** The current user, from the verified token (bearer header or session cookie). */
+/** The current user, from the verified bearer token. */
 export const userBoard = async (req, res) => {
     if (req.auth?.guest) {
         return res.status(200).send({ id: req.auth.id, username: req.auth.username, isGuest: true });

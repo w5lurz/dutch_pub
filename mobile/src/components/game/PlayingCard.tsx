@@ -90,7 +90,7 @@ function CardBack({ width, height, plusCount }: { width: number; height: number;
 /**
  * A playing card, face up (value, suit icon, name; red suits red, as the web `Card`) or
  * face down (`CardBackSide`, with an optional "+N" overlay). Its size is scaled from the
- * window width (see `useCardSize`). Pressable cards lift and get a blue outline while pressed.
+ * window (mainly its height, see `useCardSize`). Pressable cards lift and get a blue outline while pressed.
  */
 export function PlayingCard({
     card,

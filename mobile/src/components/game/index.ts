@@ -4,6 +4,7 @@ export { ChatButton } from './ChatButton';
 export { ChatModal } from './ChatModal';
 export { faceDownSlots, type FaceDownSlot } from './faceDown';
 export { OpponentsBar } from './OpponentsBar';
+export { lockOrientation, lockPortrait, useLandscapeWhileFocused } from './orientation';
 export { PileArea } from './PileArea';
 export { PlayerBoard } from './PlayerBoard';
 export { cardLabel, EmptyCardSlot, PlayingCard, type PlayingCardProps } from './PlayingCard';

@@ -14,8 +14,8 @@ type PileAreaProps = {
 
 function Pile({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <View className="items-center gap-1">
-            <Text className="text-sm font-bold text-gray-800">{title}</Text>
+        <View className="items-center gap-0.5">
+            <Text className="text-xs font-bold text-gray-800">{title}</Text>
             {children}
         </View>
     );
@@ -28,16 +28,16 @@ export function PileArea({ deck, laidCards, burntCards, turnOf }: PileAreaProps)
     const turnText = turnOf === null ? 'Your turn' : turnOf ? `${turnOf}'s turn` : 'Waiting…';
 
     return (
-        <View className="items-center gap-3">
+        <View className="items-center gap-1.5">
             <Text
                 accessibilityLiveRegion="polite"
-                className={`rounded-full px-3 py-1 text-base font-semibold ${
+                className={`rounded-full px-3 py-0.5 text-sm font-semibold ${
                     turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800'
                 }`}
             >
                 {turnText}
             </Text>
-            <View className="flex-row items-start justify-center gap-5">
+            <View className="flex-row items-start justify-center gap-4">
                 <Pile title={`Deck (${deck})`}>
                     {deck > 0 ? (
                         <PlayingCard faceDown size="lg" accessibilityLabel={`Deck, ${deck} cards`} />

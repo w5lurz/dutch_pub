@@ -1,4 +1,4 @@
-// Domain types shared by the backend contract, web client and mobile client.
+// Domain types shared by the backend contract and the mobile client.
 
 export type User = {
     id: number;
@@ -6,7 +6,6 @@ export type User = {
     email?: string;
     inGame?: number;
     isGuest?: boolean;
-    socketId?: string;
 } | null;
 
 export type Player = { username: string; socketId: string };

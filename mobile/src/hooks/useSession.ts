@@ -48,7 +48,7 @@ export function useSession() {
         [startSession],
     );
 
-    /** Creates a registered user. No session is started: the user logs in afterwards, as on the web. */
+    /** Creates a registered user. No session is started: the user logs in afterwards, as before. */
     const register = useCallback(async (username: string, email: string, password: string): Promise<Result> => {
         try {
             const res = await api.registration(username, email, password);
@@ -77,8 +77,7 @@ export function useSession() {
         await clearToken();
         dispatch(setUser(null));
         reconnect();
-        // Nothing to invalidate server-side for bearer tokens; this only clears a web cookie.
-        api.logoutUser().catch(() => {});
+        // Bearer tokens are stateless: forgetting the token is the logout.
     }, [dispatch, reconnect]);
 
     /** On app start: if a token is stored, load the user it belongs to (or drop the token). */

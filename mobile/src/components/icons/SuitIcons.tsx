@@ -2,7 +2,7 @@ import Svg, { G, Path } from 'react-native-svg';
 
 import { iconA11y, iconSize, type IconProps } from './types';
 
-// Paths copied from the web app (frontend/src/components/util/UtilComponents.tsx). Default size 24 (w-6 h-6).
+// Paths copied from the former web app (frontend/src/components/util/UtilComponents.tsx, removed; see git history). Default size 24 (w-6 h-6).
 
 export function SpadeIcon({ color = '#000000', accessibilityLabel, ...props }: IconProps) {
     return (

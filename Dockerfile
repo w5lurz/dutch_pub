@@ -1,25 +1,20 @@
-FROM node:24 AS builder
-WORKDIR /repo
-# Shared package (types, game rules, API client) used by the frontend via file:../packages/shared
-COPY /packages/shared ./packages/shared
-RUN cd packages/shared && npm ci
-COPY /frontend/package*.json ./frontend/
-RUN cd frontend && npm install
-COPY /frontend ./frontend
-ENV REACT_APP_BASE_URL=https://dutch-card-oxthkdwy2a-oa.a.run.app
-# prebuild also compiles packages/shared
-RUN cd frontend && npm run build
+# Backend image (REST API + Socket.io). The mobile app is built separately with EAS.
 
-#Stage 2
+# Stage 1: build the shared package (types, game rules) the backend depends on.
+FROM node:24 AS shared
+WORKDIR /repo/packages/shared
+COPY packages/shared ./
+RUN npm ci && npm run build
+
+# Stage 2: runtime
 FROM node:24
 WORKDIR /usr/src/app
-COPY --from=builder /repo/frontend/build build
-# Prebuilt shared package; backend depends on it via file:../packages/shared
-COPY --from=builder /repo/packages/shared/package.json /usr/src/packages/shared/package.json
-COPY --from=builder /repo/packages/shared/dist /usr/src/packages/shared/dist
-COPY /backend/package*.json ./
-RUN npm install
-COPY /backend .
+# backend/package.json depends on "file:../packages/shared": only the built package is needed.
+COPY --from=shared /repo/packages/shared/package.json /usr/src/packages/shared/package.json
+COPY --from=shared /repo/packages/shared/dist /usr/src/packages/shared/dist
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
+COPY backend .
+ENV NODE_ENV=production
 EXPOSE 3030
-# --ignore-scripts skips prestart (shared is already built above)
-CMD [ "npm", "start", "--ignore-scripts" ]
+CMD [ "node", "src/app.js" ]

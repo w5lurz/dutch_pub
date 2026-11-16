@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 
-import { signGuestToken, signUserToken } from '../middleware/authJwt.js';
+import { signGuestToken, signUserToken, TOKEN_TTL_SECONDS } from '../middleware/authJwt.js';
 
 import db from '../models/index.js';
 const User = db.user;
@@ -44,12 +44,8 @@ export const loginUser = async (req, res, next) => {
             });
         }
 
+        // The app sends it back as `Authorization: Bearer <token>` and in the socket handshake.
         const token = signUserToken(user);
-
-        // Web: token in the httpOnly session cookie. Mobile: token from the response body,
-        // sent back as `Authorization: Bearer <token>` and in the socket handshake.
-        req.session.token = token;
-        req.session.username = user.username;
 
         return res.status(200).send({
             id: user.id,
@@ -65,8 +61,19 @@ export const loginUser = async (req, res, next) => {
 // Monotonic, so an old guest token can never match a newer guest that reused an id.
 let nextGuestId = 1;
 
-/** Whether `username` is free: no registered user has it and no other guest (`guestId`) uses it. */
+// Guests keep their name for as long as their token is valid, even while disconnected
+// (e.g. the app is in the background), so nobody else can take it meanwhile. Entries:
+// `{ id, username, isGuest: true, expiresAt, socketId? }` (socketId = last connected socket).
+const dropExpiredGuests = () => {
+    const now = Date.now();
+    if (guestsList.some(guest => guest.expiresAt <= now)) {
+        guestsList = guestsList.filter(guest => guest.expiresAt > now);
+    }
+};
+
+/** Whether `username` is free: no registered user has it and no other guest (`guestId`) holds it. */
 export const isUsernameAvailable = async (username, guestId) => {
+    dropExpiredGuests();
     if (guestsList.some(guest => guest.username === username && guest.id !== guestId)) {
         return false;
     }
@@ -75,12 +82,11 @@ export const isUsernameAvailable = async (username, guestId) => {
 
 /**
  * Adds a guest and returns it with a guest token. The guest is bound to a socket when
- * that socket connects with the token (see socketAuth.js); `socketId` is optional.
+ * that socket connects with the token (see socketAuth.js).
  */
 export const addGuest = async (req, res, next) => {
     try {
         const guestUsername = typeof req.body.username === 'string' ? req.body.username.trim() : '';
-        const socketId = req.body.socketId;
         if (!guestUsername) {
             return res.status(400).send({ message: 'Please choose a username!' });
         }
@@ -89,24 +95,11 @@ export const addGuest = async (req, res, next) => {
             return res.status(403).send({ message: 'This username is already taken!' });
         }
 
-        const newGuest = { id: nextGuestId++, username: guestUsername, socketId, isGuest: true };
-        guestsList = [...guestsList, newGuest];
+        const newGuest = { id: nextGuestId++, username: guestUsername, isGuest: true };
         const token = signGuestToken(newGuest);
-        req.session.token = token;
-        req.session.username = newGuest.username;
+        guestsList = [...guestsList, { ...newGuest, expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000 }];
         return res.status(200).send({ ...newGuest, token });
     } catch (error) {
         return res.status(500).send({ message: error.message });
-    }
-};
-
-export const logoutUser = (req, res) => {
-    try {
-        req.session = null;
-        return res.status(200).send({
-            message: "You've been signed out!",
-        });
-    } catch (err) {
-        this.next(err);
     }
 };

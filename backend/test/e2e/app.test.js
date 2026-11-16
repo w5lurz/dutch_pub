@@ -18,16 +18,14 @@ const user = { username: `e2e_${stamp}`, email: `e2e_${stamp}@example.test`, pas
 const guestName = `e2e_guest_${stamp}`;
 
 let server;
-let sessionCookie = ''; // web client: token in the session cookie
-let userToken = ''; // mobile client: token from the login response
+let userToken = ''; // from the login response
 let guestToken = '';
 
-const request = (path, { method = 'GET', body, cookie, token } = {}) =>
+const request = (path, { method = 'GET', body, token } = {}) =>
     fetch(server.baseUrl + path, {
         method,
         headers: {
             'Content-Type': 'application/json',
-            ...(cookie && { cookie }),
             ...(token && { Authorization: `Bearer ${token}` }),
         },
         ...(body && { body: JSON.stringify(body) }),
@@ -74,7 +72,7 @@ describe('auth API', () => {
         assert.equal(res.status, 404);
     });
 
-    test('logs in, sets a session cookie and returns a token', async () => {
+    test('logs in and returns a token', async () => {
         const res = await request('/api/auth/login', { method: 'POST', body: { username: user.username, password: user.password } });
         assert.equal(res.status, 200);
         const body = await res.json();
@@ -82,11 +80,7 @@ describe('auth API', () => {
         assert.equal(body.password, undefined);
         assert.equal(typeof body.token, 'string');
         userToken = body.token;
-        sessionCookie = res.headers
-            .getSetCookie()
-            .map(cookie => cookie.split(';')[0])
-            .join('; ');
-        assert.match(sessionCookie, /app-session=/);
+        assert.equal(res.headers.get('set-cookie'), null, 'no cookies: the app uses bearer tokens only');
     });
 
     test('adds a guest and returns a guest token', async () => {
@@ -106,13 +100,7 @@ describe('auth API', () => {
 });
 
 describe('users API', () => {
-    test('returns the current user with a session cookie (web)', async () => {
-        const res = await request('/api/users/user', { cookie: sessionCookie });
-        assert.equal(res.status, 200);
-        assert.equal((await res.json()).username, user.username);
-    });
-
-    test('returns the current user with a bearer token (mobile)', async () => {
+    test('returns the current user with a bearer token', async () => {
         const res = await request('/api/users/user', { token: userToken });
         assert.equal(res.status, 200);
         assert.equal((await res.json()).username, user.username);
@@ -126,7 +114,7 @@ describe('users API', () => {
         assert.deepEqual(body, { id: body.id, username: guestName, isGuest: true });
     });
 
-    test('rejects requests without a session or token', async () => {
+    test('rejects requests without a token', async () => {
         assert.equal((await request('/api/users/user')).status, 403);
     });
 
@@ -134,12 +122,7 @@ describe('users API', () => {
         assert.equal((await request('/api/users/user', { token: 'not-a-jwt' })).status, 401);
     });
 
-    test('rejects a forged session cookie', async () => {
-        const res = await request('/api/users/user', { cookie: 'app-session=forged; app-session.sig=bad' });
-        assert.equal(res.status, 403);
-    });
-
-    test('/api/users/all requires a session', async () => {
+    test('/api/users/all requires a token', async () => {
         assert.equal((await request('/api/users/all')).status, 403);
     });
 
@@ -154,18 +137,23 @@ describe('users API', () => {
     });
 });
 
-describe('games API and frontend', () => {
+describe('games API', () => {
     test('serves the leaderboard', async () => {
         const res = await request('/api/games/leaderboard');
         assert.ok([200, 404].includes(res.status), `status ${res.status}`); // 404 = no games played yet
     });
 
-    test('serves index.html for / and client-side routes', async () => {
-        for (const path of ['/', '/play', '/game']) {
-            const res = await request(path);
-            assert.equal(res.status, 200, path);
-            assert.match(await res.text(), /<div id="root">/, path);
-        }
+    test('has a health endpoint and no website', async () => {
+        const health = await request('/api/health');
+        assert.equal(health.status, 200);
+        assert.deepEqual(await health.json(), { status: 'ok' });
+        assert.equal((await request('/')).status, 404);
+        assert.equal((await request('/play')).status, 404);
+    });
+
+    test('sends no CORS headers by default (native apps need none)', async () => {
+        const res = await fetch(server.baseUrl + '/api/health', { headers: { Origin: 'https://evil.example' } });
+        assert.equal(res.headers.get('access-control-allow-origin'), null);
     });
 });
 
@@ -201,16 +189,12 @@ describe('socket authentication', () => {
         await assert.rejects(connectSocket({ auth: { token: 'not-a-jwt' } }), { message: 'unauthorized' });
     });
 
-    test('web sockets are identified from the session cookie', async () => {
-        const web = await connectSocket({ extraHeaders: { cookie: sessionCookie } });
-        try {
-            // Identified (otherwise: "You need to log in ..."), but only as themselves.
-            web.emit('create-room', { name: 'nope', owner: guestName, slots: 2, visibility: 'public' });
-            const [reason] = await waitFor(web, 'action-rejected');
-            assert.equal(reason, 'You can only act as yourself.');
-        } finally {
-            web.close();
-        }
+    test('a guest keeps their name while disconnected', async () => {
+        const guest = await connectSocket({ auth: { token: guestToken } });
+        guest.close();
+        await new Promise(resolve => setTimeout(resolve, 100)); // let the server see the disconnect
+        const res = await request('/api/auth/add-guest', { method: 'POST', body: { username: guestName } });
+        assert.equal(res.status, 403, 'the name must stay reserved until the guest token expires');
     });
 });
 
@@ -363,12 +347,5 @@ describe('socket game flow', () => {
         b.emit('delete-room', roomId);
         const [reason] = await waitFor(b, 'action-rejected');
         assert.equal(reason, 'Only the room owner can do that.');
-    });
-});
-
-describe('logout', () => {
-    test('clears the session', async () => {
-        const res = await request('/api/auth/logout', { method: 'POST', cookie: sessionCookie });
-        assert.equal(res.status, 200);
     });
 });

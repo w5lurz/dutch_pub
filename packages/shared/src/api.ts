@@ -11,82 +11,38 @@ export type AuthResponse = {
 };
 
 export type ApiOptions = {
-    /**
-     * Returns the stored auth token, if any (mobile). When it returns a token, requests carry
-     * `Authorization: Bearer <token>`. The web relies on the session cookie instead.
-     */
+    /** Returns the stored auth token, if any; requests then carry `Authorization: Bearer <token>`. */
     getToken?: () => string | null | undefined | Promise<string | null | undefined>;
 };
 
 export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
-    const headers = async (json = true): Promise<Record<string, string>> => {
+    const headers = async (): Promise<Record<string, string>> => {
         const token = getToken ? await getToken() : null;
         return {
-            ...(json && { 'Content-Type': 'application/json' }),
+            'Content-Type': 'application/json',
             ...(token && { Authorization: `Bearer ${token}` }),
         };
     };
 
-    const registration = async (username: string, email: string, password: string) =>
-        fetch(`${baseUrl}/api/auth/signup`, {
-            method: 'POST',
-            mode: 'cors',
-            cache: 'no-cache',
-            credentials: 'same-origin',
-            headers: await headers(),
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
-            body: JSON.stringify({ username, email, password }),
-        });
+    const get = async (path: string) => fetch(`${baseUrl}${path}`, { method: 'GET', headers: await headers() });
+    const post = async (path: string, body: unknown) =>
+        fetch(`${baseUrl}${path}`, { method: 'POST', headers: await headers(), body: JSON.stringify(body) });
 
-    const loginUser = async (username: string, password: string) =>
-        fetch(`${baseUrl}/api/auth/login`, {
-            method: 'POST',
-            mode: 'cors',
-            credentials: 'include',
-            headers: await headers(),
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
-            body: JSON.stringify({ username, password }),
-        });
+    /** 201 on success; 400 + `{ message }` for a duplicate username / email. */
+    const registration = (username: string, email: string, password: string) => post('/api/auth/signup', { username, email, password });
 
-    const logoutUser = async () =>
-        fetch(`${baseUrl}/api/auth/logout`, {
-            method: 'POST',
-            mode: 'cors',
-            credentials: 'include',
-            headers: await headers(false),
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
-        });
+    /** 200 + `AuthResponse`; 404 unknown user, 401 wrong password. */
+    const loginUser = (username: string, password: string) => post('/api/auth/login', { username, password });
 
-    const getUser = async () =>
-        fetch(`${baseUrl}/api/users/user`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: await headers(),
-        });
+    /** The user the stored token belongs to (registered or guest). */
+    const getUser = () => get('/api/users/user');
 
-    /** `socketId` is optional: the guest is bound to the socket that connects with its token. */
-    const addGuest = async (username: string, socketId?: string) =>
-        fetch(`${baseUrl}/api/auth/add-guest`, {
-            method: 'POST',
-            mode: 'cors',
-            credentials: 'include',
-            headers: await headers(),
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
-            body: JSON.stringify({ username, socketId }),
-        });
+    /** 200 + `AuthResponse` (guest token); 403 name taken, 400 empty name. */
+    const addGuest = (username: string) => post('/api/auth/add-guest', { username });
 
-    const getLeaderBoard = async () =>
-        fetch(`${baseUrl}/api/games/leaderboard`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: await headers(),
-        });
+    const getLeaderBoard = () => get('/api/games/leaderboard');
 
-    return { registration, loginUser, logoutUser, getUser, addGuest, getLeaderBoard };
+    return { registration, loginUser, getUser, addGuest, getLeaderBoard };
 }
 
 export type Api = ReturnType<typeof createApi>;

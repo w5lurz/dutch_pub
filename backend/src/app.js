@@ -1,6 +1,5 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import cookieSession from 'cookie-session';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -12,7 +11,6 @@ import playedGamesRoutes from './routes/played_game.routes.js';
 import { rooms } from './rooms.js';
 import { game } from './game.js';
 import { chat } from './chat.js';
-import { guests } from './guests.js';
 import { socketAuth } from './socketAuth.js';
 
 console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
@@ -30,25 +28,17 @@ const server = http.Server(app);
 
 db.sequelize.sync();
 
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+// The only client is the mobile app. Native apps send no Origin header, so CORS doesn't
+// apply to them; CORS_ORIGIN (comma-separated) is only needed to run the Expo app in a
+// browser (`npm run web`, e.g. http://localhost:8081).
+const corsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim()) : false;
+
+app.use(cors({ origin: corsOrigin }));
 
 app.use(json());
 
-if (!process.env.COOKIE_SECRET) {
-    throw new Error('COOKIE_SECRET environment variable is not set');
-}
-
-const cookieSessionMiddleWare = cookieSession({
-    name: 'app-session',
-    secret: process.env.COOKIE_SECRET,
-    httpOnly: true,
-});
-
-app.use(cookieSessionMiddleWare);
-
-app.use(function (req, res, next) {
-    res.header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept');
-    next();
+app.get('/api/health', (req, res) => {
+    res.status(200).send({ status: 'ok' });
 });
 
 app.use('/api/auth', authRouters);
@@ -69,10 +59,7 @@ server.listen(port, () => {
 console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 
 const io = new Server(server, {
-    cors: {
-        origin: process.env.BASE_URL,
-        credentials: true,
-    },
+    cors: { origin: corsOrigin },
     connectionStateRecovery: {
         // The backup duration of the sessions and the packets
         maxDisconnectionDuration: 2 * 60 * 1000,
@@ -81,35 +68,8 @@ const io = new Server(server, {
     },
 });
 
-// TODO IS this needed?
-// convert a connect middleware to a Socket.IO middleware
-// const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
-
-// io.use(wrap(cookieSessionMiddleWare));
-
-/* io.on('connection', socket => {
-    console.log('a user connected', socket.id);
-    socket.on('test', () => console.log('TETETESTTS'));
-    socket.on('disconnect', () => {
-        console.log('user disconnected');
-    });
-}); */
-
-// Must run before the connection handlers: sets socket.data.user from the token / cookie.
+// Must run before the connection handlers: sets socket.data.user from the handshake token.
 socketAuth(io);
 rooms(io);
 game(io);
 chat(io);
-guests(io);
-
-// if (process.env.NODE_ENV === 'production') {
-// const root = require('path').join(__dirname, 'client', 'build');
-
-const root = process.env.FRONTEND_ROOT;
-app.use(express.static(root));
-// Express 5 (path-to-regexp v8): '{*splat}' matches every path including '/'
-app.get('/{*splat}', (req, res) => {
-    res.sendFile('index.html', { root });
-});
-
-// }

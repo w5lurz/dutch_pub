@@ -1,7 +1,5 @@
 import { spawn } from 'node:child_process';
-import fs from 'node:fs';
 import net from 'node:net';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,17 +18,14 @@ const getFreePort = () =>
 
 /**
  * Starts the real backend (src/app.js) as a child process on a free port, using the
- * database from backend/.env. Serves a stub frontend so SPA routes can be tested
- * without a frontend build.
+ * database from backend/.env.
  */
 export async function startServer() {
     const port = await getFreePort();
-    const frontendRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dutch-pub-frontend-'));
-    fs.writeFileSync(path.join(frontendRoot, 'index.html'), '<!doctype html><div id="root"></div>');
 
     const child = spawn(process.execPath, ['src/app.js'], {
         cwd: backendDir,
-        env: { ...process.env, PORT: String(port), FRONTEND_ROOT: frontendRoot },
+        env: { ...process.env, PORT: String(port), CORS_ORIGIN: '' },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
@@ -62,7 +57,6 @@ export async function startServer() {
                 child.kill();
                 await exited;
             }
-            fs.rmSync(frontendRoot, { recursive: true, force: true });
         },
     };
 }

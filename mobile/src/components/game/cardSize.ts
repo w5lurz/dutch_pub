@@ -2,8 +2,8 @@ import { useWindowDimensions } from 'react-native';
 
 export type CardSize = 'sm' | 'md' | 'lg';
 
-/** Width relative to 'md'. */
-const SCALE: Record<CardSize, number> = { sm: 0.62, md: 1, lg: 1.15 };
+/** Size relative to 'md'. */
+const SCALE: Record<CardSize, number> = { sm: 0.6, md: 1, lg: 1.15 };
 
 /** Height / width of a playing card (the web uses w-20 h-28). */
 export const CARD_ASPECT = 1.4;
@@ -11,22 +11,30 @@ export const CARD_ASPECT = 1.4;
 /** Horizontal gap between cards in a row (matches `gap-1.5`). */
 export const CARD_GAP = 6;
 
+/** Share of the window height an 'md' card takes (the game screen is landscape). */
+const MD_HEIGHT_OF_WINDOW = 0.24;
+/** Cap from the window width, so a (briefly) portrait window still gets sane cards. */
+const MD_HEIGHT_OF_WIDTH = 0.18;
+const MD_MIN_HEIGHT = 56;
+const MD_MAX_HEIGHT = 132;
+
 /**
- * Width of an 'md' card for a screen width: about 5 cards (plus gaps and a 16dp gutter on
- * each side) fit across, so ~60dp on a 360dp phone. Capped at the web's 80dp-ish size on
- * wide screens, and never smaller than 44dp.
+ * Height of an 'md' card for a window: ~24% of the window height (86dp on a 780x360dp
+ * landscape phone), but at most 18% of the width (so 65dp while a 360x780dp phone is still
+ * portrait mid-rotation), clamped to 56-132dp (tablets stop at 132dp).
  */
-export function baseCardWidth(screenWidth: number): number {
-    return Math.max(44, Math.min(84, Math.floor((screenWidth - 32 - 4 * CARD_GAP) / 5)));
+export function baseCardHeight(window: { width: number; height: number }): number {
+    const fit = Math.min(window.height * MD_HEIGHT_OF_WINDOW, window.width * MD_HEIGHT_OF_WIDTH);
+    return Math.max(MD_MIN_HEIGHT, Math.min(MD_MAX_HEIGHT, Math.floor(fit)));
 }
 
-export function cardDimensions(screenWidth: number, size: CardSize) {
-    const width = Math.round(baseCardWidth(screenWidth) * SCALE[size]);
-    return { width, height: Math.round(width * CARD_ASPECT) };
+export function cardDimensions(window: { width: number; height: number }, size: CardSize) {
+    const height = Math.round(baseCardHeight(window) * SCALE[size]);
+    return { width: Math.round(height / CARD_ASPECT), height };
 }
 
-/** Card width / height for `size`, scaled from the window width. */
+/** Card width / height for `size`, scaled from the window (mainly its height). */
 export function useCardSize(size: CardSize = 'md') {
-    const { width } = useWindowDimensions();
-    return cardDimensions(width, size);
+    const { width, height } = useWindowDimensions();
+    return cardDimensions({ width, height }, size);
 }

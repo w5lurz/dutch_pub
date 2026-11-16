@@ -24,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # Secrets (COOKIE_SECRET, JWT_SECRET, ...) come from backend/.env;
+    # Secrets (JWT_SECRET, ...) come from backend/.env;
     # values under `environment` below take precedence over it.
     env_file:
       - backend/.env
@@ -34,7 +34,5 @@ services:
       DB_USER: test
       DB_PASSWORD: test
       DB_NAME: dutch_pub
-      # BASE_URL: https://dutch-card-oxthkdwy2a-oa.a.run.app
-      FRONTEND_ROOT: /usr/src/app/build
     ports:
       - "3030:3030"

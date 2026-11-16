@@ -25,7 +25,7 @@ const byName = (name: string): TCard => {
     return card;
 };
 
-/** The rule as it was written inline in frontend/src/hooks/useCard.ts before extraction. */
+/** The rule as it was written inline in the former web app (frontend/src/hooks/useCard.ts) before extraction. */
 function legacyCanLayCard(card: TCard | number, laidCards: Cards | null): boolean {
     const getSecondArrayItem = (arr: any[]) => arr && arr.length >= 2 && arr[1];
     const lastLaidCard: any = laidCards ? laidCards[0] : null;

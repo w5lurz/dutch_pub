@@ -33,7 +33,15 @@ function MessageRow({ message, own }: { message: ChatMessage; own: boolean }) {
     );
 }
 
-/** Full-screen chat of the game's room: messages (newest at the bottom), input and Send. */
+/** iOS presents a Modal in portrait only unless told otherwise; the game screen is landscape. */
+const MODAL_ORIENTATIONS = ['portrait', 'landscape', 'landscape-left', 'landscape-right'] as const;
+
+/**
+ * Full-screen chat of the game's room: messages (newest at the bottom), input and Send.
+ * Kept compact for landscape, where the keyboard takes most of the height: a slim header,
+ * no visible input label, the list shrinking above the input (KeyboardAvoidingView), and
+ * no Android full-screen keyboard ("extract") mode, so the messages stay visible.
+ */
 export function ChatModal({ visible, onClose, messages, username, onSend, canSend }: ChatModalProps) {
     const [text, setText] = useState('');
     // Inverted list: newest first in the data, shown at the bottom and kept in view.
@@ -45,11 +53,18 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
     };
 
     return (
-        <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+        <Modal
+            visible={visible}
+            animationType="slide"
+            onRequestClose={onClose}
+            statusBarTranslucent
+            navigationBarTranslucent
+            supportedOrientations={[...MODAL_ORIENTATIONS]}
+        >
             <Screen edges={['top', 'bottom', 'left', 'right']} padded={false}>
                 <KeyboardAvoidingView className="flex-1" behavior="padding">
-                    <View className="flex-row items-center justify-between border-b border-gray-200 px-4 py-2">
-                        <Text accessibilityRole="header" className="text-xl font-bold text-gray-900">
+                    <View className="flex-row items-center justify-between border-b border-gray-200 px-4 py-1">
+                        <Text accessibilityRole="header" className="text-lg font-bold text-gray-900">
                             Chat
                         </Text>
                         <Pressable
@@ -59,7 +74,7 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
                             hitSlop={8}
                             className="rounded-md p-1 active:bg-gray-200"
                         >
-                            <CloseIcon size={28} color="#374151" />
+                            <CloseIcon size={24} color="#374151" />
                         </Pressable>
                     </View>
 
@@ -79,10 +94,11 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
                         />
                     )}
 
-                    <View className="flex-row items-end gap-2 border-t border-gray-200 bg-gray-50 px-4 py-2">
+                    <View className="flex-row items-center gap-2 border-t border-gray-200 bg-gray-50 px-4 py-1.5">
                         <TextField
-                            label="Send a message"
-                            placeholder="Type something…"
+                            accessibilityLabel="Send a message"
+                            placeholder="Type a message…"
+                            disableFullscreenUI
                             value={text}
                             onChangeText={setText}
                             onSubmitEditing={() => !sendDisabled && send()}

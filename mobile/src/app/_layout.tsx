@@ -7,11 +7,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 
 import ConnectionBanner from '@/components/ConnectionBanner';
+import { lockPortrait } from '@/components/game/orientation';
 import Toast from '@/components/Toast';
 import { useSession } from '@/hooks/useSession';
 import { GameSync } from '@/providers/GameSync';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { store, useAppSelector } from '@/store';
+
+// The app is portrait; only the game screen switches to landscape while focused
+// (`useLandscapeWhileFocused`). app.json allows both (`"orientation": "default"`), so this
+// lock is what keeps the other screens upright. Done at module load, before any screen's
+// effects run, so it can never override the game screen's landscape lock on a cold start
+// straight into a running game.
+lockPortrait();
 
 /** Loads the logged-in user from the stored token once, on app start. */
 function RestoreSession() {

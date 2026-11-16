@@ -26,7 +26,6 @@ export interface ServerToClientEvents {
     'cards-drawn': (game: Game, rooms: TRooms, roomId?: number) => void;
     'game-won': (winnerUsername: string, rooms: TRooms) => void;
     'message-sent': (messages: Array<ChatMessage>) => void;
-    'got-socketid': (socketId: string) => void;
     /** Sent only to the player whose `lay-card` was refused by the server (not their turn, invalid card, ...). */
     'lay-card-rejected': (reason: string) => void;
     /** Sent only to the sender when any other action was refused (not logged in, not the owner, ...). */
@@ -46,7 +45,6 @@ export interface ClientToServerEvents {
     'lay-card': (payload: { card: TCard | number; cardIndex: number; roomId: number; username?: string }) => void;
     'draw-cards': (payload: { roomId: number; username?: string }) => void;
     'send-message': (payload: { roomId: number; username?: string; message: string }) => void;
-    'get-socketid': () => void;
     /** Ask for a `game-state` re-sync (after reconnecting / returning to the foreground). */
     'get-game-state': () => void;
 }

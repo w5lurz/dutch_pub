@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 
 import { Bullet, BulletList, Paragraph, SectionHeading, Strong, SubHeading } from './Typography';
 
-// Copy ported from frontend/src/components/Welcome/Welcome.tsx (obvious typos fixed).
+// Copy ported from the former web app (frontend/src/components/Welcome/Welcome.tsx, removed; see git history), obvious typos fixed.
 
 export function AboutSection() {
     return (
