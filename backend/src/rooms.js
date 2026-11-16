@@ -1,4 +1,20 @@
 import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
+import { identityError } from './socketAuth.js';
+
+/** Emits `action-rejected` and returns true when `error` is set. */
+const rejected = (socket, error) => {
+    if (!error) return false;
+    socket.emit('action-rejected', error);
+    return true;
+};
+
+/** Error when `roomId` doesn't exist, or (with `ownerOnly`) the socket's user doesn't own it. */
+const roomError = (socket, roomId, { ownerOnly = false } = {}) => {
+    const room = roomsList[roomId];
+    if (!room) return 'This room does not exist.';
+    if (ownerOnly && room.owner !== socket.data.user.username) return 'Only the room owner can do that.';
+    return null;
+};
 
 export let games = {};
 
@@ -63,6 +79,7 @@ export const rooms = io => {
         });
 
         socket.on('create-room', ({ name, owner, slots, visibility }) => {
+            if (rejected(socket, identityError(socket, owner))) return;
             const newKey = Object.keys(roomsList).length === 0 ? 1 : +Object.keys(roomsList)[Object.keys(roomsList).length - 1] + 1;
             const socketRoomId = `game-${newKey}`;
             const newRoom = {
@@ -83,6 +100,7 @@ export const rooms = io => {
         });
 
         socket.on('delete-room', roomId => {
+            if (rejected(socket, identityError(socket) ?? roomError(socket, roomId, { ownerOnly: true }))) return;
             const { [roomId]: roomToDelete, ...rest } = roomsList;
             roomsList = rest;
 
@@ -92,6 +110,7 @@ export const rooms = io => {
         });
 
         socket.on('join-room', ({ username, roomId }) => {
+            if (rejected(socket, identityError(socket, username) ?? roomError(socket, roomId))) return;
             roomsList = {
                 ...roomsList,
                 [roomId]: { ...roomsList[roomId], players: [...roomsList[roomId].players, { username, socketId: socket?.id }] },
@@ -105,6 +124,7 @@ export const rooms = io => {
         });
 
         socket.on('leave-room', ({ username, roomId }) => {
+            if (rejected(socket, identityError(socket, username) ?? roomError(socket, roomId))) return;
             roomsList = {
                 ...roomsList,
                 [roomId]: {
@@ -121,6 +141,7 @@ export const rooms = io => {
         });
 
         socket.on('start-game', async (roomId, socketId) => {
+            if (rejected(socket, identityError(socket) ?? roomError(socket, roomId, { ownerOnly: true }))) return;
             // Set room's inGame to true
             const newRoom = { ...roomsList[roomId], inGame: true };
             roomsList = {

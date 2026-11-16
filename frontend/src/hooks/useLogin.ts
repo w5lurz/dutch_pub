@@ -1,15 +1,17 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../app/api';
 import { setToast } from '../app/generalSlice';
 import { useAppDispatch } from '../app/hooks';
 import { setUser } from '../app/userSlice';
+import { reconnectSocket, SocketContext } from './useApp';
 
 export default function useLogin() {
     const [loading, setLoading] = useState<boolean>(false);
 
     let navigate = useNavigate();
     const dispatch = useAppDispatch();
+    const socket = useContext(SocketContext);
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -29,6 +31,7 @@ export default function useLogin() {
                     }),
                 );
                 dispatch(setToast({ id: 'login-success', type: 'success', message: 'You successfully logged in!', duration: 3000 }));
+                reconnectSocket(socket);
                 navigate('/');
             } else {
                 const userData = await response.json();

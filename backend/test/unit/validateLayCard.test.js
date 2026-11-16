@@ -6,8 +6,10 @@ import { games, modifyRooms } from '../../src/rooms.js';
 
 const card = (name, value, extra = {}) => ({ name, value, color: 'clubs', ...extra });
 const ROOM_ID = 1;
-const socketA = { id: 'socket-a' };
-const socketB = { id: 'socket-b' };
+// Sockets as set up by socketAuth.js: `data.user` is the authenticated identity.
+const socketA = { id: 'socket-a', data: { user: { id: 1, username: 'a', isGuest: false } } };
+const socketB = { id: 'socket-b', data: { user: { id: 2, username: 'b', isGuest: true } } };
+const anonymousSocket = { id: 'socket-anon', data: {} };
 
 /** Two players: "a" (active, holds 4 and Q) and "b"; a J is on top of the pile. */
 const setUpGame = ({ handA = [card('4', 4), card('Q', 12)], tableFlippedA = [card('K', 13)], tableA = [card('3', 3)] } = {}) => {
@@ -69,6 +71,19 @@ describe('validateLayCard', () => {
 
     test('rejects playing as another player', () => {
         assert.deepEqual(validateLayCard(socketB, { card: card('Q', 12), roomId: ROOM_ID, username: 'a' }), {
+            error: 'You can only act as yourself.',
+        });
+    });
+
+    test('rejects an unauthenticated socket', () => {
+        assert.deepEqual(validateLayCard(anonymousSocket, { card: card('Q', 12), roomId: ROOM_ID, username: 'a' }), {
+            error: 'You need to log in or join as a guest first.',
+        });
+    });
+
+    test('rejects the right user on a different socket than the one in the room', () => {
+        const otherSocketOfA = { id: 'socket-a-2', data: { user: { id: 1, username: 'a', isGuest: false } } };
+        assert.deepEqual(validateLayCard(otherSocketOfA, { card: card('Q', 12), roomId: ROOM_ID, username: 'a' }), {
             error: 'You are not a player in this game.',
         });
     });

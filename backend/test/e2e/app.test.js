@@ -2,7 +2,8 @@
 // Creates one `e2e_*` user and deletes it again afterwards.
 //
 // TODO missing coverage:
-// - `draw-cards`: picking up the pile (hand gets the laid cards, turn passes on).
+// - `draw-cards` happy path: picking up the pile (hand gets the laid cards, turn passes on).
+//   (Rejection out of turn is covered below.)
 // - Winning a game: `game-won` broadcast, room removed, `played_games` row written
 //   (needs cleanup of that row, like the test user) and shown on the leaderboard.
 import { after, before, describe, test } from 'node:test';
@@ -17,14 +18,30 @@ const user = { username: `e2e_${stamp}`, email: `e2e_${stamp}@example.test`, pas
 const guestName = `e2e_guest_${stamp}`;
 
 let server;
-let sessionCookie = '';
+let sessionCookie = ''; // web client: token in the session cookie
+let userToken = ''; // mobile client: token from the login response
+let guestToken = '';
 
-const request = (path, { method = 'GET', body, cookie } = {}) =>
+const request = (path, { method = 'GET', body, cookie, token } = {}) =>
     fetch(server.baseUrl + path, {
         method,
-        headers: { 'Content-Type': 'application/json', ...(cookie && { cookie }) },
+        headers: {
+            'Content-Type': 'application/json',
+            ...(cookie && { cookie }),
+            ...(token && { Authorization: `Bearer ${token}` }),
+        },
         ...(body && { body: JSON.stringify(body) }),
     });
+
+/** Connects a socket; resolves once connected (or rejects with the connect error). */
+const connectSocket = async options => {
+    const socket = io(server.baseUrl, { transports: ['websocket'], reconnection: false, ...options });
+    await new Promise((resolve, reject) => {
+        socket.once('connect', resolve);
+        socket.once('connect_error', reject);
+    });
+    return socket;
+};
 
 before(async () => {
     server = await startServer();
@@ -57,29 +74,64 @@ describe('auth API', () => {
         assert.equal(res.status, 404);
     });
 
-    test('logs in and sets a session cookie', async () => {
+    test('logs in, sets a session cookie and returns a token', async () => {
         const res = await request('/api/auth/login', { method: 'POST', body: { username: user.username, password: user.password } });
         assert.equal(res.status, 200);
         const body = await res.json();
         assert.equal(body.username, user.username);
         assert.equal(body.password, undefined);
+        assert.equal(typeof body.token, 'string');
+        userToken = body.token;
         sessionCookie = res.headers
             .getSetCookie()
             .map(cookie => cookie.split(';')[0])
             .join('; ');
         assert.match(sessionCookie, /app-session=/);
     });
+
+    test('adds a guest and returns a guest token', async () => {
+        const res = await request('/api/auth/add-guest', { method: 'POST', body: { username: guestName } });
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.isGuest, true);
+        assert.equal(typeof body.token, 'string');
+        guestToken = body.token;
+    });
+
+    test('rejects a duplicate or empty guest name', async () => {
+        assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: guestName } })).status, 403);
+        assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: user.username } })).status, 403);
+        assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: '  ' } })).status, 400);
+    });
 });
 
 describe('users API', () => {
-    test('returns the current user with a session', async () => {
+    test('returns the current user with a session cookie (web)', async () => {
         const res = await request('/api/users/user', { cookie: sessionCookie });
         assert.equal(res.status, 200);
         assert.equal((await res.json()).username, user.username);
     });
 
-    test('rejects requests without a session', async () => {
+    test('returns the current user with a bearer token (mobile)', async () => {
+        const res = await request('/api/users/user', { token: userToken });
+        assert.equal(res.status, 200);
+        assert.equal((await res.json()).username, user.username);
+    });
+
+    test('returns the guest for a guest token', async () => {
+        const res = await request('/api/users/user', { token: guestToken });
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(typeof body.id, 'number');
+        assert.deepEqual(body, { id: body.id, username: guestName, isGuest: true });
+    });
+
+    test('rejects requests without a session or token', async () => {
         assert.equal((await request('/api/users/user')).status, 403);
+    });
+
+    test('rejects an invalid bearer token', async () => {
+        assert.equal((await request('/api/users/user', { token: 'not-a-jwt' })).status, 401);
     });
 
     test('rejects a forged session cookie', async () => {
@@ -92,7 +144,7 @@ describe('users API', () => {
     });
 
     test('/api/users/all never exposes passwords or emails', async () => {
-        const res = await request('/api/users/all', { cookie: sessionCookie });
+        const res = await request('/api/users/all', { token: userToken });
         assert.equal(res.status, 200);
         const users = await res.json();
         assert.ok(users.some(u => u.username === user.username));
@@ -117,34 +169,52 @@ describe('games API and frontend', () => {
     });
 });
 
+describe('socket authentication', () => {
+    test('anonymous sockets can list rooms but not act', async () => {
+        const anonymous = await connectSocket();
+        try {
+            anonymous.emit('list-rooms');
+            await waitFor(anonymous, 'rooms-listed');
+
+            anonymous.emit('create-room', { name: 'nope', owner: user.username, slots: 2, visibility: 'public' });
+            const [reason] = await waitFor(anonymous, 'action-rejected');
+            assert.equal(reason, 'You need to log in or join as a guest first.');
+        } finally {
+            anonymous.close();
+        }
+    });
+
+    test('an invalid handshake token is rejected', async () => {
+        await assert.rejects(connectSocket({ auth: { token: 'not-a-jwt' } }), { message: 'unauthorized' });
+    });
+
+    test('web sockets are identified from the session cookie', async () => {
+        const web = await connectSocket({ extraHeaders: { cookie: sessionCookie } });
+        try {
+            // Identified (otherwise: "You need to log in ..."), but only as themselves.
+            web.emit('create-room', { name: 'nope', owner: guestName, slots: 2, visibility: 'public' });
+            const [reason] = await waitFor(web, 'action-rejected');
+            assert.equal(reason, 'You can only act as yourself.');
+        } finally {
+            web.close();
+        }
+    });
+});
+
 describe('socket game flow', () => {
-    let a; // the registered user, room owner
-    let b; // a guest
+    let a; // the registered user (token), room owner
+    let b; // the guest (guest token)
     let roomId;
     let games; // { a: Game, b: Game } as last received
 
     before(async () => {
-        a = io(server.baseUrl, { transports: ['websocket'] });
-        b = io(server.baseUrl, { transports: ['websocket'] });
-        await Promise.all([waitFor(a, 'connect'), waitFor(b, 'connect')]);
+        a = await connectSocket({ auth: { token: userToken } });
+        b = await connectSocket({ auth: { token: guestToken } });
     });
 
     after(() => {
         a?.close();
         b?.close();
-    });
-
-    test('adds a guest bound to its socket', async () => {
-        b.emit('get-socketid');
-        const [socketId] = await waitFor(b, 'got-socketid');
-        assert.equal(socketId, b.id);
-
-        const res = await request('/api/auth/add-guest', { method: 'POST', body: { username: guestName, socketId } });
-        assert.equal(res.status, 200);
-        assert.equal((await res.json()).isGuest, true);
-
-        const duplicate = await request('/api/auth/add-guest', { method: 'POST', body: { username: guestName, socketId } });
-        assert.equal(duplicate.status, 403);
     });
 
     test('creates a room and broadcasts it', async () => {
@@ -155,6 +225,12 @@ describe('socket game flow', () => {
         assert.ok(roomId, 'room not found in broadcast');
     });
 
+    test('rejects joining a room as someone else', async () => {
+        a.emit('join-room', { username: guestName, roomId });
+        const [reason] = await waitFor(a, 'action-rejected');
+        assert.equal(reason, 'You can only act as yourself.');
+    });
+
     test('lets another player join', async () => {
         const broadcast = waitFor(a, 'joined-room');
         b.emit('join-room', { username: guestName, roomId });
@@ -163,6 +239,12 @@ describe('socket game flow', () => {
             rooms[roomId].players.map(player => player.username),
             [user.username, guestName],
         );
+    });
+
+    test('only the owner can start the game', async () => {
+        b.emit('start-game', roomId, b.id);
+        const [reason] = await waitFor(b, 'action-rejected');
+        assert.equal(reason, 'Only the room owner can do that.');
     });
 
     test('starts the game for both players', async () => {
@@ -193,11 +275,18 @@ describe('socket game flow', () => {
         assert.equal(reason, 'It is not your turn.');
     });
 
+    test('rejects picking up the pile out of turn', async () => {
+        const { waiting } = players();
+        waiting.socket.emit('draw-cards', { roomId, username: waiting.name });
+        const [reason] = await waitFor(waiting.socket, 'action-rejected');
+        assert.equal(reason, 'It is not your turn.');
+    });
+
     test('rejects playing as another player', async () => {
         const { active, waiting } = players();
         waiting.socket.emit('lay-card', { card: active.game.userCards.hand[0], cardIndex: 0, roomId, username: active.name });
         const [reason] = await waitFor(waiting.socket, 'lay-card-rejected');
-        assert.equal(reason, 'You are not a player in this game.');
+        assert.equal(reason, 'You can only act as yourself.');
     });
 
     test('accepts a valid move and broadcasts it', async () => {
@@ -215,6 +304,12 @@ describe('socket game flow', () => {
         }
     });
 
+    test('rejects chat messages sent as someone else', async () => {
+        a.emit('send-message', { roomId, username: guestName, message: 'spoofed' });
+        const [reason] = await waitFor(a, 'action-rejected');
+        assert.equal(reason, 'You can only act as yourself.');
+    });
+
     test('delivers chat messages to the room', async () => {
         const received = waitFor(b, 'message-sent');
         a.emit('send-message', { roomId, username: user.username, message: 'hello' });
@@ -223,6 +318,12 @@ describe('socket game flow', () => {
             { senderName: messages.at(-1).senderName, message: messages.at(-1).message },
             { senderName: user.username, message: 'hello' },
         );
+    });
+
+    test('only the owner can delete the room', async () => {
+        b.emit('delete-room', roomId);
+        const [reason] = await waitFor(b, 'action-rejected');
+        assert.equal(reason, 'Only the room owner can do that.');
     });
 });
 

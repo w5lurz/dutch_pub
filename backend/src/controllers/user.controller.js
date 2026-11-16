@@ -8,8 +8,13 @@ export const allAccess = async (req, res) => {
     res.status(200).send(users);
 };
 
+/** The current user, from the verified token (bearer header or session cookie). */
 export const userBoard = async (req, res) => {
-    const user = await User.findOne({ where: { username: req?.session?.username } });
+    if (req.auth?.guest) {
+        return res.status(200).send({ id: req.auth.id, username: req.auth.username, isGuest: true });
+    }
+
+    const user = await User.findByPk(req.userId);
 
     if (!user) {
         return res.status(404).send({ message: 'No user with this username found.' });

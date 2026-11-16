@@ -13,6 +13,7 @@ import { rooms } from './rooms.js';
 import { game } from './game.js';
 import { chat } from './chat.js';
 import { guests } from './guests.js';
+import { socketAuth } from './socketAuth.js';
 
 console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 // dotenv.config({ path: '.env' });
@@ -94,6 +95,8 @@ const io = new Server(server, {
     });
 }); */
 
+// Must run before the connection handlers: sets socket.data.user from the token / cookie.
+socketAuth(io);
 rooms(io);
 game(io);
 chat(io);

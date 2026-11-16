@@ -47,7 +47,7 @@ cd backend && npm test           # unit tests, no database needed
 cd backend && npm run test:e2e   # starts the real server on a free port against the DB in backend/.env
 ```
 
-The e2e tests exercise the REST API, sessions, SPA routing and a full socket game flow (rooms, start, valid/invalid moves, chat). They create one `e2e_*` user and delete it again. Run them before deploying.
+The e2e tests exercise the REST API, cookie and bearer-token auth, guest tokens, SPA routing, socket authentication (anonymous / token / cookie) and a full socket game flow (rooms, start, valid/invalid moves, impersonation, owner-only actions, chat). They create one `e2e_*` user and delete it again. Run them before deploying.
 
 ## Local full-stack run with Docker
 

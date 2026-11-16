@@ -18,6 +18,8 @@ export interface ServerToClientEvents {
     'got-socketid': (socketId: string) => void;
     /** Sent only to the player whose `lay-card` was refused by the server (not their turn, invalid card, ...). */
     'lay-card-rejected': (reason: string) => void;
+    /** Sent only to the sender when any other action was refused (not logged in, not the owner, ...). */
+    'action-rejected': (reason: string) => void;
 }
 
 /** Events clients emit to the server. */

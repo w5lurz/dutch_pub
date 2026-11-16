@@ -1,6 +1,7 @@
 import { canLayCard } from '@dutch-pub/shared';
 import { games, modifyRooms, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
+import { identityError } from './socketAuth.js';
 
 import db from './models/index.js';
 const PlayedGame = db.played_game;
@@ -8,12 +9,14 @@ const PlayedGame = db.played_game;
 const handleClearAll = () => {};
 
 /**
- * Checks a `lay-card` request against the server-side game state.
- * Returns `{ error }` when the move must be rejected, otherwise `{ card }`: the server's own
- * copy of the card (so client-sent flags like isMagicCard are never trusted), or the
- * face-down table card index for a blind play.
+ * Checks that `socket` is authenticated as `username`, plays in game `roomId` and that it
+ * is their turn. Returns `{ error }` or `{ player }` (the server-side player state).
  */
-export const validateLayCard = (socket, { card, roomId, username }) => {
+const validateTurn = (socket, { roomId, username }) => {
+    const authError = identityError(socket, username);
+    if (authError) {
+        return { error: authError };
+    }
     const currentRoom = roomsList[roomId];
     const currentGame = games[roomId];
     if (!currentRoom || !currentGame) {
@@ -27,6 +30,21 @@ export const validateLayCard = (socket, { card, roomId, username }) => {
     if (!player.active) {
         return { error: 'It is not your turn.' };
     }
+    return { player };
+};
+
+/**
+ * Checks a `lay-card` request against the server-side game state.
+ * Returns `{ error }` when the move must be rejected, otherwise `{ card }`: the server's own
+ * copy of the card (so client-sent flags like isMagicCard are never trusted), or the
+ * face-down table card index for a blind play.
+ */
+export const validateLayCard = (socket, { card, roomId, username }) => {
+    const { error, player } = validateTurn(socket, { roomId, username });
+    if (error) {
+        return { error };
+    }
+    const currentGame = games[roomId];
 
     const { hand, tableFlipped, table } = player.userCards;
     if (typeof card === 'number') {
@@ -173,9 +191,13 @@ export const game = io => {
             }
         });
 
-        // TODO: not validated yet - any client can make any player pick up the pile, even out of turn.
-        // Add the same game / identity (socket.id) / active-turn checks as validateLayCard.
         socket.on('draw-cards', ({ roomId, username }) => {
+            const { error } = validateTurn(socket, { roomId, username });
+            if (error) {
+                console.log('DRAW CARDS REJECTED', error, roomId, username);
+                socket.emit('action-rejected', error);
+                return;
+            }
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];
 
@@ -213,9 +235,6 @@ export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
     const rooms = io.of('/').adapter.rooms;
     console.log(rooms);
     console.log(rooms[`game-${roomId}`]);
-    const sockets = await io.fetchSockets();
-    console.log('SOCKETS 2', sockets[0].username);
-    console.log('SOCKETS 2', sockets[1].username);
 
     room.players.forEach(player => {
         const playerSpecificGameData = {

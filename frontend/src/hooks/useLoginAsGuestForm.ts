@@ -3,7 +3,7 @@ import { addGuest } from '../app/api';
 import { setToast } from '../app/generalSlice';
 import { useAppDispatch } from '../app/hooks';
 import { setUser } from '../app/userSlice';
-import { SocketContext } from './useApp';
+import { reconnectSocket, SocketContext } from './useApp';
 
 export default function useLoginAsGuestForm() {
     const socket = useContext(SocketContext)!;
@@ -42,6 +42,7 @@ export default function useLoginAsGuestForm() {
                         isGuest: guestData.isGuest,
                     }),
                 );
+                reconnectSocket(socket);
                 dispatch(setToast({ id: 'add-guest-success', type: 'success', message: 'Your Guest account added!', duration: 3000 }));
             } else {
                 const guestData = await response.json();
