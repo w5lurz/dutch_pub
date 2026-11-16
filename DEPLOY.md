@@ -41,9 +41,10 @@ cd mobile && npm install && npm start  # Expo dev server; see mobile/README.md
 cd packages/shared && npm test   # card rules (vitest)
 cd backend && npm test           # unit tests, no database needed
 cd backend && npm run test:e2e   # starts the real server on a free port against the DB in backend/.env
+cd mobile && npm test            # app logic and components (Jest)
 ```
 
-The e2e tests exercise the REST API, bearer-token auth, guest tokens (incl. name reservation while disconnected), the health endpoint, socket authentication (anonymous / token) and a full socket game flow (rooms, start, reconnect + re-sync, valid/invalid moves, impersonation, owner-only actions, chat). They create one `e2e_*` user and delete it again. Run them before deploying.
+The e2e tests exercise the REST API, bearer-token auth, guest tokens (incl. name reservation while disconnected), the health endpoint, socket authentication (anonymous / token) and a full socket game flow (rooms, start, reconnect + re-sync, valid/invalid moves, picking up the pile, impersonation, owner-only actions, chat) and a full game played by two bots until one wins (`game-won`, room removal, `played_games` row, leaderboard). They create one `e2e_*` user and one `played_games` row and delete both again. See also [mobile/TESTING.md](mobile/TESTING.md). Run them before deploying.
 
 ## Local run with Docker
 

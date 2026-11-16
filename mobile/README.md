@@ -32,8 +32,11 @@ npm run android    # / npm run ios / npm run web
 ```sh
 npm run typecheck
 npm run lint
+npm test           # Jest + React Native Testing Library
 npx expo-doctor
 ```
+
+See [TESTING.md](TESTING.md) for all automated tests and the manual test matrix.
 
 Always add dependencies with `npx expo install <package>`, which picks versions compatible with the Expo SDK.
 

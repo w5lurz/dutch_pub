@@ -1,13 +1,9 @@
 // End-to-end tests: run the real server against the database configured in backend/.env.
-// Creates one `e2e_*` user and deletes it again afterwards.
-//
-// TODO missing coverage:
-// - `draw-cards` happy path: picking up the pile (hand gets the laid cards, turn passes on).
-//   (Rejection out of turn is covered below.)
-// - Winning a game: `game-won` broadcast, room removed, `played_games` row written
-//   (needs cleanup of that row, like the test user) and shown on the leaderboard.
+// Creates one `e2e_*` user (and, by playing a game to the end, one `played_games` row) and
+// deletes them again afterwards.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { canLayCard } from '@dutch-pub/shared';
 import { io } from 'socket.io-client';
 
 import db from '../../src/models/index.js';
@@ -48,6 +44,7 @@ before(async () => {
 after(async () => {
     await server?.stop();
     await db.user.destroy({ where: { username: user.username } });
+    await db.played_game.destroy({ where: { winner: [user.username, guestName] } });
     await db.sequelize.close();
 });
 
@@ -325,6 +322,13 @@ describe('socket game flow', () => {
             const top = (game.laidCards ?? game.burntCards)[0];
             assert.deepEqual({ value: top.value, color: top.color }, { value: card.value, color: card.color });
         }
+        games = { a: afterA, b: afterB };
+    });
+
+    test('only the owner can delete the room', async () => {
+        b.emit('delete-room', roomId);
+        const [reason] = await waitFor(b, 'action-rejected');
+        assert.equal(reason, 'Only the room owner can do that.');
     });
 
     test('rejects chat messages sent as someone else', async () => {
@@ -343,9 +347,99 @@ describe('socket game flow', () => {
         );
     });
 
-    test('only the owner can delete the room', async () => {
-        b.emit('delete-room', roomId);
-        const [reason] = await waitFor(b, 'action-rejected');
-        assert.equal(reason, 'Only the room owner can do that.');
+    test('picking up the pile gives the laid cards to the active player and passes the turn', async () => {
+        const { active, waiting } = players();
+        const laid = active.game.laidCards ?? [];
+        const expectedHand = [...active.game.userCards.hand, ...laid].map(cardKey).sort();
+        const drawnActive = waitFor(active.socket, 'cards-drawn');
+        const drawnWaiting = waitFor(waiting.socket, 'cards-drawn');
+        active.socket.emit('draw-cards', { roomId, username: active.name });
+        const [[afterActive], [afterWaiting]] = await Promise.all([drawnActive, drawnWaiting]);
+
+        assert.deepEqual(afterActive.userCards.hand.map(cardKey).sort(), expectedHand);
+        assert.equal(afterActive.laidCards, null);
+        assert.equal(afterActive.active, false);
+        assert.equal(afterWaiting.active, true);
+        assert.equal(afterWaiting.opponents[active.name].hand, expectedHand.length);
+        games = active.socket === a ? { a: afterActive, b: afterWaiting } : { a: afterWaiting, b: afterActive };
+    });
+
+    test('a game played to the end is won, recorded and leaves no room behind', { timeout: 60000 }, async () => {
+        const sockets = { [user.username]: a, [guestName]: b };
+        const views = { [user.username]: games.a, [guestName]: games.b };
+        const won = Promise.all([waitFor(a, 'game-won', 60000), waitFor(b, 'game-won', 60000)]);
+        let fail;
+        const failed = new Promise((_, reject) => (fail = reject));
+        let moves = 0;
+
+        // Both players are simple bots (see `botMove`).
+        const act = name => {
+            const view = views[name];
+            if (!view.active) return;
+            if (++moves > 20000) return fail(new Error('game did not end within 20000 moves'));
+            const move = botMove(view);
+            sockets[name].emit(move.event, { ...move.payload, roomId, username: name });
+        };
+        let finished = false;
+        for (const [name, socket] of Object.entries(sockets)) {
+            for (const event of ['card-laid', 'cards-drawn']) {
+                socket.on(event, view => {
+                    views[name] = view;
+                    if (!finished) act(name);
+                });
+            }
+            socket.on('lay-card-rejected', reason => fail(new Error(`bot move rejected: ${reason}`)));
+            socket.on('action-rejected', reason => fail(new Error(`bot move rejected: ${reason}`)));
+        }
+        for (const name of Object.keys(sockets)) act(name);
+
+        const [[winnerA, roomsA], [winnerB]] = await Promise.race([won, failed]);
+        finished = true;
+        assert.equal(winnerA, winnerB);
+        assert.ok([user.username, guestName].includes(winnerA));
+        assert.equal(roomsA[roomId], undefined, 'the room is removed when the game is won');
+
+        // The played_games row is written right after the broadcast.
+        let row;
+        for (let i = 0; i < 50 && !row; i++) {
+            row = await db.played_game.findOne({ where: { winner: winnerA, players: `${user.username},${guestName}` }, raw: true });
+            if (!row) await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        assert.ok(row, 'played_games row written');
+
+        const res = await request('/api/games/leaderboard');
+        assert.equal(res.status, 200);
+        const entry = (await res.json()).find(e => e.winner === winnerA);
+        assert.ok(entry && entry.wins >= 1, 'the winner is on the leaderboard');
     });
 });
+
+/** "value-color", to compare cards regardless of other fields. */
+const cardKey = card => `${card.value}-${card.color}`;
+
+/**
+ * A bot's move for its view of the game: from the hand while it has cards, then the
+ * face-up cards, then the first face-down card (played blind); `draw-cards` when nothing
+ * fits. Usually the lowest playable card by value (magic cards last), but 30% of the time a
+ * random playable one: always playing the same way can cycle forever (e.g. a hand of only
+ * "Call Next" cards keeps making the other bot pick up the pile).
+ */
+function botMove(view) {
+    const { hand, tableFlipped, table } = view.userCards;
+    const pile = view.laidCards;
+    const pick = cards => {
+        const playable = cards
+            .map((card, index) => ({ card, index }))
+            .filter(({ card }) => canLayCard(card, pile))
+            .sort((x, y) => Number(!!x.card.isMagicCard) - Number(!!y.card.isMagicCard) || x.card.value - y.card.value);
+        return Math.random() < 0.3 ? playable[Math.floor(Math.random() * playable.length)] : playable[0];
+    };
+    if (hand.length > 0 || tableFlipped.length > 0) {
+        const choice = pick(hand.length > 0 ? hand : tableFlipped);
+        return choice
+            ? { event: 'lay-card', payload: { card: choice.card, cardIndex: choice.index } }
+            : { event: 'draw-cards', payload: {} };
+    }
+    return { event: 'lay-card', payload: { card: 0, cardIndex: 0 } };
+}
+
