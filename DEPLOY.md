@@ -9,6 +9,7 @@ The app ships as a single Docker image: the frontend is built in stage 1 and ser
 | Variable | Required | Description |
 |---|---|---|
 | `DB_HOST` | yes | MySQL host |
+| `PORT` | no | HTTP port the server listens on (default `3030`; Cloud Run sets it automatically) |
 | `DB_PORT` | yes | MySQL port (`3306`; `3307` when connecting from the host to the docker-compose DB) |
 | `DB_NAME` | yes | Database name (`dutch_pub`) |
 | `DB_USER` | yes | Database user |
@@ -64,14 +65,13 @@ docker compose up --build
    gcloud run deploy <service-name> \
      --source . \
      --region <region> \
-     --port 3030 \
      --session-affinity \
      --max-instances 1 \
      --set-env-vars "DB_HOST=<host>,DB_PORT=3306,DB_NAME=dutch_pub,DB_USER=<user>,BASE_URL=https://<service>.a.run.app,FRONTEND_ROOT=/usr/src/app/build" \
      --set-secrets "COOKIE_SECRET=COOKIE_SECRET:latest,JWT_SECRET=JWT_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest"
    ```
 
-   - `--port 3030`: the server listens on a hardcoded port 3030, not Cloud Run's `$PORT`.
+   - The server listens on `$PORT` (set by Cloud Run), falling back to 3030 locally.
    - `--session-affinity` + `--max-instances 1`: rooms, games and guests are kept **in memory** (`rooms.js`, `game.js`, `guests.js`), so all sockets must reach the same instance.
    - Env vars and secrets persist between deploys. On later deploys, only `gcloud run deploy <service-name> --source . --region <region>` is needed, unless a value changes.
 

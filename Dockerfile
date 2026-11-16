@@ -1,4 +1,4 @@
-FROM node:16.14.2 AS builder
+FROM node:24 AS builder
 WORKDIR /repo
 # Shared package (types, game rules, API client) used by the frontend via file:../packages/shared
 COPY /packages/shared ./packages/shared
@@ -11,7 +11,7 @@ ENV REACT_APP_BASE_URL=https://dutch-card-oxthkdwy2a-oa.a.run.app
 RUN cd frontend && npm run build
 
 #Stage 2
-FROM node:16.14.2
+FROM node:24
 WORKDIR /usr/src/app
 COPY --from=builder /repo/frontend/build build
 # Prebuilt shared package; backend depends on it via file:../packages/shared

@@ -10,7 +10,6 @@ const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool, reconnec
 const sequelize = new Sequelize(DB, USER, PASSWORD, {
     host: isDevEnv ? HOST : '/cloudsql/dutch-card:europe-west6:dutch-pub',
     dialect: _dialect,
-    operatorsAliases: false,
     port: PORT,
     reconnect,
     ...(!isDevEnv && {

@@ -24,7 +24,7 @@ const { json } = bodyParser;
 
 const app = express();
 
-const port = 3030;
+const port = process.env.PORT || 3030;
 const server = http.Server(app);
 
 db.sequelize.sync();
@@ -62,7 +62,7 @@ app.use((err, req, res, next) => {
 });
 
 server.listen(port, () => {
-    console.log('Backend started - Listening on port 3030');
+    console.log(`Backend started - Listening on port ${port}`);
 });
 
 console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
@@ -104,7 +104,8 @@ guests(io);
 
 const root = process.env.FRONTEND_ROOT;
 app.use(express.static(root));
-app.get('*', (req, res) => {
+// Express 5 (path-to-regexp v8): '{*splat}' matches every path including '/'
+app.get('/{*splat}', (req, res) => {
     res.sendFile('index.html', { root });
 });
 
