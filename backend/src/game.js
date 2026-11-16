@@ -1,3 +1,4 @@
+import { canLayCard } from '@dutch-pub/shared';
 import { games, modifyRooms, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
 
@@ -6,14 +7,67 @@ const PlayedGame = db.played_game;
 
 const handleClearAll = () => {};
 
+/**
+ * Checks a `lay-card` request against the server-side game state.
+ * Returns `{ error }` when the move must be rejected, otherwise `{ card }`: the server's own
+ * copy of the card (so client-sent flags like isMagicCard are never trusted), or the
+ * face-down table card index for a blind play.
+ */
+export const validateLayCard = (socket, { card, roomId, username }) => {
+    const currentRoom = roomsList[roomId];
+    const currentGame = games[roomId];
+    if (!currentRoom || !currentGame) {
+        return { error: 'This game does not exist.' };
+    }
+    const player = currentGame.players[username];
+    const roomPlayer = currentRoom.players.find(roomPlayer => roomPlayer.username === username);
+    if (!player || !roomPlayer || roomPlayer.socketId !== socket.id) {
+        return { error: 'You are not a player in this game.' };
+    }
+    if (!player.active) {
+        return { error: 'It is not your turn.' };
+    }
+
+    const { hand, tableFlipped, table } = player.userCards;
+    if (typeof card === 'number') {
+        if (hand.length !== 0 || tableFlipped.length !== 0) {
+            return { error: 'You have to play your other cards first.' };
+        }
+        if (!Number.isInteger(card) || card < 0 || card >= table.length) {
+            return { error: 'That card does not exist.' };
+        }
+        // Blind card: whether it fits the pile is decided after revealing it.
+        return { card };
+    }
+
+    const playableCards = hand.length !== 0 ? hand : tableFlipped;
+    const serverCard = card && playableCards.find(ownCard => ownCard.value === card.value && ownCard.color === card.color);
+    if (!serverCard) {
+        return { error: "You don't have that card." };
+    }
+    if (!canLayCard(serverCard, currentGame.laidCards)) {
+        return { error: 'You cannot lay that card.' };
+    }
+    return { card: serverCard };
+};
+
 export const game = io => {
     io.on('connection', socket => {
-        socket.on('lay-card', async ({ card, cardIndex, roomId, username }) => {
+        socket.on('lay-card', async payload => {
+            const { cardIndex, roomId, username } = payload;
+            const validation = validateLayCard(socket, payload);
+            if (validation.error) {
+                console.log('LAY CARD REJECTED', validation.error, payload);
+                socket.emit('lay-card-rejected', validation.error);
+                return;
+            }
+            const card = validation.card;
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];
-            const originalCard = card; // TODO needed?
             let currentLaidCard = card;
             console.log('LAY CARD1', card, cardIndex, roomId, username);
+            // TODO: with >3 players two decks are used, so a hand can hold identical cards (same value + color).
+            // These filters remove every matching copy instead of just the one laid; remove a single card instead.
             // Deleting laid card from hand
             if (currentGame.players[username].userCards.hand.length !== 0) {
                 currentGame.players[username].userCards.hand = currentGame.players[username].userCards.hand.filter(
@@ -40,38 +94,8 @@ export const game = io => {
                 console.log('LASTLAID', currentGame.players[username].userCards.table);
                 currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
                 currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
-                const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                console.log('LASTLAID1', lastLaidCard, currentLaidCard);
-                const secondLaidCard = currentGame.laidCards ? currentGame.laidCards[1] : null;
-                const thirdLaidCard = currentGame.laidCards ? currentGame.laidCards[2] : null;
-                const fourthLaidCard = currentGame.laidCards ? currentGame.laidCards[3] : null;
-                console.log('LASTLAID12', secondLaidCard, currentLaidCard);
-                isValidLastLaidCard =
-                    !lastLaidCard || // false
-                    (lastLaidCard.value <= currentLaidCard.value && // false
-                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) || // true
-                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) || // false
-                    (!lastLaidCard.isTeaseCard && currentLaidCard.isMagicCard) || // false
-                    (lastLaidCard.isMagicCard && lastLaidCard.value === 14 && currentLaidCard.isMagicCard) || // false
-                    (lastLaidCard.isMagicCard &&
-                        lastLaidCard.value === 0 &&
-                        ((secondLaidCard?.value <= currentLaidCard.value && secondLaidCard?.value !== 0) ||
-                            !secondLaidCard ||
-                            (thirdLaidCard?.value <= currentLaidCard.value && thirdLaidCard?.value !== 0) ||
-                            !thirdLaidCard ||
-                            (fourthLaidCard?.value <= currentLaidCard.value && fourthLaidCard?.value !== 0) ||
-                            !fourthLaidCard)) || // TODO NOT SECOND LAID CARD but the first card what is not an 8 before that
-                    (lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= currentLaidCard.value) || // false
-                    (lastLaidCard.isTeaseCard && currentLaidCard.value >= 3 && currentLaidCard.value <= 7); // false
+                isValidLastLaidCard = canLayCard(currentLaidCard, currentGame.laidCards);
                 console.log('LAST ROUND', isValidLastLaidCard, currentGame.laidCards);
-                console.log(
-                    'LAST ROUNDasd',
-                    !!!lastLaidCard,
-                    lastLaidCard?.value <= currentLaidCard?.value &&
-                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
-                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
-                    lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && currentLaidCard?.isMagicCard,
-                );
             }
             if (!isValidLastLaidCard) {
                 // const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
@@ -119,7 +143,6 @@ export const game = io => {
                     // Setting active player to next
                     setActivePlayerNext(currentGame.players, username);
                 }
-                console.log('ORIG1', originalCard);
                 // TODO SET WINNER HERE
                 if (
                     currentGame.players[username].userCards.hand.length === 0 &&
@@ -150,6 +173,8 @@ export const game = io => {
             }
         });
 
+        // TODO: not validated yet - any client can make any player pick up the pile, even out of turn.
+        // Add the same game / identity (socket.id) / active-turn checks as validateLayCard.
         socket.on('draw-cards', ({ roomId, username }) => {
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];

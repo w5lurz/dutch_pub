@@ -1,18 +1,17 @@
 import { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Socket } from 'socket.io-client';
 import { initialState, updateGame } from '../app/gameSlice';
 import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
-import { Game, TCard, TRooms, User } from '../app/types';
+import { hasAnyPlayableCard } from '@dutch-pub/shared';
+import { Game, TRooms, User } from '../app/types';
 import { setUser } from '../app/userSlice';
-import { getFirstArrayItem, getSecondArrayItem } from '../utils/utilFunctions';
 import { SocketContext } from './useApp';
 
 export default function useGame() {
-    const socket: Socket = useContext(SocketContext)!;
+    const socket = useContext(SocketContext)!;
 
     let navigate = useNavigate();
     const dispatch = useAppDispatch();
@@ -53,9 +52,14 @@ export default function useGame() {
             }, 3000);
         };
 
+        const layCardRejectedListener = (reason: string) => {
+            dispatch(setToast({ id: 'lay-card-rejected', type: 'sad', message: reason, duration: 3000 }));
+        };
+
         socket.on('card-laid', cardLaidListener);
         socket.on('cards-drawn', cardsDrawnListener);
         socket.on('game-won', gameWonListener);
+        socket.on('lay-card-rejected', layCardRejectedListener);
 
         // DISCONNECTNEL is megvannak ezek
         const userDisconnectedListener = () => console.log('Socket disconnecting...', user, roomId);
@@ -69,61 +73,21 @@ export default function useGame() {
         const userReconnectedListener = () => console.log('Reconnecting...', user, roomId);
         socket.on('disconnect', userDisconnectedListener);
         socket.on('connect', userConnectedListener);
-        socket.on('reconnect', userReconnectedListener);
+        socket.io.on('reconnect', userReconnectedListener);
         return () => {
             socket.off('card-laid', cardLaidListener);
             socket.off('cards-drawn', cardsDrawnListener);
             socket.off('game-won', gameWonListener);
+            socket.off('lay-card-rejected', layCardRejectedListener);
             socket.off('disconnect', userDisconnectedListener);
             socket.off('connect', userConnectedListener);
-            socket.off('reconnect', userReconnectedListener);
+            socket.io.off('reconnect', userReconnectedListener);
         };
     }, []);
 
     useEffect(() => {
-        const currentLaidCards = laidCards;
-        const lastLaidCard = currentLaidCards ? getFirstArrayItem(currentLaidCards) : null;
-        let canLayCard = false;
-        if (handCards?.length === 0 && flippedCards?.length === 0 && tableCards) {
-            canLayCard = true;
-            console.log('CANLAY1', canLayCard);
-        } else {
-            const cardsToCheck = handCards && handCards.length > 0 ? handCards : flippedCards;
-            console.log('CANLAY2', canLayCard);
-            cardsToCheck.forEach((card: TCard) => {
-                canLayCard =
-                    canLayCard ||
-                    !currentLaidCards ||
-                    (lastLaidCard?.value <= card.value &&
-                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
-                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2))) ||
-                    (currentLaidCards && !lastLaidCard?.isTeaseCard && card.isMagicCard) ||
-                    (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && card.isMagicCard) ||
-                    (currentLaidCards &&
-                        lastLaidCard?.isMagicCard &&
-                        lastLaidCard?.value === 0 &&
-                        (getSecondArrayItem(currentLaidCards).value <= card.value || !getSecondArrayItem(currentLaidCards))) ||
-                    (currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 2 && lastLaidCard?.value <= card.value) ||
-                    (currentLaidCards && lastLaidCard?.isTeaseCard && card.value >= 3 && card.value <= 7);
-                console.log(
-                    'CANLAY3',
-                    canLayCard,
-                    currentLaidCards,
-                    !currentLaidCards,
-                    lastLaidCard?.value <= card.value &&
-                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
-                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
-                    currentLaidCards && !lastLaidCard?.isTeaseCard && card.isMagicCard,
-                    currentLaidCards && lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && card.isMagicCard,
-                    currentLaidCards &&
-                        lastLaidCard?.isMagicCard &&
-                        lastLaidCard?.value === 0 &&
-                        getSecondArrayItem(currentLaidCards).value <= card.value,
-                    !getSecondArrayItem(currentLaidCards ?? []),
-                );
-            });
-        }
-        if (!canLayCard && active) {
+        const canLayAnyCard = hasAnyPlayableCard({ hand: handCards, tableFlipped: flippedCards, table: tableCards }, laidCards);
+        if (!canLayAnyCard && active) {
             // todo FELHUZTAL LAPOKAT
             console.log('DRAWINGCARD', roomId, user?.username);
             socket.emit('draw-cards', { roomId, username: user?.username });
@@ -133,19 +97,3 @@ export default function useGame() {
     return { testGame, active, user, roomId };
 }
 
-/* console.log(
-                'CAN LAY',
-                card,
-                lastLaidCard,
-                canLayCard,
-                !currentLaidCards,
-                lastLaidCard && lastLaidCard.value <= card.value && !lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard,
-                currentLaidCards && !lastLaidCard.isTeaseCard && card.isMagicCard,
-                currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 14 && card.isMagicCard,
-                currentLaidCards &&
-                    lastLaidCard.isMagicCard &&
-                    lastLaidCard.value === 0 &&
-                    getSecondArrayItem(currentLaidCards).value <= card.value,
-                currentLaidCards && lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= card.value,
-                currentLaidCards && lastLaidCard.isTeaseCard && card.value >= 3 && card.value <= 7,
-            ); */

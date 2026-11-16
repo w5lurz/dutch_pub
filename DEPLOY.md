@@ -32,6 +32,7 @@ The frontend build reads `REACT_APP_BASE_URL`, which is set in the [Dockerfile](
 
 ```sh
 cp backend/.env.example backend/.env   # then fill in the values
+cd packages/shared && npm install      # shared types/rules/API client, built automatically by the frontend's npm scripts
 docker compose up db                   # MySQL on localhost:3307
 cd backend && npm install && npm start # API + sockets on :3030
 cd frontend && npm install && npm start # CRA dev server on :3000

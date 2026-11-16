@@ -1,6 +1,5 @@
 import { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Socket } from 'socket.io-client';
 import { updateGame } from '../app/gameSlice';
 import { setToast } from '../app/generalSlice';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
@@ -11,7 +10,7 @@ import { setInGame } from '../app/userSlice';
 import { SocketContext } from './useApp';
 
 export default function useRooms() {
-    const socket: Socket = useContext(SocketContext)!;
+    const socket = useContext(SocketContext)!;
     let navigate = useNavigate();
 
     const dispatch = useAppDispatch();

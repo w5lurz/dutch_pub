@@ -1,5 +1,4 @@
 import { ChangeEvent, useContext, useEffect, useState } from 'react';
-import { Socket } from 'socket.io-client';
 import { setToast } from '../../../app/generalSlice';
 import { useAppDispatch } from '../../../app/hooks';
 import { ChatMessage, User } from '../../../app/types';
@@ -10,7 +9,7 @@ import { ChatIcon } from '../../util/UtilComponents';
 type ChatInterfaceProps = { roomId: number; user: User };
 
 export default function ChatInterface({ roomId, user }: ChatInterfaceProps) {
-    const socket: Socket = useContext(SocketContext)!;
+    const socket = useContext(SocketContext)!;
 
     const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
     const [message, setMessage] = useState<string>('');

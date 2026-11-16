@@ -16,7 +16,5 @@ export const calculateColorClasses = (colorName: string, disabled?: boolean) => 
     }
 };
 
-export const getFirstArrayItem = <T extends Array<any>>(arr: T) => arr[0];
-export const getSecondArrayItem = <T extends Array<any>>(arr: T) => arr && arr.length >= 2 && arr[1];
 
 export const isPrivate = (visibility: string) => visibility === 'private';

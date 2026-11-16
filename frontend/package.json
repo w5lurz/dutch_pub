@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@dutch-pub/shared": "file:../packages/shared",
     "@reduxjs/toolkit": "^1.9.1",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
@@ -21,6 +22,10 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "build:shared": "npm run build --prefix ../packages/shared",
+    "prestart": "npm run build:shared",
+    "prebuild": "npm run build:shared",
+    "pretest": "npm run build:shared",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

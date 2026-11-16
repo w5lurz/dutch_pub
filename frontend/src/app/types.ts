@@ -1,56 +1,24 @@
 import { RefObject } from 'react';
+import type { Socket } from 'socket.io-client';
+import type { ClientToServerEvents, ServerToClientEvents } from '@dutch-pub/shared';
 
-export type User = {
-    id: number;
-    username: string;
-    email?: string;
-    inGame?: number;
-    isGuest?: boolean;
-    socketId?: string;
-} | null;
+// Domain types live in the shared package; re-exported so existing imports keep working.
+export type {
+    User,
+    Player,
+    TRoom,
+    TRooms,
+    TCard,
+    Cards,
+    Opponent,
+    Opponents,
+    UserCards,
+    Game,
+    TLeaderBoard,
+    ChatMessage,
+} from '@dutch-pub/shared';
 
-export type Player = { username: string; socketId: string };
-
-export type TRoom = {
-    name: string;
-    owner: string;
-    players: Array<Player>;
-    slots: number;
-    visibility: string;
-    inGame?: boolean;
-};
-
-export type TRooms = { [key: number]: TRoom };
-
-export type TCard = {
-    name: string;
-    value: number;
-    color: string;
-    isMagicCard?: boolean;
-    isTeaseCard?: boolean;
-};
-
-export type Cards = Array<TCard>;
-
-export type Opponent = {
-    hand: number;
-    table: number;
-    tableFlipped: Cards;
-    active?: boolean;
-};
-
-export type Opponents = { [key: string]: Opponent };
-
-export type UserCards = { hand: Cards; table: number; tableFlipped: Cards };
-
-export type Game = {
-    userCards: UserCards;
-    active?: boolean;
-    opponents: Opponents;
-    deck: number;
-    laidCards: Array<TCard> | null;
-    burntCards: Array<TCard> | null;
-};
+export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 export type TToast = {
     id: string | number;
@@ -70,17 +38,8 @@ export type GeneralState = {
     toast: TToast | null;
 };
 
-export type TLeaderBoard = Array<{ rank: number; winner: string; wins: number; favouriteFriend: string; latestWin: string }>;
-
 export type MessageToastsContextType = {
     add: (toast: Omit<TToast, 'id'>) => void;
     remove: (toastId: number, ref: RefObject<HTMLDivElement>) => void;
     position: ToastPositionType;
-};
-
-export type ChatMessage = {
-    id: number;
-    senderName: string;
-    message: string;
-    time: string;
 };

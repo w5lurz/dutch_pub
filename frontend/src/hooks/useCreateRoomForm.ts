@@ -1,12 +1,11 @@
 import { FormEvent, useContext, useState } from 'react';
-import { Socket } from 'socket.io-client';
 import { setToast } from '../app/generalSlice';
 import { useAppDispatch } from '../app/hooks';
 import { User } from '../app/types';
 import { SocketContext } from './useApp';
 
 export default function useCreateRoomForm(user?: User) {
-    const socket: Socket = useContext(SocketContext)!;
+    const socket = useContext(SocketContext)!;
     const [isCreateRoomVisible, setIsCreateRoomVisible] = useState<boolean>(false);
 
     const dispatch = useAppDispatch();

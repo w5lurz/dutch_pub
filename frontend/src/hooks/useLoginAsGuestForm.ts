@@ -1,5 +1,4 @@
 import { FormEvent, useContext, useEffect, useState } from 'react';
-import { Socket } from 'socket.io-client';
 import { addGuest } from '../app/api';
 import { setToast } from '../app/generalSlice';
 import { useAppDispatch } from '../app/hooks';
@@ -7,7 +6,7 @@ import { setUser } from '../app/userSlice';
 import { SocketContext } from './useApp';
 
 export default function useLoginAsGuestForm() {
-    const socket: Socket = useContext(SocketContext)!;
+    const socket = useContext(SocketContext)!;
 
     const [socketId, setSocketId] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
