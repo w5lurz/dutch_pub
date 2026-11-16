@@ -1,5 +1,10 @@
 // End-to-end tests: run the real server against the database configured in backend/.env.
 // Creates one `e2e_*` user and deletes it again afterwards.
+//
+// TODO missing coverage:
+// - `draw-cards`: picking up the pile (hand gets the laid cards, turn passes on).
+// - Winning a game: `game-won` broadcast, room removed, `played_games` row written
+//   (needs cleanup of that row, like the test user) and shown on the leaderboard.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
