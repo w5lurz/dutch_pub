@@ -191,6 +191,10 @@ export const game = io => {
             }
         });
 
+        socket.on('get-game-state', () => {
+            socket.emit('game-state', buildGameState(socket.data.user?.username));
+        });
+
         socket.on('draw-cards', ({ roomId, username }) => {
             const { error } = validateTurn(socket, { roomId, username });
             if (error) {
@@ -231,39 +235,59 @@ const isLastFourCardsSame = (laidCards, card) =>
     laidCards[0].value === laidCards[1].value &&
     laidCards[1].value === laidCards[2].value;
 
-export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
-    const rooms = io.of('/').adapter.rooms;
-    console.log(rooms);
-    console.log(rooms[`game-${roomId}`]);
-
-    room.players.forEach(player => {
-        const playerSpecificGameData = {
-            userCards: {},
-            opponents: {},
-        };
-        playerSpecificGameData.userCards = {
-            ...game.players[player.username].userCards,
-            table: game.players[player.username].userCards.table.length,
-        };
-
-        room.players.forEach(otherPlayer => {
-            if (player.socketId !== otherPlayer.socketId) {
-                playerSpecificGameData.opponents[otherPlayer.username] = {};
-                playerSpecificGameData.opponents[otherPlayer.username].table = game.players[otherPlayer.username].userCards.table.length;
-                playerSpecificGameData.opponents[otherPlayer.username].hand = game.players[otherPlayer.username].userCards.hand.length;
-                playerSpecificGameData.opponents[otherPlayer.username].tableFlipped = [
-                    ...game.players[otherPlayer.username].userCards.tableFlipped,
-                ];
-                playerSpecificGameData.opponents[otherPlayer.username].active = game.players[otherPlayer.username].active;
-            }
-        });
-        playerSpecificGameData.laidCards = game.laidCards ? game.laidCards : null;
-        playerSpecificGameData.burntCards = game.burntCards ? game.burntCards : null;
-        playerSpecificGameData.deck = game.deck.length;
-        playerSpecificGameData.active = game.players[player.username].active;
-
-        io.to(player.socketId).emit(message, playerSpecificGameData, roomsList, roomId);
+/**
+ * What `username` may see of `game`: their own cards (face-down table cards only as a
+ * count), opponents' card counts and face-up cards, the pile, the deck size and the turn.
+ */
+export const buildPlayerView = (room, game, username) => {
+    const opponents = {};
+    room.players.forEach(otherPlayer => {
+        if (otherPlayer.username !== username) {
+            const { userCards, active } = game.players[otherPlayer.username];
+            opponents[otherPlayer.username] = {
+                table: userCards.table.length,
+                hand: userCards.hand.length,
+                tableFlipped: [...userCards.tableFlipped],
+                active,
+            };
+        }
     });
+    const own = game.players[username];
+    return {
+        userCards: { ...own.userCards, table: own.userCards.table.length },
+        opponents,
+        laidCards: game.laidCards ? game.laidCards : null,
+        burntCards: game.burntCards ? game.burntCards : null,
+        deck: game.deck.length,
+        active: own.active,
+    };
+};
+
+export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
+    room.players.forEach(player => {
+        io.to(player.socketId).emit(message, buildPlayerView(room, game, player.username), roomsList, roomId);
+    });
+};
+
+/** The room `username` is in, as `[roomId, room]`, or undefined. */
+const findRoomOf = username => {
+    const entry = Object.entries(roomsList).find(([, room]) => room.players.some(player => player.username === username));
+    return entry && [Number(entry[0]), entry[1]];
+};
+
+/**
+ * Full state for one client, used to re-sync after a reconnect or when the app returns to
+ * the foreground: all rooms, the user's room (if any), their view of its game (if
+ * started) and the room's chat history.
+ */
+export const buildGameState = username => {
+    const found = username ? findRoomOf(username) : undefined;
+    if (!found) {
+        return { roomId: null, game: null, rooms: roomsList, messages: [] };
+    }
+    const [roomId, room] = found;
+    const game = room.inGame && games[roomId] ? buildPlayerView(room, games[roomId], username) : null;
+    return { roomId, game, rooms: roomsList, messages: roomMessages[`game-${roomId}`] ?? [] };
 };
 
 const setActivePlayerNext = (players, username) => {

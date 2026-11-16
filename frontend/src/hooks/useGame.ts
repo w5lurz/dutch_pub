@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setRooms } from '../app/roomsSlice';
 import { RootState } from '../app/store';
 import { hasAnyPlayableCard } from '@dutch-pub/shared';
+import type { GameState } from '@dutch-pub/shared';
 import { Game, TRooms, User } from '../app/types';
 import { setUser } from '../app/userSlice';
 import { SocketContext } from './useApp';
@@ -64,12 +65,24 @@ export default function useGame() {
         // DISCONNECTNEL is megvannak ezek
         const userDisconnectedListener = () => console.log('Socket disconnecting...', user, roomId);
         // CONNECTNEL is megvannak ezek
+        // After a reconnect the server re-binds our seat to the new socket; ask for the
+        // current state in case events were missed while disconnected.
         const userConnectedListener = () => {
             console.log('Socket connecting...', user, roomId);
-            if (socket.recovered) {
-                console.log('Socket RECOVERED...', socket);
+            socket.emit('get-game-state');
+        };
+        const gameStateListener = (state: GameState) => {
+            dispatch(setRooms(state.rooms));
+            if (state.game) {
+                dispatch(updateGame(state.game));
+            } else {
+                // The game ended (or we were removed) while we were disconnected.
+                dispatch(updateGame(initialState));
+                dispatch(setUser({ ...user, inGame: undefined } as User));
+                navigate('/play');
             }
         };
+        socket.on('game-state', gameStateListener);
         const userReconnectedListener = () => console.log('Reconnecting...', user, roomId);
         socket.on('disconnect', userDisconnectedListener);
         socket.on('connect', userConnectedListener);
@@ -81,6 +94,7 @@ export default function useGame() {
             socket.off('lay-card-rejected', layCardRejectedListener);
             socket.off('disconnect', userDisconnectedListener);
             socket.off('connect', userConnectedListener);
+            socket.off('game-state', gameStateListener);
             socket.io.off('reconnect', userReconnectedListener);
         };
     }, []);

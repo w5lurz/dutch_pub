@@ -184,6 +184,19 @@ describe('socket authentication', () => {
         }
     });
 
+    test('anonymous sockets get an empty game state', async () => {
+        const anonymous = await connectSocket();
+        try {
+            anonymous.emit('get-game-state');
+            const [state] = await waitFor(anonymous, 'game-state');
+            assert.equal(state.roomId, null);
+            assert.equal(state.game, null);
+            assert.deepEqual(state.messages, []);
+        } finally {
+            anonymous.close();
+        }
+    });
+
     test('an invalid handshake token is rejected', async () => {
         await assert.rejects(connectSocket({ auth: { token: 'not-a-jwt' } }), { message: 'unauthorized' });
     });
@@ -261,6 +274,32 @@ describe('socket game flow', () => {
             assert.equal(game.laidCards, null);
         }
         assert.notEqual(!!gameA.active, !!gameB.active, 'exactly one player must be active');
+    });
+
+    test('players who reconnect with a new socket get their seat and state back', async () => {
+        const handsBefore = { a: games.a.userCards.hand, b: games.b.userCards.hand };
+        a.close();
+        b.close();
+        // New sockets (new ids), as after the app was in the background past the recovery window.
+        a = await connectSocket({ auth: { token: userToken } });
+        b = await connectSocket({ auth: { token: guestToken } });
+
+        a.emit('get-game-state');
+        b.emit('get-game-state');
+        const [[stateA], [stateB]] = await Promise.all([waitFor(a, 'game-state'), waitFor(b, 'game-state')]);
+
+        for (const [state, name] of [
+            [stateA, 'a'],
+            [stateB, 'b'],
+        ]) {
+            assert.equal(state.roomId, roomId);
+            assert.ok(state.rooms[roomId].inGame);
+            assert.deepEqual(state.game.userCards.hand, handsBefore[name]);
+        }
+        assert.equal(stateA.game.opponents[guestName].hand, 3);
+        games = { a: stateA.game, b: stateB.game };
+        // The following tests act and listen on the new sockets, so they also prove the
+        // server re-bound both seats (moves are only accepted from the seat's socket).
     });
 
     const players = () =>

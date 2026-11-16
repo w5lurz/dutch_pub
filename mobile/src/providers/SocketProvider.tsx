@@ -11,6 +11,8 @@ import { useAppDispatch } from '@/store';
 type SocketContextValue = {
     socket: AppSocket;
     connected: boolean;
+    /** Whether the socket has connected at least once (to tell "connecting" from "lost"). */
+    everConnected: boolean;
     /** Reconnects so the server sees the current token (call after login / logout / join as guest). */
     reconnect: () => void;
 };
@@ -20,8 +22,7 @@ const SocketContext = createContext<SocketContextValue | null>(null);
 /**
  * Owns the app's single Socket.io connection. The server identifies the socket once, at
  * connect time, from `auth.token`; the `auth` callback reads the stored token on every
- * (re)connect.
- * TODO (PLAN.md Step 4): reconnect / re-sync state when the app returns to the foreground.
+ * (re)connect. Re-syncing after reconnects / foregrounding lives in <GameSync>.
  */
 export function SocketProvider({ children }: { children: ReactNode }) {
     const dispatch = useAppDispatch();
@@ -40,9 +41,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }),
     );
     const [connected, setConnected] = useState(false);
+    const [everConnected, setEverConnected] = useState(false);
 
     useEffect(() => {
-        const onConnect = () => setConnected(true);
+        const onConnect = () => {
+            setConnected(true);
+            setEverConnected(true);
+        };
         const onDisconnect = () => setConnected(false);
         const onConnectError = async (error: Error) => {
             if (error.message === 'unauthorized' || error.message === 'username taken') {
@@ -77,7 +82,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         socket.connect();
     }, [socket]);
 
-    return <SocketContext.Provider value={{ socket, connected, reconnect }}>{children}</SocketContext.Provider>;
+    return <SocketContext.Provider value={{ socket, connected, everConnected, reconnect }}>{children}</SocketContext.Provider>;
 }
 
 export function useSocket() {

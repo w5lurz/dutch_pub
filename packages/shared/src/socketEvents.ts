@@ -4,6 +4,17 @@
 
 import type { ChatMessage, Game, TCard, TRooms } from './types';
 
+/** Reply to `get-game-state`: everything a client needs to re-sync after a reconnect. */
+export type GameState = {
+    rooms: TRooms;
+    /** The room the user is in, or null. */
+    roomId: number | null;
+    /** The user's view of their room's game, or null if not started (or not in a room). */
+    game: Game | null;
+    /** Chat history of the user's room. */
+    messages: Array<ChatMessage>;
+};
+
 /** Events the server emits to clients. */
 export interface ServerToClientEvents {
     'rooms-listed': (rooms: TRooms) => void;
@@ -20,6 +31,7 @@ export interface ServerToClientEvents {
     'lay-card-rejected': (reason: string) => void;
     /** Sent only to the sender when any other action was refused (not logged in, not the owner, ...). */
     'action-rejected': (reason: string) => void;
+    'game-state': (state: GameState) => void;
 }
 
 /** Events clients emit to the server. */
@@ -35,4 +47,6 @@ export interface ClientToServerEvents {
     'draw-cards': (payload: { roomId: number; username?: string }) => void;
     'send-message': (payload: { roomId: number; username?: string; message: string }) => void;
     'get-socketid': () => void;
+    /** Ask for a `game-state` re-sync (after reconnecting / returning to the foreground). */
+    'get-game-state': () => void;
 }

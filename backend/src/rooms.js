@@ -57,22 +57,31 @@ export const modifyRooms = newRooms => {
     roomsList = newRooms;
 };
 
+/**
+ * Points the user's seat in their room at this socket and re-joins the room's socket.io
+ * room. Runs on every connection of an identified socket (new or recovered), so a player
+ * who reconnects, e.g. after the app was in the background, can keep playing and receives
+ * updates again. If the same user connects twice, the latest connection wins.
+ */
+const rebindPlayer = socket => {
+    const user = socket.data.user;
+    if (!user) return;
+    Object.values(roomsList).forEach(room => {
+        const player = room.players.find(roomPlayer => roomPlayer.username === user.username);
+        if (player) {
+            player.socketId = socket.id;
+            socket.join(room.socketRoomId);
+            socket.data.username = user.username;
+            socket.data.roomId = room.socketRoomId;
+        }
+    });
+};
+
 export const rooms = io => {
     io.on('connection', socket => {
         console.log('Client connected', socket.id);
 
-        if (socket.recovered) {
-            console.log('Recovered socket', socket.id, socket.data);
-            console.log('Recovered username', socket.data.username);
-            console.log('Recovered roomId', socket.data.roomId);
-            const foundRoom = Object.values(roomsList).find(room => room.socketRoomId === socket.data.roomId);
-            if (foundRoom) {
-                const players = foundRoom.players;
-                const foundPlayer = players.find(player => player.username === socket.data.username);
-                foundPlayer.socketId = socket.id;
-            }
-            // TODO update room players socketId
-        }
+        rebindPlayer(socket);
 
         socket.on('list-rooms', () => {
             socket.emit('rooms-listed', roomsList);

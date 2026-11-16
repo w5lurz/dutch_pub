@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 
+import chatReducer from './chatSlice';
 import gameReducer from './gameSlice';
 import generalReducer from './generalSlice';
 import roomsReducer from './roomsSlice';
@@ -12,6 +13,7 @@ export const store = configureStore({
         rooms: roomsReducer,
         game: gameReducer,
         general: generalReducer,
+        chat: chatReducer,
     },
 });
 

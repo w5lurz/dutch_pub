@@ -6,8 +6,10 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 
+import ConnectionBanner from '@/components/ConnectionBanner';
 import Toast from '@/components/Toast';
 import { useSession } from '@/hooks/useSession';
+import { GameSync } from '@/providers/GameSync';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { store } from '@/store';
 
@@ -26,6 +28,7 @@ export default function RootLayout() {
             <SafeAreaProvider>
                 <SocketProvider>
                     <RestoreSession />
+                    <GameSync />
                     <StatusBar style="light" />
                     <Stack
                         screenOptions={{
@@ -36,6 +39,7 @@ export default function RootLayout() {
                     >
                         <Stack.Screen name="index" options={{ title: 'Dutch Pub' }} />
                     </Stack>
+                    <ConnectionBanner />
                     <Toast />
                 </SocketProvider>
             </SafeAreaProvider>
