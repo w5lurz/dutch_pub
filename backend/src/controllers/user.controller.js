@@ -1,8 +1,9 @@
 import db from '../models/index.js';
 const User = db.user;
 
+// Public fields only: never expose password hashes or emails.
 export const allAccess = async (req, res) => {
-    const users = await User.findAll();
+    const users = await User.findAll({ attributes: ['id', 'username'] });
 
     res.status(200).send(users);
 };

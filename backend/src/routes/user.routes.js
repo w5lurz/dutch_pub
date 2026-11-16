@@ -5,7 +5,7 @@ import { verifyToken } from '../middleware/authJwt.js';
 
 const router = Router();
 
-router.get('/all', allAccess);
+router.get('/all', [verifyToken], allAccess);
 
 router.get('/user', [verifyToken], userBoard);
 
