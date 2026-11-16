@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { ChatButton, ChatModal, OpponentsBar, PileArea, PlayerBoard, useLandscapeWhileFocused } from '@/components/game';
+import { CardDragProvider, ChatButton, ChatModal, OpponentsBar, PileArea, PlayerBoard, useLandscapeWhileFocused } from '@/components/game';
 import { Screen } from '@/components/ui';
 import { useGameActions } from '@/hooks/useGameActions';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -11,7 +11,8 @@ import { setToast } from '@/store/generalSlice';
 /**
  * The running game, in landscape (locked while focused; the rest of the app is portrait):
  * opponents in a column on the left, turn + deck / laid / burnt in the centre, your table
- * cards and hand along the bottom, chat button top-right (modal). The root layout brings the user here
+ * cards and hand along the bottom, chat button top-right (modal). Cards are played by
+ * dragging them onto the laid pile (`CardDragProvider`). The root layout brings the user here
  * when `user.inGame` is set; this screen leaves when it clears (game won, or a re-sync
  * without a game) and blocks Android's back button meanwhile.
  */
@@ -68,23 +69,26 @@ export default function GameScreen() {
 
     return (
         <Screen edges={['top', 'bottom', 'left', 'right']} padded={false} background="gray" contentClassName="flex-row">
-            <OpponentsBar opponents={game.opponents} />
+            <CardDragProvider>
+                <OpponentsBar opponents={game.opponents} />
 
-            <View className="flex-1">
-                <View className="flex-1 justify-center">
-                    <PileArea deck={game.deck} laidCards={game.laidCards} burntCards={game.burntCards} turnOf={turnOf} />
+                <View className="flex-1">
+                    <View className="flex-1 justify-center">
+                        <PileArea deck={game.deck} laidCards={game.laidCards} burntCards={game.burntCards} turnOf={turnOf} />
+                    </View>
+
+                    <PlayerBoard
+                        userCards={game.userCards}
+                        laidCards={game.laidCards}
+                        active={active}
+                        username={username}
+                        onLayCard={layCard}
+                    />
+
+                    <ChatButton unread={unread} onPress={() => toggleChat(true)} className="absolute right-2 top-2" />
                 </View>
 
-                <PlayerBoard
-                    userCards={game.userCards}
-                    laidCards={game.laidCards}
-                    active={active}
-                    username={username}
-                    onLayCard={layCard}
-                />
-
-                <ChatButton unread={unread} onPress={() => toggleChat(true)} className="absolute right-2 top-2" />
-            </View>
+            </CardDragProvider>
 
             <ChatModal
                 visible={chatOpen}

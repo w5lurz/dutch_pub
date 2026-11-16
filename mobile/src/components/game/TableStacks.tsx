@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import type { Cards, TCard } from '@dutch-pub/shared';
 
 import { CARD_GAP, useCardSize, type CardSize } from './cardSize';
+import { DraggableCard } from './DraggableCard';
 import { PlayingCard } from './PlayingCard';
 
 /** One table spot: the face-up card on top (if any), whether a face-down card lies below. */
@@ -21,6 +22,9 @@ export function tableSpots(faceUp: Cards, faceDownCount: number): TableSpot[] {
 	return spots;
 }
 
+/** Selection / drag id of a face-up table card. */
+const upId = (card: TCard, i: number) => `up-${i}-${card.color}-${card.value}`;
+
 /** How far the face-down card peeks out from under the face-up one (right and down). */
 export function stackOffset(cardWidth: number): number {
 	return Math.max(3, Math.round(cardWidth * 0.125));
@@ -36,14 +40,18 @@ type TableStacksProps = {
 	faceUp: Cards;
 	faceDownCount: number;
 	size: CardSize;
-	/** Your own table: makes the cards pressable. Opponents' stacks are not interactive. */
+	/** Lightly fade all cards (your table while you still hold cards). */
+	faded?: boolean;
+	/** Your own table: the top cards can be selected (tap) and played (drag onto the laid pile). Opponents' stacks are not interactive. */
 	play?: {
 		faceUpPlayable: boolean;
 		faceDownPlayable: boolean;
 		/** Whether a face-up card is dimmed (cannot be laid on the pile right now). */
 		dim: (card: TCard) => boolean;
-		/** `touchable`: whether this card may be played at all right now. */
-		onLayCard: (card: TCard | number, cardIndex: number, touchable: boolean) => void;
+		/** `touchable`: whether this card may be played at all right now. Returns whether it was played. */
+		onLayCard: (card: TCard | number, cardIndex: number, touchable: boolean) => boolean;
+		selectedId: string | null;
+		onSelect: (id: string) => void;
 	};
 };
 
@@ -52,7 +60,7 @@ type TableStacksProps = {
  * right of the face-up card on top. A spot without a face-up card shows only its
  * face-down card (in the same place, so nothing jumps).
  */
-export function TableStacks({ faceUp, faceDownCount, size, play }: TableStacksProps) {
+export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }: TableStacksProps) {
 	const { width, height } = useCardSize(size);
 	const offset = stackOffset(width);
 	const spots = tableSpots(faceUp, faceDownCount);
@@ -63,24 +71,40 @@ export function TableStacks({ faceUp, faceDownCount, size, play }: TableStacksPr
 			{spots.map((spot, i) => (
 				<View key={i} style={{ width: width + offset, height: height + offset }}>
 					{spot.faceDown ? (
-						<PlayingCard
-							faceDown
-							size={size}
-							style={{ position: 'absolute', left: offset, top: offset }}
-							// Only pressable once nothing lies on top of it.
-							accessibilityHint={play && !play.faceDownPlayable ? 'Play your other cards first' : undefined}
-							onPress={play && !spot.faceUp ? () => play.onLayCard(i, i, play.faceDownPlayable) : undefined}
-						/>
+						play && !spot.faceUp ? (
+							// Only playable once nothing lies on top of it.
+							<DraggableCard
+								id={`down-${i}`}
+								card={null}
+								size={size}
+								faded={faded}
+								style={{ position: 'absolute', left: offset, top: offset }}
+								selected={play.selectedId === `down-${i}`}
+								accessibilityHint={play.faceDownPlayable ? undefined : 'Play your other cards first'}
+								onSelect={() => play.onSelect(`down-${i}`)}
+								onPlay={() => play.onLayCard(i, i, play.faceDownPlayable)}
+							/>
+						) : (
+							<PlayingCard faceDown size={size} faded={faded} style={{ position: 'absolute', left: offset, top: offset }} />
+						)
 					) : null}
 					{spot.faceUp ? (
-						<PlayingCard
-							card={spot.faceUp}
-							size={size}
-							style={{ position: 'absolute', left: 0, top: 0 }}
-							dimmed={play ? play.faceUpPlayable && play.dim(spot.faceUp) : false}
-							accessibilityHint={play && !play.faceUpPlayable ? 'Play your hand first' : undefined}
-							onPress={play ? () => play.onLayCard(spot.faceUp as TCard, i, play.faceUpPlayable) : undefined}
-						/>
+						play ? (
+							<DraggableCard
+								id={upId(spot.faceUp, i)}
+								card={spot.faceUp}
+								size={size}
+								faded={faded}
+								style={{ position: 'absolute', left: 0, top: 0 }}
+								selected={play.selectedId === upId(spot.faceUp, i)}
+								dimmed={play.faceUpPlayable && play.dim(spot.faceUp)}
+								accessibilityHint={play.faceUpPlayable ? undefined : 'Play your hand first'}
+								onSelect={() => play.onSelect(upId(spot.faceUp as TCard, i))}
+								onPlay={() => play.onLayCard(spot.faceUp as TCard, i, play.faceUpPlayable)}
+							/>
+						) : (
+							<PlayingCard card={spot.faceUp} size={size} faded={faded} style={{ position: 'absolute', left: 0, top: 0 }} />
+						)
 					) : null}
 				</View>
 			))}

@@ -14,7 +14,8 @@ export const CHAT_COOLDOWN_MS = 3000;
  * The player's moves in the running game (`user.inGame` is the room id):
  * - `layCard(card, cardIndex, touchable)`: `card` is a hand / face-up card, or the index of
  *   a face-down card. Checked locally first (turn, `touchable`, `canLayCard`); the server
- *   validates again and answers `lay-card-rejected` (toasted by GameSync).
+ *   validates again and answers `lay-card-rejected` (toasted by GameSync). Returns whether
+ *   the card was sent (false: refused locally, with a toast).
  * - Auto pick-up: on your turn with no playable card it emits `draw-cards` once per state.
  * - `sendMessage(text)` with a 3 s cooldown (`canSend`).
  *
@@ -31,19 +32,20 @@ export function useGameActions() {
     const laidCards = game.laidCards;
 
     const layCard = useCallback(
-        (card: TCard | number, cardIndex: number, touchable = true) => {
-            if (roomId === undefined) return;
+        (card: TCard | number, cardIndex: number, touchable = true): boolean => {
+            if (roomId === undefined) return false;
             if (!active || !touchable) {
                 dispatch(setToast({ id: `place-card-failed-${Date.now()}`, type: 'warning', message: 'You cannot place that card!', duration: 3000 }));
-                return;
+                return false;
             }
             if (!canLayCard(card, laidCards)) {
                 dispatch(setToast({ id: `lay-card-failed-${Date.now()}`, type: 'sad', message: 'You cannot lay that card.', duration: 3000 }));
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-                return;
+                return false;
             }
             socket.emit('lay-card', { card, cardIndex, roomId, username });
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            return true;
         },
         [active, laidCards, roomId, username, socket, dispatch],
     );

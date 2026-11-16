@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { TCard } from '@dutch-pub/shared';
 
 import { CardBackSide, CardIcon } from '@/components/icons';
@@ -16,8 +16,10 @@ export type PlayingCardProps = {
     onPress?: () => void;
     /** Pressable but not pressable right now (no feedback, `disabled` for screen readers). */
     disabled?: boolean;
-    /** Faded, e.g. a card that cannot be laid on the current pile. */
+    /** Strongly faded, e.g. a card that cannot be laid on the current pile. */
     dimmed?: boolean;
+    /** Lightly faded, e.g. table cards that cannot be played yet. */
+    faded?: boolean;
     /** Blue outline (e.g. the top card of a pile). */
     selected?: boolean;
     /** "+N" overlay for a stack of face-down cards (shown when > 0). */
@@ -100,6 +102,7 @@ export function PlayingCard({
     onPress,
     disabled = false,
     dimmed = false,
+    faded = false,
     selected = false,
     plusCount = 0,
     accessibilityLabel,
@@ -114,16 +117,31 @@ export function PlayingCard({
         accessibilityLabel ??
         (showFace ? cardLabel(card) : plusCount > 0 ? `Face-down card, ${plusCount} more below` : 'Face-down card');
 
-    const content = showFace ? (
+    const face = showFace ? (
         <CardFace card={card} width={width} size={size} />
     ) : (
         // Inside the 2dp outline on each side.
         <CardBack width={width - 4} height={height - 4} plusCount={plusCount} />
     );
+    // Fading is a light overlay, not `opacity`: a see-through card would show the card
+    // below it (table stacks, overlapping hand), and Android applies a parent's opacity to
+    // each child separately.
+    const fadeAlpha = dimmed ? 0.6 : faded ? 0.3 : 0;
+    const content =
+        fadeAlpha > 0 ? (
+            <>
+                {face}
+                <View
+                    pointerEvents="none"
+                    style={[StyleSheet.absoluteFill, { borderRadius: 6, backgroundColor: `rgba(249, 250, 251, ${fadeAlpha})` }]} // gray-50
+                />
+            </>
+        ) : (
+            face
+        );
     const baseStyle: ViewStyle = {
         width,
         height,
-        opacity: dimmed ? 0.4 : 1,
         borderRadius: 8,
         borderWidth: 2,
         borderColor: selected ? '#2563eb' : 'transparent', // blue-600

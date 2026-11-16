@@ -3,6 +3,7 @@ import '../global.css';
 import { useEffect } from 'react';
 import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 
@@ -52,33 +53,36 @@ function InGameRedirect() {
 
 export default function RootLayout() {
     return (
-        <Provider store={store}>
-            <SafeAreaProvider>
-                <SocketProvider>
-                    <RestoreSession />
-                    <GameSync />
-                    <InGameRedirect />
-                    <StatusBar style="light" />
-                    <Stack
-                        screenOptions={{
-                            headerStyle: { backgroundColor: '#374151' }, // gray-700, as the web navbar
-                            headerTintColor: '#ffffff',
-                            contentStyle: { backgroundColor: '#ffffff' },
-                        }}
-                    >
-                        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Dutch Pub' }} />
-                        <Stack.Screen name="login" options={{ title: 'Log in' }} />
-                        <Stack.Screen name="registration" options={{ title: 'Registration' }} />
-                        {/* No way back out of a running game: no header (so no back button), no swipe-back. */}
-                        <Stack.Screen
-                            name="game"
-                            options={{ title: 'Game', headerShown: false, headerBackVisible: false, gestureEnabled: false }}
-                        />
-                    </Stack>
-                    <ConnectionBanner />
-                    <Toast />
-                </SocketProvider>
-            </SafeAreaProvider>
-        </Provider>
+        // Gesture Handler (card drag & drop in the game) needs its root view at the top.
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <Provider store={store}>
+                <SafeAreaProvider>
+                    <SocketProvider>
+                        <RestoreSession />
+                        <GameSync />
+                        <InGameRedirect />
+                        <StatusBar style="light" />
+                        <Stack
+                            screenOptions={{
+                                headerStyle: { backgroundColor: '#374151' }, // gray-700, as the web navbar
+                                headerTintColor: '#ffffff',
+                                contentStyle: { backgroundColor: '#ffffff' },
+                            }}
+                        >
+                            <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Dutch Pub' }} />
+                            <Stack.Screen name="login" options={{ title: 'Log in' }} />
+                            <Stack.Screen name="registration" options={{ title: 'Registration' }} />
+                            {/* No way back out of a running game: no header (so no back button), no swipe-back. */}
+                            <Stack.Screen
+                                name="game"
+                                options={{ title: 'Game', headerShown: false, headerBackVisible: false, gestureEnabled: false }}
+                            />
+                        </Stack>
+                        <ConnectionBanner />
+                        <Toast />
+                    </SocketProvider>
+                </SafeAreaProvider>
+            </Provider>
+        </GestureHandlerRootView>
     );
 }

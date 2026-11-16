@@ -1,7 +1,9 @@
 export { pileDrawSignature } from './autoDraw';
 export { CARD_ASPECT, CARD_GAP, cardDimensions, useCardSize, type CardSize } from './cardSize';
+export { CardDragProvider, CardDropZone, useCardDrag } from './CardDrag';
 export { ChatButton } from './ChatButton';
 export { ChatModal } from './ChatModal';
+export { DraggableCard } from './DraggableCard';
 export { HandFan } from './HandFan';
 export { OpponentsBar } from './OpponentsBar';
 export { lockOrientation, lockPortrait, useLandscapeWhileFocused } from './orientation';
