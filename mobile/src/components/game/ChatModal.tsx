@@ -4,6 +4,7 @@ import type { ChatMessage } from '@dutch-pub/shared';
 
 import { CloseIcon } from '@/components/icons';
 import { Button, Screen, TextField } from '@/components/ui';
+import { useTheme } from '@/lib/theme';
 
 type ChatModalProps = {
     visible: boolean;
@@ -43,6 +44,7 @@ const MODAL_ORIENTATIONS = ['portrait', 'landscape', 'landscape-left', 'landscap
  * no Android full-screen keyboard ("extract") mode, so the messages stay visible.
  */
 export function ChatModal({ visible, onClose, messages, username, onSend, canSend }: ChatModalProps) {
+    const colors = useTheme();
     const [text, setText] = useState('');
     // Inverted list: newest first in the data, shown at the bottom and kept in view.
     const newestFirst = useMemo(() => [...messages].reverse(), [messages]);
@@ -74,7 +76,7 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
                             hitSlop={8}
                             className="rounded-md p-1 active:bg-gray-200"
                         >
-                            <CloseIcon size={24} color="#374151" />
+                            <CloseIcon size={24} color={colors.textMuted} />
                         </Pressable>
                     </View>
 

@@ -1,5 +1,7 @@
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
+import { useTheme } from '@/lib/theme';
+
 export type ButtonVariant = 'green' | 'blue' | 'yellow' | 'red' | 'gray';
 export type ButtonSize = 'sm' | 'md';
 
@@ -45,6 +47,7 @@ export function Button({
     accessibilityLabel,
     testID,
 }: ButtonProps) {
+    const { text } = useTheme();
     const inactive = disabled || loading;
     const sizes = sizeClasses[size];
 
@@ -61,7 +64,7 @@ export function Button({
             } ${className}`}
         >
             {loading ? (
-                <ActivityIndicator size="small" color="#1f2937" />
+                <ActivityIndicator size="small" color={text} />
             ) : (
                 <Text className={`font-medium text-gray-900 ${sizes.text}`}>{label}</Text>
             )}

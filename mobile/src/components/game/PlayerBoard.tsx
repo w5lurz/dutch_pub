@@ -73,7 +73,10 @@ export function PlayerBoard({ userCards, laidCards, active, username, onLayCard 
 					accessibilityLabel={`Your hand, ${hand.length} cards`}
 				>
 					{hand.map((card, i) => {
-						const id = `hand-${i}-${card.color}-${card.value}`;
+						// Keyed by the card (plus its occurrence, in case of duplicates), not its
+						// position: the cards then animate in / out instead of all re-mounting.
+						const occurrence = hand.slice(0, i).filter(c => c.color === card.color && c.value === card.value).length;
+						const id = `hand-${card.color}-${card.value}-${occurrence}`;
 						return (
 							<DraggableCard
 								key={id}

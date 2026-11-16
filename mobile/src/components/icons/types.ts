@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 export type IconProps = {
     /** Sets both width and height. */
     size?: number;
@@ -15,8 +17,16 @@ export const iconSize = ({ size, width, height }: IconProps, defaultWidth: numbe
     height: height ?? size ?? defaultHeight,
 });
 
-/** Accessibility props for an Svg root. */
-export const iconA11y = (accessibilityLabel?: string) =>
-    accessibilityLabel
+/**
+ * Accessibility props for an Svg root. On web, react-native-svg passes props straight to
+ * the <svg> element, so it gets ARIA attributes there (`accessible` would end up in the DOM
+ * and React warns "Received `true` for a non-boolean attribute").
+ */
+export const iconA11y = (accessibilityLabel?: string) => {
+    if (Platform.OS === 'web') {
+        return accessibilityLabel ? { role: 'img' as const, 'aria-label': accessibilityLabel } : { 'aria-hidden': true };
+    }
+    return accessibilityLabel
         ? { accessible: true, accessibilityRole: 'image' as const, accessibilityLabel }
         : { accessible: false, accessibilityElementsHidden: true, importantForAccessibility: 'no-hide-descendants' as const };
+};

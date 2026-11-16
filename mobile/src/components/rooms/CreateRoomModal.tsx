@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CloseIcon } from '@/components/icons';
 import { Button, SegmentedControl, TextField } from '@/components/ui';
+import { useTheme } from '@/lib/theme';
 import type { NewRoom, RoomVisibility } from '@/hooks/useRooms';
 
 const SLOT_OPTIONS = [
@@ -27,6 +28,7 @@ export type CreateRoomModalProps = {
 
 /** Bottom-sheet style modal for creating a room (web `CreateRoomForm`). */
 export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }: CreateRoomModalProps) {
+    const colors = useTheme();
     const insets = useSafeAreaInsets();
     const [name, setName] = useState('');
     const [slots, setSlots] = useState<number>(2);
@@ -72,7 +74,7 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
                             onPress={close}
                             className="rounded p-1 active:bg-gray-100"
                         >
-                            <CloseIcon size={24} color="#374151" />
+                            <CloseIcon size={24} color={colors.textMuted} />
                         </Pressable>
                     </View>
 

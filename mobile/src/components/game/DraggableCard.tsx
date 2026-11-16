@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { FadeInDown, FadeOut, LinearTransition, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import type { TCard } from '@dutch-pub/shared';
 
@@ -9,6 +10,10 @@ import { cardLabel, PlayingCard } from './PlayingCard';
 
 /** How far a selected card is lifted. */
 const SELECTED_LIFT = 8;
+/** Card animations: in (dealt / picked up), out (played), and the others closing the gap. */
+const ENTERING = FadeInDown.duration(220);
+const EXITING = FadeOut.duration(150);
+const LAYOUT = LinearTransition.duration(200);
 
 type DraggableCardProps = {
 	/** Unique among your cards right now (selection and drag state). */
@@ -33,6 +38,8 @@ type DraggableCardProps = {
  * One of your cards: tap to select it (lifted, blue outline), drag it onto the laid pile
  * (`CardDropZone`) to play it. The dragged copy lives in `CardDragProvider`'s overlay; the
  * card stays hidden in its place meanwhile. Screen readers get a "Play" action instead.
+ * Cards slide in when they arrive, fade out when played, and the rest glide into place
+ * (so keep the React `key` tied to the card, not its position).
  */
 export function DraggableCard({
 	id,
@@ -73,31 +80,33 @@ export function DraggableCard({
 	const gesture = useCompetingGestures(pan, tap);
 
 	const label = card ? cardLabel(card) : 'Face-down card';
+	const liftStyle = useAnimatedStyle(() => ({
+		transform: [{ translateY: withTiming(selected ? -SELECTED_LIFT : 0, { duration: 120 }) }],
+	}));
 
 	return (
-		<GestureDetector gesture={gesture}>
-			<View
-				ref={ref}
-				collapsable={false}
-				accessible
-				accessibilityRole="button"
-				accessibilityLabel={label}
-				accessibilityHint={accessibilityHint ?? 'Tap to select, drag onto the laid pile to play'}
-				accessibilityState={{ selected }}
-				accessibilityActions={[{ name: 'activate' }, { name: 'play', label: 'Play' }]}
-				onAccessibilityAction={event => {
-					if (event.nativeEvent.actionName === 'play') onPlay();
-					else onSelect();
-				}}
-				style={[
-					style,
-					{ opacity: drag.draggedId === id ? 0 : 1 },
-					selected ? { transform: [{ translateY: -SELECTED_LIFT }] } : null,
-				]}
-			>
-				<PlayingCard card={card} faceDown={!card} size={size} selected={selected} dimmed={dimmed} faded={faded} />
-			</View>
-		</GestureDetector>
+		// Outer view: position (from `style`) and animations; inner view: gestures, measuring, a11y.
+		<Animated.View entering={ENTERING} exiting={EXITING} layout={LAYOUT} style={[style, liftStyle]}>
+			<GestureDetector gesture={gesture}>
+				<View
+					ref={ref}
+					collapsable={false}
+					accessible
+					accessibilityRole="button"
+					accessibilityLabel={label}
+					accessibilityHint={accessibilityHint ?? 'Tap to select, drag onto the laid pile to play'}
+					accessibilityState={{ selected }}
+					accessibilityActions={[{ name: 'activate' }, { name: 'play', label: 'Play' }]}
+					onAccessibilityAction={event => {
+						if (event.nativeEvent.actionName === 'play') onPlay();
+						else onSelect();
+					}}
+					style={{ opacity: drag.draggedId === id ? 0 : 1 }}
+				>
+					<PlayingCard card={card} faceDown={!card} size={size} selected={selected} dimmed={dimmed} faded={faded} />
+				</View>
+			</GestureDetector>
+		</Animated.View>
 	);
 }
 

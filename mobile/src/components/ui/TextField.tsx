@@ -1,5 +1,6 @@
 import { useId, type ComponentRef, type Ref } from 'react';
 import { Text, TextInput, View, type TextInputProps } from 'react-native';
+import { useTheme } from '@/lib/theme';
 
 export type TextFieldProps = TextInputProps & {
     label?: string;
@@ -12,6 +13,7 @@ export type TextFieldProps = TextInputProps & {
 
 /** Labelled text input. All `TextInputProps` (and `ref`) are forwarded to the TextInput. */
 export function TextField({ label, error, containerClassName = '', className = '', ref, ...inputProps }: TextFieldProps) {
+    const colors = useTheme();
     const id = useId();
 
     return (
@@ -26,7 +28,7 @@ export function TextField({ label, error, containerClassName = '', className = '
                 accessibilityLabel={inputProps.accessibilityLabel ?? label}
                 accessibilityLabelledBy={label ? `${id}-label` : undefined}
                 accessibilityHint={error ?? inputProps.accessibilityHint}
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.placeholder}
                 className={`rounded-md border bg-gray-50 p-2.5 text-base text-gray-900 ${
                     error ? 'border-red-500' : 'border-gray-300'
                 } ${className}`}

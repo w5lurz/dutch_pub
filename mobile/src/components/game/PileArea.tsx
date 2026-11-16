@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import type { Cards } from '@dutch-pub/shared';
 
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+
 import { CardDropZone } from './CardDrag';
 import { EmptyCardSlot, PlayingCard } from './PlayingCard';
 
@@ -55,7 +57,10 @@ export function PileArea({ deck, laidCards, burntCards, turnOf }: PileAreaProps)
                 <Pile title={`Laid (${laidCards?.length ?? 0})`}>
                     <CardDropZone>
                         {laidTop ? (
-                            <PlayingCard card={laidTop} size="lg" selected />
+                            // Keyed by the pile size: every newly laid card lands with a short zoom.
+                            <Animated.View key={`laid-${laidCards?.length ?? 0}`} entering={ZoomIn.duration(200)}>
+                                <PlayingCard card={laidTop} size="lg" selected />
+                            </Animated.View>
                         ) : (
                             <EmptyCardSlot size="lg" label="Laid cards, empty" />
                         )}
@@ -63,7 +68,10 @@ export function PileArea({ deck, laidCards, burntCards, turnOf }: PileAreaProps)
                 </Pile>
                 <Pile title={`Burnt (${burntCards?.length ?? 0})`} inset>
                     {burntTop ? (
-                        <PlayingCard card={burntTop} size="lg" dimmed />
+                        // Fades in whenever the laid pile is burnt.
+                        <Animated.View key={`burnt-${burntCards?.length ?? 0}`} entering={FadeIn.duration(400)}>
+                            <PlayingCard card={burntTop} size="lg" dimmed />
+                        </Animated.View>
                     ) : (
                         <EmptyCardSlot size="lg" label="Burnt cards, empty" />
                     )}

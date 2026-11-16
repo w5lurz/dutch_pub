@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import type { TCard } from '@dutch-pub/shared';
 
 import { CardBackSide, CardIcon } from '@/components/icons';
+import { useTheme } from '@/lib/theme';
 
 import { useCardSize, type CardSize } from './cardSize';
 
@@ -40,14 +41,15 @@ export function cardLabel(card: TCard): string {
 
 function CardFace({ card, width, size }: { card: TCard; width: number; size: CardSize }) {
     const red = RED_SUITS.has(card.color);
-    const textColor = red ? 'text-red-600' : 'text-gray-900';
+    // Fixed card-* colours: card faces stay light in dark mode, like real cards.
+    const textColor = red ? 'text-card-red' : 'text-card-black';
     // Number cards' name is just the value; show the name for J / Q / K and the special cards.
     const compact = size === 'sm' || size === 'xs';
     const showName = !compact && card.name !== String(card.value);
 
     return (
         <View
-            className={`flex-1 items-center rounded-md border border-gray-300 bg-gray-50 shadow-sm ${
+            className={`flex-1 items-center rounded-md border border-card-border bg-card-face shadow-sm ${
                 compact ? 'justify-center gap-0.5 p-0.5' : 'justify-between p-1'
             }`}
         >
@@ -111,6 +113,7 @@ export function PlayingCard({
     testID,
 }: PlayingCardProps) {
     const { width, height } = useCardSize(size);
+    const { background } = useTheme();
     const [pressed, setPressed] = useState(false);
     const showFace = !!card && !faceDown;
     const label =
@@ -123,7 +126,7 @@ export function PlayingCard({
         // Inside the 2dp outline on each side.
         <CardBack width={width - 4} height={height - 4} plusCount={plusCount} />
     );
-    // Fading is a light overlay, not `opacity`: a see-through card would show the card
+    // Fading is an overlay in the screen's background colour, not `opacity`: a see-through card would show the card
     // below it (table stacks, overlapping hand), and Android applies a parent's opacity to
     // each child separately.
     const fadeAlpha = dimmed ? 0.6 : faded ? 0.3 : 0;
@@ -133,7 +136,7 @@ export function PlayingCard({
                 {face}
                 <View
                     pointerEvents="none"
-                    style={[StyleSheet.absoluteFill, { borderRadius: 6, backgroundColor: `rgba(249, 250, 251, ${fadeAlpha})` }]} // gray-50
+                    style={[StyleSheet.absoluteFill, { borderRadius: 6, backgroundColor: background, opacity: fadeAlpha }]}
                 />
             </>
         ) : (

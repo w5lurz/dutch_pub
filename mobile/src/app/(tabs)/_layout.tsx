@@ -3,6 +3,8 @@ import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
 
+import { useTheme } from '@/lib/theme';
+
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 type TabIconArgs = { focused: boolean; color: ColorValue; size: number };
@@ -15,14 +17,16 @@ const tabIcon = (name: IoniconName, focusedName: IoniconName) =>
 
 /** Bottom tabs. Header styled like the root Stack (gray-700, as the web navbar). */
 export default function TabsLayout() {
+    const colors = useTheme();
     return (
         <Tabs
             screenOptions={{
                 headerStyle: { backgroundColor: '#374151' },
                 headerTintColor: '#ffffff',
-                tabBarActiveTintColor: '#2563eb', // blue-600
-                tabBarInactiveTintColor: '#6b7280', // gray-500
-                sceneStyle: { backgroundColor: '#ffffff' },
+                tabBarActiveTintColor: colors.accent,
+                tabBarInactiveTintColor: '#6b7280', // gray-500, the middle of the scale: readable in both schemes
+                tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+                sceneStyle: { backgroundColor: colors.surface },
             }}
         >
             <Tabs.Screen

@@ -1,7 +1,7 @@
 import '../global.css';
 
 import { useEffect } from 'react';
-import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
+import { Stack, ThemeProvider, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { lockPortrait } from '@/components/game/orientation';
 import Toast from '@/components/Toast';
 import { useSession } from '@/hooks/useSession';
 import { GameSync } from '@/providers/GameSync';
+import { navigationTheme, useTheme } from '@/lib/theme';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { store, useAppSelector } from '@/store';
 
@@ -52,6 +53,7 @@ function InGameRedirect() {
 }
 
 export default function RootLayout() {
+    const colors = useTheme();
     return (
         // Gesture Handler (card drag & drop in the game) needs its root view at the top.
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -62,22 +64,24 @@ export default function RootLayout() {
                         <GameSync />
                         <InGameRedirect />
                         <StatusBar style="light" />
-                        <Stack
-                            screenOptions={{
-                                headerStyle: { backgroundColor: '#374151' }, // gray-700, as the web navbar
-                                headerTintColor: '#ffffff',
-                                contentStyle: { backgroundColor: '#ffffff' },
-                            }}
-                        >
-                            <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Dutch Pub' }} />
-                            <Stack.Screen name="login" options={{ title: 'Log in' }} />
-                            <Stack.Screen name="registration" options={{ title: 'Registration' }} />
-                            {/* No way back out of a running game: no header (so no back button), no swipe-back. */}
-                            <Stack.Screen
-                                name="game"
-                                options={{ title: 'Game', headerShown: false, headerBackVisible: false, gestureEnabled: false }}
-                            />
-                        </Stack>
+                        <ThemeProvider value={navigationTheme(colors)}>
+                            <Stack
+                                screenOptions={{
+                                    headerStyle: { backgroundColor: '#374151' }, // gray-700, as the web navbar
+                                    headerTintColor: '#ffffff',
+                                    contentStyle: { backgroundColor: colors.surface },
+                                }}
+                            >
+                                <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Dutch Pub' }} />
+                                <Stack.Screen name="login" options={{ title: 'Log in' }} />
+                                <Stack.Screen name="registration" options={{ title: 'Registration' }} />
+                                {/* No way back out of a running game: no header (so no back button), no swipe-back. */}
+                                <Stack.Screen
+                                    name="game"
+                                    options={{ title: 'Game', headerShown: false, headerBackVisible: false, gestureEnabled: false }}
+                                />
+                            </Stack>
+                        </ThemeProvider>
                         <ConnectionBanner />
                         <Toast />
                     </SocketProvider>

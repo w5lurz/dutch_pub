@@ -4,11 +4,13 @@ import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-n
 
 import { LeaderBoardHeader, LeaderBoardRow, useLeaderBoard, type LeaderBoardEntry } from '@/components/leaderboard';
 import { Button, Screen } from '@/components/ui';
+import { useTheme } from '@/lib/theme';
 
 const keyExtractor = (item: LeaderBoardEntry) => item.winner;
 const renderItem = ({ item }: { item: LeaderBoardEntry }) => <LeaderBoardRow entry={item} />;
 
 export default function LeaderboardScreen() {
+    const colors = useTheme();
     const { status, data, refresh, reload } = useLeaderBoard();
 
     // Refetch whenever the tab gains focus (also the first load), so a just-finished game shows up.
@@ -21,7 +23,7 @@ export default function LeaderboardScreen() {
     if (status === 'idle' || status === 'loading') {
         return (
             <Screen contentClassName="items-center justify-center">
-                <ActivityIndicator size="large" color="#2563eb" accessibilityLabel="Loading leaderboard" />
+                <ActivityIndicator size="large" color={colors.accent} accessibilityLabel="Loading leaderboard" />
             </Screen>
         );
     }
@@ -53,7 +55,7 @@ export default function LeaderboardScreen() {
                         <Button label="Play" onPress={() => router.navigate('/play')} />
                     </View>
                 }
-                refreshControl={<RefreshControl refreshing={status === 'refreshing'} onRefresh={refresh} colors={['#2563eb']} tintColor="#2563eb" />}
+                refreshControl={<RefreshControl refreshing={status === 'refreshing'} onRefresh={refresh} colors={[colors.accent]} tintColor={colors.accent} />}
             />
         </Screen>
     );

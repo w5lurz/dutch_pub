@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { ChatIcon } from '@/components/icons';
+import { useTheme } from '@/lib/theme';
 
 type ChatButtonProps = {
     onPress: () => void;
@@ -11,6 +12,7 @@ type ChatButtonProps = {
 
 /** Round "Open chat" button with a red unread badge. */
 export function ChatButton({ onPress, unread, className = '' }: ChatButtonProps) {
+    const colors = useTheme();
     return (
         <Pressable
             accessibilityRole="button"
@@ -19,7 +21,7 @@ export function ChatButton({ onPress, unread, className = '' }: ChatButtonProps)
             hitSlop={8}
             className={`h-12 w-12 items-center justify-center rounded-full border-2 border-blue-700 bg-white shadow-md active:bg-blue-100 ${className}`}
         >
-            <ChatIcon size={26} color="#1d4ed8" />
+            <ChatIcon size={26} color={colors.accentStrong} />
             {unread > 0 ? (
                 <View className="absolute -right-1 -top-1 min-w-5 items-center rounded-full bg-red-600 px-1">
                     <Text className="text-xs font-bold text-white">{unread > 99 ? '99+' : unread}</Text>
