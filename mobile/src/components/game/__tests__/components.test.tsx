@@ -1,12 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import type { Opponents, TCard, UserCards } from '@dutch-pub/shared';
+import type { Opponent, TCard, UserCards } from '@dutch-pub/shared';
 
 import { CardDragProvider } from '../CardDrag';
 import { HandFan } from '../HandFan';
-import { OpponentsBar } from '../OpponentsBar';
 import { PlayerBoard } from '../PlayerBoard';
 import { PlayingCard } from '../PlayingCard';
+import { Seat } from '../Seat';
 
 const card = (value: number, color = 'hearts', name = String(value)): TCard => ({ name, value, color });
 
@@ -20,9 +20,9 @@ const button = (name: string) => screen.getByRole('button', { name });
 describe('PlayingCard', () => {
     it('labels a face-up card with its name, value and suit', async () => {
         await render(<PlayingCard card={card(13, 'diamonds', 'K')} />);
+        // The face is drawn (French-suited art, hidden from screen readers): the label carries it.
         expect(screen.getByLabelText('K (13) of diamonds')).toBeTruthy();
-        expect(screen.getByText('13')).toBeTruthy();
-        expect(screen.getByText('K')).toBeTruthy();
+        expect(screen.queryByText('13')).toBeNull();
     });
 
     it('labels a face-down card, with the hidden count', async () => {
@@ -33,36 +33,68 @@ describe('PlayingCard', () => {
 });
 
 describe('HandFan', () => {
-    it('shows at most 5 card backs and the full count', async () => {
+    it('draws one back per card, without a count, while they fit', async () => {
         await render(<HandFan count={7} />);
         expect(screen.getByLabelText('7 cards in hand')).toBeTruthy();
-        expect(screen.getByText('×7')).toBeTruthy();
-        expect(screen.getAllByLabelText('Face-down card')).toHaveLength(5);
+        expect(screen.getAllByLabelText('Face-down card')).toHaveLength(7);
+        expect(screen.queryByText('×7')).toBeNull();
+    });
+
+    it('compresses and shows the count when there are too many cards', async () => {
+        await render(<HandFan count={12} fit={8} />);
+        expect(screen.getByLabelText('12 cards in hand')).toBeTruthy();
+        expect(screen.getByText('×12')).toBeTruthy();
+        expect(screen.getAllByLabelText('Face-down card')).toHaveLength(12);
+    });
+
+    it('keeps the count upright when the fan is turned', async () => {
+        await render(<HandFan count={30} fit={8} rotate={90} />);
+        // At most 20 backs are drawn; the count says the rest.
+        expect(screen.getAllByLabelText('Face-down card')).toHaveLength(20);
+        expect(screen.getByText('×30')).toBeTruthy();
     });
 
     it('says so when the hand is empty', async () => {
         await render(<HandFan count={0} />);
-        expect(screen.getByText('No cards in hand')).toBeTruthy();
+        expect(screen.getByText('No cards')).toBeTruthy();
+        expect(screen.getByLabelText('0 cards in hand')).toBeTruthy();
     });
 });
 
-describe('OpponentsBar', () => {
-    const opponents: Opponents = {
-        anna: { hand: 4, table: 3, tableFlipped: [card(5), card(9)], active: true },
-        bela: { hand: 0, table: 0, tableFlipped: [], active: false },
-    };
+describe('Seat', () => {
+    const anna: Opponent = { hand: 4, table: 3, tableFlipped: [card(5), card(9)], active: true };
+    const bela: Opponent = { hand: 0, table: 0, tableFlipped: [], active: false };
 
-    it('shows every opponent with their counts and turn', async () => {
-        await render(<OpponentsBar opponents={opponents} />);
+    it('shows the name with counts and turn, the hand and the stacks', async () => {
+        await render(<Seat name="anna" opponent={anna} position="top" layout="portrait" />);
         expect(screen.getByLabelText('anna, on turn: 4 in hand, 2 face-up, 3 face-down')).toBeTruthy();
-        expect(screen.getByLabelText('bela: 0 in hand, 0 face-up, 0 face-down')).toBeTruthy();
+        expect(screen.getByText('A')).toBeTruthy(); // avatar placeholder: the initial
+        expect(screen.getByLabelText('4 cards in hand')).toBeTruthy();
         expect(screen.getByLabelText('5 of hearts')).toBeTruthy();
-        expect(screen.getByText('No table cards')).toBeTruthy();
+        expect(screen.getByLabelText('9 of hearts')).toBeTruthy();
+        // 4 backs in the hand + the face-down card under the third spot (none on top of it)
+        // and the two under the face-up cards.
+        expect(screen.getAllByLabelText('Face-down card')).toHaveLength(7);
     });
 
-    it('renders nothing without opponents', async () => {
-        await render(<OpponentsBar opponents={{}} />);
-        expect(screen.queryByLabelText(/Opponents/)).toBeNull();
+    it('shows a player without cards', async () => {
+        await render(<Seat name="bela" opponent={bela} position="left" layout="portrait" />);
+        expect(screen.getByLabelText('bela: 0 in hand, 0 face-up, 0 face-down')).toBeTruthy();
+        expect(screen.getByText('No cards')).toBeTruthy();
+        expect(screen.queryAllByLabelText('Face-down card')).toHaveLength(0);
+    });
+
+    it('turns a side seat\x27s cards toward the centre', async () => {
+        await render(<Seat name="anna" opponent={anna} position="right" layout="wide" />);
+        const turned = JSON.stringify(screen.toJSON()).split('"rotate":"-90deg"').length - 1;
+        // The hand fan and the stacks.
+        expect(turned).toBe(2);
+    });
+
+    it('shows an avatar picture instead of the initial when given', async () => {
+        await render(<Seat name="anna" opponent={anna} position="top" layout="wide" avatar={<PlayingCard faceDown accessibilityLabel="avatar" />} />);
+        expect(screen.getByLabelText('avatar')).toBeTruthy();
+        expect(screen.queryByText('A')).toBeNull();
     });
 });
 

@@ -70,12 +70,13 @@ describe('useGameActions.layCard', () => {
         await act(async () => {
             expect(hook.result.current.layCard(card(5), 0, true)).toBe(false);
         });
-        expect(store.getState().general.toast?.message).toBe('You cannot place that card!');
+        expect(store.getState().general.toast?.message).toBe("It's not your turn yet.");
 
         const other = await setup({ laidCards: [card(4)] });
         await act(async () => {
             expect(other.hook.result.current.layCard(card(9), 0, false)).toBe(false);
         });
+        expect(other.store.getState().general.toast?.message).toBe('You cannot place that card!');
         expect(mockSocket.emit).not.toHaveBeenCalledWith('lay-card', expect.anything());
     });
 });

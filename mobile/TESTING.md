@@ -25,17 +25,20 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 
 - [ ] Create a public and a private room (2, 3, 4 slots); guests can't join private rooms.
 - [ ] Join, leave, delete (owner only), start (owner, 2+ players): every device updates without a refresh.
+- [ ] Room settings: set "Show card powers" off when creating a room; the owner changes it in the room's Settings sheet and every player's room card shows it right away; other players see it read-only; after the start it can't be changed.
 
 ### Game (2, 3 and 4 players)
 
-- [ ] The game screen turns landscape; the other screens stay portrait; Android back is blocked in a game.
-- [ ] Opponents: hand fan with count, face-up cards on their face-down stacks, green tile on their turn.
+- [ ] The game opens in portrait; turning the phone switches to the wide layout and back (the other screens stay portrait); Android back is blocked in a game.
+- [ ] Seats follow the turn order clockwise from you (you at the bottom): portrait 2p top, 3p top-left / top-right, 4p left / top / right; wide 2p top, 3p left / right (upper half), 4p left / top / right. The same player sits in the same place on every device relative to its owner.
+- [ ] Opponents: avatar initial and name, hand as a fan of backs without a number ("×N" only when it is too long), face-up cards on their face-down stacks; side seats' cards turned toward the centre, text upright; a green glow around the avatar of whoever is on turn (yours too).
 - [ ] Tap selects a card (lifts, blue outline), tap again deselects.
-- [ ] Drag a card onto the laid pile to play it; anywhere else it flies back; an illegal card flies back with a message.
+- [ ] Drag a card onto the laid pile to play it; anywhere else it flies back; an illegal card flies back with a message. In both layouts, and from your table stacks too.
+- [ ] Turn the phone while dragging a card: the drag is dropped, the card is back in your hand, nothing is played.
 - [ ] Face-up cards only after the hand is empty; face-down only after the face-up ones; a failed blind card picks up the pile.
 - [ ] No playable card: the pile is picked up automatically, once.
 - [ ] "Clear all" (10) and four of a kind burn the pile.
-- [ ] Chat: unread badge, 3 s cooldown, works with the keyboard open in landscape.
+- [ ] Chat (button bottom left): unread badge, 3 s cooldown, works with the keyboard open in both layouts.
 - [ ] Winning: every player sees the winner, everyone lands on the leaderboard, the new win is listed.
 
 ### Interruptions
@@ -48,5 +51,8 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 ### Look
 
 - [ ] Light and dark mode (system setting) on every screen; card faces stay light.
-- [ ] A small phone (e.g. 360dp tall in landscape) and a tablet: cards readable, nothing cut off; long hands scroll.
+- [ ] Portrait on a small phone (360×640dp) with 4 players and a 10+ card hand: every seat, the piles, your stacks and the hand fit; the hand overlaps to fit, longer hands scroll.
+- [ ] Portrait on a tall phone (360×800dp, 20:9): the table photo is not visibly distorted.
+- [ ] Wide: a phone turned sideways (your stacks beside the hand), a tablet in both orientations, the desktop browser; a narrow browser window gets the portrait layout. Cards readable, nothing cut off.
+- [ ] The dev preview (Account tab → table preview, or /dev/table) shows the layout name and window size on its first chip; check 2, 3 and 4 players, "Opp. hands: many", hand 15, in both layouts.
 - [ ] Animations: laid card zooms in, cards slide in / out, burnt pile fades in.

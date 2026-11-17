@@ -83,6 +83,12 @@ export default function AccountScreen() {
 			) : (
 				<SignedOut />
 			)}
+			{__DEV__ ? (
+				<View className="mt-6 flex-row gap-2">
+					<Button label="Table preview (dev)" variant="gray" size="sm" onPress={() => router.push('/dev/table')} />
+					<Button label="Card preview (dev)" variant="gray" size="sm" onPress={() => router.push('/dev/cards')} />
+				</View>
+			) : null}
 		</Screen>
 	);
 }

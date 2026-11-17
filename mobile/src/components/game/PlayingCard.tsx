@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { TCard } from '@dutch-pub/shared';
 
-import { CardBackSide, CardIcon } from '@/components/icons';
-import { useTheme } from '@/lib/theme';
+import { CardBackArt, CardFaceArt } from '@/components/cards';
 
 import { useCardSize, type CardSize } from './cardSize';
+import { useCardSettings } from './cardSettings';
+import { useTableTheme } from './tableTheme';
 
 export type PlayingCardProps = {
     /** The card to show face up. Omit (or pass `faceDown`) for the back side. */
@@ -31,54 +32,24 @@ export type PlayingCardProps = {
     testID?: string;
 };
 
-const RED_SUITS = new Set(['hearts', 'diamonds']);
-
 /** "7 of hearts", "Mirror (0) of clubs". */
 export function cardLabel(card: TCard): string {
     const name = card.name === String(card.value) ? card.name : `${card.name} (${card.value})`;
     return `${name} of ${card.color}`;
 }
 
-function CardFace({ card, width, size }: { card: TCard; width: number; size: CardSize }) {
-    const red = RED_SUITS.has(card.color);
-    // Fixed card-* colours: card faces stay light in dark mode, like real cards.
-    const textColor = red ? 'text-card-red' : 'text-card-black';
-    // Number cards' name is just the value; show the name for J / Q / K and the special cards.
-    const compact = size === 'sm' || size === 'xs';
-    const showName = !compact && card.name !== String(card.value);
-
-    return (
-        <View
-            className={`flex-1 items-center rounded-md border border-card-border bg-card-face shadow-sm ${
-                compact ? 'justify-center gap-0.5 p-0.5' : 'justify-between p-1'
-            }`}
-        >
-            <Text style={{ fontSize: Math.max(10, Math.round(width * 0.24)) }} className={`font-bold ${textColor}`}>
-                {card.value}
-            </Text>
-            <CardIcon suit={card.color} size={Math.round(width * (compact ? 0.42 : 0.34))} />
-            {showName ? (
-                <Text
-                    numberOfLines={2}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.7}
-                    style={{ fontSize: Math.max(8, Math.round(width * 0.15)) }}
-                    className={`text-center font-medium ${textColor}`}
-                >
-                    {card.name}
-                </Text>
-            ) : compact ? null : (
-                // Keeps value + icon at the same height as on named cards.
-                <View style={{ height: Math.max(8, Math.round(width * 0.15)) }} />
-            )}
-        </View>
-    );
+/** The French-suited face (RevK deck): full face on big cards, a compact index on small ones. */
+function CardFace({ card, width, height }: { card: TCard; width: number; height: number }) {
+    const { showCardPowers } = useCardSettings();
+    return <CardFaceArt card={card} width={width} height={height} showStamp={showCardPowers} />;
 }
 
+/** The back in the room's colour, with an optional "+N" overlay. */
 function CardBack({ width, height, plusCount }: { width: number; height: number; plusCount: number }) {
+    const { cardBack } = useCardSettings();
     return (
         <View className="flex-1 overflow-hidden rounded-md">
-            <CardBackSide width={width} height={height} />
+            <CardBackArt width={width} height={height} color={cardBack} />
             {plusCount > 0 ? (
                 <View className="absolute inset-0 items-center justify-center">
                     <View className="rounded-full bg-gray-900/75 px-2 py-0.5">
@@ -93,9 +64,10 @@ function CardBack({ width, height, plusCount }: { width: number; height: number;
 }
 
 /**
- * A playing card, face up (value, suit icon, name; red suits red, as the web `Card`) or
- * face down (`CardBackSide`, with an optional "+N" overlay). Its size is scaled from the
- * window (mainly its height, see `useCardSize`). Pressable cards lift and get a blue outline while pressed.
+ * A playing card: a French-suited face (`CardFaceArt`, with a stamp on special cards when
+ * the room shows card powers) or the back in the room's colour (`CardBackArt`, with an
+ * optional "+N" overlay); see `CardSettingsProvider`. Its size is scaled from the
+ * window (see `useCardSize`). Pressable cards lift and get a blue outline while pressed.
  */
 export function PlayingCard({
     card,
@@ -113,7 +85,7 @@ export function PlayingCard({
     testID,
 }: PlayingCardProps) {
     const { width, height } = useCardSize(size);
-    const { background } = useTheme();
+    const { fadeColor } = useTableTheme();
     const [pressed, setPressed] = useState(false);
     const showFace = !!card && !faceDown;
     const label =
@@ -121,12 +93,12 @@ export function PlayingCard({
         (showFace ? cardLabel(card) : plusCount > 0 ? `Face-down card, ${plusCount} more below` : 'Face-down card');
 
     const face = showFace ? (
-        <CardFace card={card} width={width} size={size} />
+        // Both inside the 2dp outline on each side.
+        <CardFace card={card} width={width - 4} height={height - 4} />
     ) : (
-        // Inside the 2dp outline on each side.
         <CardBack width={width - 4} height={height - 4} plusCount={plusCount} />
     );
-    // Fading is an overlay in the screen's background colour, not `opacity`: a see-through card would show the card
+    // Fading is an overlay in the table theme's fade colour, not `opacity`: a see-through card would show the card
     // below it (table stacks, overlapping hand), and Android applies a parent's opacity to
     // each child separately.
     const fadeAlpha = dimmed ? 0.6 : faded ? 0.3 : 0;
@@ -136,7 +108,7 @@ export function PlayingCard({
                 {face}
                 <View
                     pointerEvents="none"
-                    style={[StyleSheet.absoluteFill, { borderRadius: 6, backgroundColor: background, opacity: fadeAlpha }]}
+                    style={[StyleSheet.absoluteFill, { borderRadius: 6, backgroundColor: fadeColor, opacity: fadeAlpha }]}
                 />
             </>
         ) : (

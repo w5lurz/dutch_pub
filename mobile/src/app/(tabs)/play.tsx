@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, Text, View } from 'react-native';
-import type { TRoom, TRooms } from '@dutch-pub/shared';
+import { normalizeRoomSettings, type TRoom, type TRooms } from '@dutch-pub/shared';
 
 import { CreateRoomModal } from '@/components/rooms/CreateRoomModal';
 import { GuestJoinForm } from '@/components/rooms/GuestJoinForm';
 import { RoomCard } from '@/components/rooms/RoomCard';
+import { RoomSettingsSheet } from '@/components/rooms/RoomSettingsSheet';
 import { Button, Screen } from '@/components/ui';
 import { useRooms, type NewRoom } from '@/hooks/useRooms';
 
@@ -34,9 +35,25 @@ function EmptyRooms() {
 }
 
 export default function PlayScreen() {
-    const { rooms, user, connected, currentRoomId, canCreateRoom, permissionsFor, createRoom, joinRoom, leaveRoom, deleteRoom, startGame, refresh } =
-        useRooms();
+    const {
+        rooms,
+        user,
+        connected,
+        currentRoomId,
+        canCreateRoom,
+        permissionsFor,
+        createRoom,
+        joinRoom,
+        leaveRoom,
+        deleteRoom,
+        startGame,
+        updateRoomSettings,
+        refresh,
+    } = useRooms();
     const [createVisible, setCreateVisible] = useState(false);
+    // The room whose settings sheet is open.
+    const [settingsRoomId, setSettingsRoomId] = useState<number | null>(null);
+    const settingsRoom = settingsRoomId !== null ? rooms[settingsRoomId] : undefined;
     // The rooms list a refresh started from: the spinner stops as soon as a new list arrives.
     const [refreshedFrom, setRefreshedFrom] = useState<TRooms | null>(null);
     const refreshing = refreshedFrom !== null && refreshedFrom === rooms;
@@ -91,6 +108,7 @@ export default function PlayScreen() {
                         onLeave={() => leaveRoom(id, room.name)}
                         onDelete={() => deleteRoom(id, room.name)}
                         onStart={() => startGame(id, room.name)}
+                        onSettings={() => setSettingsRoomId(id)}
                     />
                 )}
                 ListEmptyComponent={EmptyRooms}
@@ -113,6 +131,18 @@ export default function PlayScreen() {
                 onCreate={onCreate}
                 disabled={!connected}
             />
+            {/* Unmounts when the room goes away (deleted, game won). */}
+            {settingsRoom && settingsRoomId !== null ? (
+                <RoomSettingsSheet
+                    visible
+                    roomName={settingsRoom.name}
+                    settings={normalizeRoomSettings(settingsRoom.settings)}
+                    canEdit={permissionsFor(settingsRoomId, settingsRoom).canEditSettings}
+                    disabled={!connected}
+                    onChange={change => updateRoomSettings(settingsRoomId, change)}
+                    onClose={() => setSettingsRoomId(null)}
+                />
+            ) : null}
         </Screen>
     );
 }

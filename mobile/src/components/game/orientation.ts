@@ -27,11 +27,24 @@ export function lockPortrait(): void {
     lockOrientation(OrientationLock.PORTRAIT_UP);
 }
 
-/** Landscape (either side) while the calling screen is focused; back to portrait on blur / unmount. */
-export function useLandscapeWhileFocused(): void {
+/** Lets the screen follow the device (any orientation), ignoring failures like `lockOrientation`. */
+export function unlockOrientation(): void {
+    if (Platform.OS === 'web') return;
+    try {
+        ScreenOrientation.unlockAsync().catch(() => {});
+    } catch {
+        // Synchronous native errors: same as a rejected promise.
+    }
+}
+
+/**
+ * Any orientation while the calling screen is focused (the game table: turning the phone
+ * switches between the portrait and the wide layout); back to portrait on blur / unmount.
+ */
+export function useAnyOrientationWhileFocused(): void {
     useFocusEffect(
         useCallback(() => {
-            lockOrientation(OrientationLock.LANDSCAPE);
+            unlockOrientation();
             return lockPortrait;
         }, []),
     );

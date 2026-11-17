@@ -1,20 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { BackHandler, Pressable, Text } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { CardDragProvider, ChatButton, ChatModal, OpponentsBar, PileArea, PlayerBoard, useLandscapeWhileFocused } from '@/components/game';
-import { Screen } from '@/components/ui';
+import { GameTable, TableThemeProvider, useAnyOrientationWhileFocused } from '@/components/game';
 import { useGameActions } from '@/hooks/useGameActions';
+import { useRoomSettings } from '@/hooks/useRoomSettings';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setToast } from '@/store/generalSlice';
 
 /**
- * The running game, in landscape (locked while focused; the rest of the app is portrait):
- * opponents in a column on the left, turn + deck / laid / burnt in the centre, your table
- * cards and hand along the bottom, chat button top-right (modal). Cards are played by
- * dragging them onto the laid pile (`CardDragProvider`). The root layout brings the user here
- * when `user.inGame` is set; this screen leaves when it clears (game won, or a re-sync
- * without a game) and blocks Android's back button meanwhile.
+ * The running game. Opens in portrait; while it is focused the orientation follows the device,
+ * so turning a phone switches the table to its wide layout (the rest of the app is portrait).
+ * Connects the store and socket actions to `GameTable`, which draws the table. The root
+ * layout brings the user here when `user.inGame` is set; this screen leaves when it clears
+ * (game won, or a re-sync without a game) and blocks Android's back button meanwhile.
  */
 export default function GameScreen() {
     const router = useRouter();
@@ -22,10 +21,14 @@ export default function GameScreen() {
     const game = useAppSelector(state => state.game);
     const inGame = useAppSelector(state => state.user?.inGame);
     const messages = useAppSelector(state => state.chat);
+    // Turn order for the seats: the room's player list (the server takes turns in that order).
+    const roomPlayers = useAppSelector(state => (inGame !== undefined ? state.rooms[inGame]?.players : undefined));
+    const playerOrder = useMemo(() => roomPlayers?.map(player => player.username), [roomPlayers]);
     const { layCard, sendMessage, canSend, active, username } = useGameActions();
+    const roomSettings = useRoomSettings();
     const running = inGame !== undefined;
 
-    useLandscapeWhileFocused();
+    useAnyOrientationWhileFocused();
 
     // Leave when the game is over; straight to Play if we never were in a game (deep link).
     const wasInGame = useRef(false);
@@ -51,53 +54,29 @@ export default function GameScreen() {
         }, [running, dispatch]),
     );
 
-    // Chat: unread = messages that arrived while the modal was closed.
-    const [chatOpen, setChatOpen] = useState(false);
-    const [seenCount, setSeenCount] = useState(messages.length);
-    if (messages.length < seenCount) {
-        // History was replaced by a shorter one (new room / re-sync): adjust during render.
-        setSeenCount(messages.length);
-    }
-    const unread = chatOpen ? 0 : messages.length - seenCount;
-    const toggleChat = (open: boolean) => {
-        setSeenCount(messages.length);
-        setChatOpen(open);
-    };
-
-    const activeOpponent = Object.entries(game.opponents).find(([, opponent]) => opponent.active)?.[0];
-    const turnOf = active ? null : activeOpponent;
-
     return (
-        <Screen edges={['top', 'bottom', 'left', 'right']} padded={false} background="gray" contentClassName="flex-row">
-            <CardDragProvider>
-                <OpponentsBar opponents={game.opponents} />
-
-                <View className="flex-1">
-                    <View className="flex-1 justify-center">
-                        <PileArea deck={game.deck} laidCards={game.laidCards} burntCards={game.burntCards} turnOf={turnOf} />
-                    </View>
-
-                    <PlayerBoard
-                        userCards={game.userCards}
-                        laidCards={game.laidCards}
-                        active={active}
-                        username={username}
-                        onLayCard={layCard}
-                    />
-
-                    <ChatButton unread={unread} onPress={() => toggleChat(true)} className="absolute right-2 top-2" />
-                </View>
-
-            </CardDragProvider>
-
-            <ChatModal
-                visible={chatOpen}
-                onClose={() => toggleChat(false)}
-                messages={messages}
+        <TableThemeProvider mode="day">
+            <GameTable
+                game={game}
+                active={active}
                 username={username}
-                onSend={sendMessage}
-                canSend={canSend}
+                playerOrder={playerOrder}
+                cardSettings={roomSettings}
+                onLayCard={layCard}
+                messages={messages}
+                onSendMessage={sendMessage}
+                canSendMessage={canSend}
             />
-        </Screen>
+            {__DEV__ ? (
+                // Dev builds only: the card preview, also during a game (back returns here).
+                <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push('/dev/cards')}
+                    className="absolute right-2 top-10 rounded-full bg-gray-800/80 px-3 py-1"
+                >
+                    <Text className="text-xs font-semibold text-white">Cards (dev)</Text>
+                </Pressable>
+            ) : null}
+        </TableThemeProvider>
     );
 }

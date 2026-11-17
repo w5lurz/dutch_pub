@@ -10,6 +10,17 @@ export type User = {
 
 export type Player = { username: string; socketId: string };
 
+/** Colour of the card backs. */
+export type CardBackColor = 'red' | 'blue';
+
+/** Options the room owner picks (defaults and validation in roomSettings.ts). */
+export type RoomSettings = {
+    /** Special cards show what they do on their face (e.g. CLEAR ALL). */
+    showCardPowers: boolean;
+    /** Colour of the card backs (deck, face-down cards, hands). */
+    cardBack: CardBackColor;
+};
+
 export type TRoom = {
     name: string;
     owner: string;
@@ -17,6 +28,7 @@ export type TRoom = {
     slots: number;
     visibility: string;
     inGame?: boolean;
+    settings: RoomSettings;
 };
 
 export type TRooms = { [key: number]: TRoom };

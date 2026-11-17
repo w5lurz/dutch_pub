@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, Text, View } from 'react-native';
+import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from '@dutch-pub/shared';
 
-import { CloseIcon } from '@/components/icons';
-import { Button, SegmentedControl, TextField } from '@/components/ui';
-import { useTheme } from '@/lib/theme';
+import { BottomSheet, Button, SegmentedControl, TextField } from '@/components/ui';
 import type { NewRoom, RoomVisibility } from '@/hooks/useRooms';
+import { RoomSettingsFields } from './RoomSettingsFields';
 
 const SLOT_OPTIONS = [
     { label: '2', value: 2 },
@@ -28,18 +27,18 @@ export type CreateRoomModalProps = {
 
 /** Bottom-sheet style modal for creating a room (web `CreateRoomForm`). */
 export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }: CreateRoomModalProps) {
-    const colors = useTheme();
-    const insets = useSafeAreaInsets();
     const [name, setName] = useState('');
     const [slots, setSlots] = useState<number>(2);
     // The web select ends up on "Private" by default.
     const [visibility, setVisibility] = useState<RoomVisibility>('private');
+    const [settings, setSettings] = useState<RoomSettings>({ ...DEFAULT_ROOM_SETTINGS });
     const [error, setError] = useState<string | null>(null);
 
     const reset = () => {
         setName('');
         setSlots(2);
         setVisibility('private');
+        setSettings({ ...DEFAULT_ROOM_SETTINGS });
         setError(null);
     };
 
@@ -54,67 +53,57 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
             setError('Room name is required.');
             return;
         }
-        onCreate({ name: trimmed, slots, visibility });
+        onCreate({ name: trimmed, slots, visibility, settings });
         reset();
     };
 
     return (
-        <Modal visible={visible} animationType="slide" transparent onRequestClose={close} statusBarTranslucent>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 justify-end">
-                <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} className="absolute inset-0 bg-black/40" />
-                <View className="gap-4 rounded-t-2xl bg-white p-5" style={{ paddingBottom: insets.bottom + 20 }}>
-                    <View className="flex-row items-center justify-between">
-                        <Text accessibilityRole="header" className="text-xl font-bold text-gray-900">
-                            Create room
-                        </Text>
-                        <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Cancel creating room"
-                            hitSlop={12}
-                            onPress={close}
-                            className="rounded p-1 active:bg-gray-100"
-                        >
-                            <CloseIcon size={24} color={colors.textMuted} />
-                        </Pressable>
-                    </View>
+        <BottomSheet visible={visible} title="Create room" onClose={close} closeLabel="Cancel creating room">
+            {/* Scrolls on short (landscape) screens now that the form has a settings section. */}
+            <ScrollView className="shrink" contentContainerClassName="gap-4" keyboardShouldPersistTaps="handled">
+                <TextField
+                    label="Room Name"
+                    placeholder="random room name"
+                    value={name}
+                    onChangeText={text => {
+                        setName(text);
+                        if (error) setError(null);
+                    }}
+                    error={error}
+                    maxLength={40}
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={submit}
+                />
 
-                    <TextField
-                        label="Room Name"
-                        placeholder="random room name"
-                        value={name}
-                        onChangeText={text => {
-                            setName(text);
-                            if (error) setError(null);
-                        }}
-                        error={error}
-                        maxLength={40}
-                        autoCorrect={false}
-                        returnKeyType="done"
-                        onSubmitEditing={submit}
-                    />
-
-                    <View className="gap-1">
-                        <Text className="text-sm font-medium text-gray-900">Slots</Text>
-                        <SegmentedControl options={SLOT_OPTIONS} value={slots} onChange={setSlots} accessibilityLabel="Slots" />
-                    </View>
-
-                    <View className="gap-1">
-                        <Text className="text-sm font-medium text-gray-900">Visibility</Text>
-                        <SegmentedControl
-                            options={VISIBILITY_OPTIONS}
-                            value={visibility}
-                            onChange={setVisibility}
-                            accessibilityLabel="Visibility"
-                        />
-                    </View>
-
-                    <View className="flex-row gap-2">
-                        <Button label="Cancel" variant="gray" onPress={close} className="flex-1" />
-                        <Button label="Create Room" variant="blue" onPress={submit} disabled={disabled} className="flex-1" />
-                    </View>
+                <View className="gap-1">
+                    <Text className="text-sm font-medium text-gray-900">Slots</Text>
+                    <SegmentedControl options={SLOT_OPTIONS} value={slots} onChange={setSlots} accessibilityLabel="Slots" />
                 </View>
-            </KeyboardAvoidingView>
-        </Modal>
+
+                <View className="gap-1">
+                    <Text className="text-sm font-medium text-gray-900">Visibility</Text>
+                    <SegmentedControl
+                        options={VISIBILITY_OPTIONS}
+                        value={visibility}
+                        onChange={setVisibility}
+                        accessibilityLabel="Visibility"
+                    />
+                </View>
+
+                <View className="gap-1">
+                    <Text accessibilityRole="header" className="text-sm font-medium text-gray-900">
+                        Room settings
+                    </Text>
+                    <RoomSettingsFields value={settings} onChange={change => setSettings(current => ({ ...current, ...change }))} />
+                </View>
+            </ScrollView>
+
+            <View className="flex-row gap-2">
+                <Button label="Cancel" variant="gray" onPress={close} className="flex-1" />
+                <Button label="Create Room" variant="blue" onPress={submit} disabled={disabled} className="flex-1" />
+            </View>
+        </BottomSheet>
     );
 }
 

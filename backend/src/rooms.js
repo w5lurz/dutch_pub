@@ -1,3 +1,5 @@
+import { normalizeRoomSettings } from '@dutch-pub/shared';
+
 import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
 import { identityError } from './socketAuth.js';
 
@@ -14,6 +16,20 @@ const roomError = (socket, roomId, { ownerOnly = false } = {}) => {
     if (!room) return 'This room does not exist.';
     if (ownerOnly && room.owner !== socket.data.user.username) return 'Only the room owner can do that.';
     return null;
+};
+
+/**
+ * Checks an `update-room-settings` request: the socket's user must own room `roomId` and
+ * the game must not have started. Returns `{ error }` or `{ settings }` (the room's
+ * current settings with the valid values of `settings` applied; unknown keys are dropped).
+ */
+export const validateRoomSettingsUpdate = (socket, payload) => {
+    const { roomId, settings } = payload ?? {};
+    const error = identityError(socket) ?? roomError(socket, roomId, { ownerOnly: true });
+    if (error) return { error };
+    const room = roomsList[roomId];
+    if (room.inGame) return { error: 'Settings cannot be changed after the game has started.' };
+    return { settings: normalizeRoomSettings(settings, normalizeRoomSettings(room.settings)) };
 };
 
 export let games = {};
@@ -87,7 +103,7 @@ export const rooms = io => {
             socket.emit('rooms-listed', roomsList);
         });
 
-        socket.on('create-room', ({ name, owner, slots, visibility }) => {
+        socket.on('create-room', ({ name, owner, slots, visibility, settings }) => {
             if (rejected(socket, identityError(socket, owner))) return;
             const newKey = Object.keys(roomsList).length === 0 ? 1 : +Object.keys(roomsList)[Object.keys(roomsList).length - 1] + 1;
             const socketRoomId = `game-${newKey}`;
@@ -98,6 +114,7 @@ export const rooms = io => {
                 slots,
                 socketRoomId,
                 visibility,
+                settings: normalizeRoomSettings(settings),
             };
             roomsList = { ...roomsList, [newKey]: newRoom };
 
@@ -105,6 +122,14 @@ export const rooms = io => {
             socket.data.username = owner;
             socket.data.roomId = socketRoomId;
             socket.join(socketRoomId);
+            io.emit('rooms-listed', roomsList);
+        });
+
+        socket.on('update-room-settings', payload => {
+            const { error, settings } = validateRoomSettingsUpdate(socket, payload);
+            if (rejected(socket, error)) return;
+            const { roomId } = payload;
+            roomsList = { ...roomsList, [roomId]: { ...roomsList[roomId], settings } };
             io.emit('rooms-listed', roomsList);
         });
 

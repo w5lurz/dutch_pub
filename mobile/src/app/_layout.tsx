@@ -1,6 +1,7 @@
 import '../global.css';
 
 import { useEffect } from 'react';
+import { NavigationBar } from 'expo-navigation-bar';
 import { Stack, ThemeProvider, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,10 +17,10 @@ import { navigationTheme, useTheme } from '@/lib/theme';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { store, useAppSelector } from '@/store';
 
-// The app is portrait; only the game screen switches to landscape while focused
-// (`useLandscapeWhileFocused`). app.json allows both (`"orientation": "default"`), so this
+// The app is portrait; only the game screen unlocks the orientation while focused
+// (`useAnyOrientationWhileFocused`). app.json allows both (`"orientation": "default"`), so this
 // lock is what keeps the other screens upright. Done at module load, before any screen's
-// effects run, so it can never override the game screen's landscape lock on a cold start
+// effects run, so it can never override the game screen's unlock on a cold start
 // straight into a running game.
 lockPortrait();
 
@@ -44,7 +45,9 @@ function InGameRedirect() {
     const navigationReady = !!useRootNavigationState()?.key;
 
     useEffect(() => {
-        if (navigationReady && inGame !== undefined && pathname !== '/game') {
+        // Dev builds may open the preview screens (/dev/...) during a game; back returns to it.
+        const devPreview = __DEV__ && pathname.startsWith('/dev/');
+        if (navigationReady && inGame !== undefined && pathname !== '/game' && !devPreview) {
             router.replace('/game');
         }
     }, [navigationReady, inGame, pathname, router]);
@@ -64,6 +67,9 @@ export default function RootLayout() {
                         <GameSync />
                         <InGameRedirect />
                         <StatusBar style="light" />
+                        {/* Android: hide the system navigation bar (back / home / apps); a swipe
+                            up from the bottom edge shows it for a moment. */}
+                        <NavigationBar hidden />
                         <ThemeProvider value={navigationTheme(colors)}>
                             <Stack
                                 screenOptions={{
@@ -75,6 +81,9 @@ export default function RootLayout() {
                                 <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Dutch Pub' }} />
                                 <Stack.Screen name="login" options={{ title: 'Log in' }} />
                                 <Stack.Screen name="registration" options={{ title: 'Registration' }} />
+                                {/* Dev-only mock game table (UI work), see src/app/dev/table.tsx. */}
+                                <Stack.Screen name="dev/table" options={{ headerShown: false }} />
+                                <Stack.Screen name="dev/cards" options={{ title: 'Card preview' }} />
                                 {/* No way back out of a running game: no header (so no back button), no swipe-back. */}
                                 <Stack.Screen
                                     name="game"

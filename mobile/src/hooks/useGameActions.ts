@@ -34,7 +34,11 @@ export function useGameActions() {
     const layCard = useCallback(
         (card: TCard | number, cardIndex: number, touchable = true): boolean => {
             if (roomId === undefined) return false;
-            if (!active || !touchable) {
+            if (!active) {
+                dispatch(setToast({ id: `not-your-turn-${Date.now()}`, type: 'warning', message: "It's not your turn yet.", duration: 3000 }));
+                return false;
+            }
+            if (!touchable) {
                 dispatch(setToast({ id: `place-card-failed-${Date.now()}`, type: 'warning', message: 'You cannot place that card!', duration: 3000 }));
                 return false;
             }

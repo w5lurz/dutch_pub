@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import type { TRoom, TRooms, User } from '@dutch-pub/shared';
+import type { RoomSettings, TRoom, TRooms, User } from '@dutch-pub/shared';
 
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -7,7 +7,7 @@ import { setToast } from '@/store/generalSlice';
 
 export type RoomVisibility = 'public' | 'private';
 
-export type NewRoom = { name: string; slots: number; visibility: RoomVisibility };
+export type NewRoom = { name: string; slots: number; visibility: RoomVisibility; settings: RoomSettings };
 
 /** Same rule as the web's `isPrivate` (utils/utilFunctions.ts). */
 export const isPrivate = (visibility: string) => visibility === 'private';
@@ -32,7 +32,25 @@ export function deriveRooms(rooms: TRooms, user: User): RoomsDerived {
     };
 }
 
-export type RoomPermissions = { canJoin: boolean; canLeave: boolean; canDelete: boolean; canStart: boolean };
+export type RoomPermissions = {
+    canJoin: boolean;
+    canLeave: boolean;
+    canDelete: boolean;
+    canStart: boolean;
+    /** Open the room settings sheet: the owner (to change them) and the players in the room (read-only). */
+    canViewSettings: boolean;
+    /** Change the room settings: the owner, before the game starts (as the server checks). */
+    canEditSettings: boolean;
+};
+
+const NO_PERMISSIONS: RoomPermissions = {
+    canJoin: false,
+    canLeave: false,
+    canDelete: false,
+    canStart: false,
+    canViewSettings: false,
+    canEditSettings: false,
+};
 
 /** Button rules from the web `Rooms.tsx` (plus: no joining a room whose game already started). */
 export function roomPermissions(roomId: number, room: TRoom, user: NonNullable<User>, derived: RoomsDerived): RoomPermissions {
@@ -43,6 +61,8 @@ export function roomPermissions(roomId: number, room: TRoom, user: NonNullable<U
         canLeave: derived.currentRoomId === roomId && !isOwner,
         canDelete: isOwner,
         canStart: isOwner && players.length > 1,
+        canViewSettings: isOwner || derived.currentRoomId === roomId,
+        canEditSettings: isOwner && !inGame,
     };
 }
 
@@ -67,9 +87,9 @@ export function useRooms() {
     );
 
     const createRoom = useCallback(
-        ({ name, slots, visibility }: NewRoom) => {
+        ({ name, slots, visibility, settings }: NewRoom) => {
             if (!user) return;
-            socket.emit('create-room', { name, owner: user.username, slots, visibility });
+            socket.emit('create-room', { name, owner: user.username, slots, visibility, settings });
             toast(`create-room-${name}-success`, `You successfully created Room ${name}!`);
         },
         [socket, user, toast],
@@ -109,6 +129,14 @@ export function useRooms() {
         [socket, toast],
     );
 
+    /** Owner only; the server broadcasts the new rooms list (or rejects with a toast). */
+    const updateRoomSettings = useCallback(
+        (roomId: number, settings: Partial<RoomSettings>) => {
+            socket.emit('update-room-settings', { roomId, settings });
+        },
+        [socket],
+    );
+
     const refresh = useCallback(() => {
         socket.emit('list-rooms');
     }, [socket]);
@@ -116,7 +144,7 @@ export function useRooms() {
     /** Which actions the signed-in user has on a room (all false when signed out). */
     const permissionsFor = useCallback(
         (roomId: number, room: TRoom): RoomPermissions =>
-            user ? roomPermissions(roomId, room, user, derived) : { canJoin: false, canLeave: false, canDelete: false, canStart: false },
+            user ? roomPermissions(roomId, room, user, derived) : NO_PERMISSIONS,
         [user, derived],
     );
 
@@ -132,6 +160,7 @@ export function useRooms() {
         leaveRoom,
         deleteRoom,
         startGame,
+        updateRoomSettings,
         refresh,
     };
 }

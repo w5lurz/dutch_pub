@@ -14,7 +14,8 @@ export type ScreenProps = {
     edges?: readonly Edge[];
     /** Adds `p-4` around the content. Default true. */
     padded?: boolean;
-    background?: 'white' | 'gray';
+    /** 'none': transparent, for screens that draw their own background. */
+    background?: 'white' | 'gray' | 'none';
     /** Classes for the outer container. */
     className?: string;
     /** Classes for the content (the ScrollView content container, or the inner View). */
@@ -37,7 +38,7 @@ export function Screen({
         paddingLeft: edges.includes('left') ? insets.left : 0,
         paddingRight: edges.includes('right') ? insets.right : 0,
     };
-    const bg = background === 'white' ? 'bg-white' : 'bg-gray-50';
+    const bg = { white: 'bg-white', gray: 'bg-gray-50', none: '' }[background];
     const padding = padded ? 'p-4' : '';
 
     return (

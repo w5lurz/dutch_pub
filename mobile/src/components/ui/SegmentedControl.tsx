@@ -1,6 +1,11 @@
 import { Pressable, Text, View } from 'react-native';
 
-export type SegmentedOption<T extends string | number> = { label: string; value: T };
+export type SegmentedOption<T extends string | number> = {
+    label: string;
+    value: T;
+    /** Optional colour shown as a small dot before the label (e.g. card back colours). */
+    swatch?: string;
+};
 
 export type SegmentedControlProps<T extends string | number> = {
     options: readonly SegmentedOption<T>[];
@@ -47,7 +52,16 @@ export function SegmentedControl<T extends string | number>({
                             selected ? 'border-gray-300 bg-white' : 'border-transparent active:bg-gray-200'
                         }`}
                     >
-                        <Text className={`text-sm ${selected ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>{option.label}</Text>
+                        <View className="flex-row items-center gap-1.5">
+                            {option.swatch ? (
+                                <View
+                                    testID={`swatch-${String(option.value)}`}
+                                    className="h-3 w-3 rounded-full border border-gray-300"
+                                    style={{ backgroundColor: option.swatch }}
+                                />
+                            ) : null}
+                            <Text className={`text-sm ${selected ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>{option.label}</Text>
+                        </View>
                     </Pressable>
                 );
             })}

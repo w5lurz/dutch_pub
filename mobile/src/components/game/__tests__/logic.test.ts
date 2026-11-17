@@ -1,7 +1,10 @@
 import type { Cards, Game, TCard } from '@dutch-pub/shared';
 
 import { pileDrawSignature } from '../autoDraw';
-import { baseCardHeight, cardDimensions } from '../cardSize';
+import { baseCardHeight, CARD_GAP, cardDimensions, tableLayout } from '../cardSize';
+import { handFanLayout } from '../HandFan';
+import { handCardMargin } from '../PlayerBoard';
+import { seatPositions } from '../seats';
 import { stackOffset, tableSpots } from '../TableStacks';
 
 const card = (value: number, color = 'hearts', extra: Partial<TCard> = {}): TCard => ({
@@ -43,27 +46,124 @@ describe('tableSpots', () => {
     });
 });
 
+describe('table layout', () => {
+    it('is wide only when the window is more than 1.2 times as wide as tall', () => {
+        expect(tableLayout({ width: 360, height: 800 })).toBe('portrait');
+        expect(tableLayout({ width: 800, height: 800 })).toBe('portrait');
+        expect(tableLayout({ width: 960, height: 800 })).toBe('portrait');
+        expect(tableLayout({ width: 961, height: 800 })).toBe('wide');
+        expect(tableLayout({ width: 800, height: 360 })).toBe('wide');
+    });
+});
+
 describe('card sizes', () => {
-    it('scales an md card from the landscape window height (86dp on a 780x360 phone)', () => {
-        expect(baseCardHeight({ width: 780, height: 360 })).toBe(86);
-        expect(cardDimensions({ width: 780, height: 360 }, 'md')).toEqual({ width: 61, height: 86 });
+    it('scales an md card from the width in portrait (63x88dp on a 360dp phone)', () => {
+        expect(cardDimensions({ width: 360, height: 640 }, 'md')).toEqual({ width: 63, height: 88 });
+        expect(cardDimensions({ width: 360, height: 800 }, 'md')).toEqual({ width: 63, height: 88 });
+        expect(cardDimensions({ width: 360, height: 800 }, 'lg').width).toBe(69);
+        expect(cardDimensions({ width: 360, height: 800 }, 'sm').width).toBe(50);
+        expect(cardDimensions({ width: 360, height: 800 }, 'xs').width).toBe(35);
     });
 
-    it('clamps to 56-132dp', () => {
+    it('caps portrait cards by the height (narrow browser windows)', () => {
+        expect(baseCardHeight({ width: 500, height: 800 })).toBe(112);
+    });
+
+    it('scales an md card from the height in the wide layout', () => {
+        expect(baseCardHeight({ width: 780, height: 360 })).toBe(82);
+        expect(baseCardHeight({ width: 844, height: 390 })).toBe(89);
+    });
+
+    it('clamps to 56-132dp (tablets and the desktop stop at 132dp)', () => {
         expect(baseCardHeight({ width: 200, height: 100 })).toBe(56);
         expect(baseCardHeight({ width: 3000, height: 2000 })).toBe(132);
+        expect(baseCardHeight({ width: 1024, height: 1366 })).toBe(132);
     });
 
     it('keeps the card aspect ratio for every size', () => {
-        for (const size of ['xs', 'sm', 'md', 'lg'] as const) {
-            const { width, height } = cardDimensions({ width: 780, height: 360 }, size);
-            expect(height / width).toBeCloseTo(1.4, 1);
+        for (const window of [{ width: 780, height: 360 }, { width: 360, height: 800 }]) {
+            for (const size of ['xxs', 'xs', 'sm', 'md', 'lg'] as const) {
+                const { width, height } = cardDimensions(window, size);
+                expect(height / width).toBeCloseTo(1.4, 1);
+            }
         }
     });
 
     it('lets a face-down card peek out by at least 3dp', () => {
         expect(stackOffset(10)).toBe(3);
         expect(stackOffset(61)).toBe(8);
+    });
+});
+
+describe('seatPositions', () => {
+    const seats = (order: string[], me: string | undefined, layout: 'portrait' | 'wide') =>
+        seatPositions(order, me, layout).map(seat => `${seat.name}:${seat.position}`);
+
+    it('seats 2 players opposite each other', () => {
+        expect(seats(['me', 'a'], 'me', 'portrait')).toEqual(['a:top']);
+        expect(seats(['a', 'me'], 'me', 'wide')).toEqual(['a:top']);
+    });
+
+    it('seats 3 players top-left / top-right in portrait, left / right in wide', () => {
+        expect(seats(['me', 'a', 'b'], 'me', 'portrait')).toEqual(['a:top-left', 'b:top-right']);
+        expect(seats(['me', 'a', 'b'], 'me', 'wide')).toEqual(['a:left', 'b:right']);
+    });
+
+    it('seats 4 players left, top, right in both layouts', () => {
+        expect(seats(['me', 'a', 'b', 'c'], 'me', 'portrait')).toEqual(['a:left', 'b:top', 'c:right']);
+        expect(seats(['me', 'a', 'b', 'c'], 'me', 'wide')).toEqual(['a:left', 'b:top', 'c:right']);
+    });
+
+    it('goes clockwise in turn order, starting with the player after you', () => {
+        expect(seats(['a', 'b', 'me', 'c'], 'me', 'portrait')).toEqual(['c:left', 'a:top', 'b:right']);
+        expect(seats(['a', 'me', 'b'], 'me', 'portrait')).toEqual(['b:top-left', 'a:top-right']);
+        expect(seats(['a', 'b', 'c', 'me'], 'me', 'wide')).toEqual(['a:left', 'b:top', 'c:right']);
+    });
+
+    it('takes the order as starting after you when you are not in it', () => {
+        expect(seats(['a', 'b', 'c'], undefined, 'portrait')).toEqual(['a:left', 'b:top', 'c:right']);
+        expect(seats(['a', 'b'], 'me', 'wide')).toEqual(['a:left', 'b:right']);
+    });
+
+    it('handles no opponents, duplicates and more than 3 opponents', () => {
+        expect(seats(['me'], 'me', 'portrait')).toEqual([]);
+        expect(seats(['me', 'a', 'a'], 'me', 'portrait')).toEqual(['a:top']);
+        expect(seats(['me', 'a', 'b', 'c', 'd'], 'me', 'wide')).toEqual(['a:left', 'b:top', 'c:top', 'd:right']);
+    });
+});
+
+describe('handFanLayout', () => {
+    it('draws one back per card while they fit', () => {
+        expect(handFanLayout(4, 25, 10)).toEqual({ drawn: 4, step: 10, width: 55, compressed: false });
+        expect(handFanLayout(10, 25, 10)).toMatchObject({ drawn: 10, width: 115, compressed: false });
+    });
+
+    it('squeezes more cards into the width of a full fan', () => {
+        const fan = handFanLayout(15, 25, 10);
+        expect(fan).toMatchObject({ drawn: 15, width: 115, compressed: true });
+        expect(25 + fan.step * (fan.drawn - 1)).toBeCloseTo(115);
+        expect(handFanLayout(40, 25, 10)).toMatchObject({ drawn: 20, width: 115, compressed: true });
+    });
+
+    it('is empty without cards', () => {
+        expect(handFanLayout(0, 25)).toMatchObject({ drawn: 0, width: 0 });
+    });
+});
+
+describe('handCardMargin', () => {
+    it('keeps the normal gap while the hand fits', () => {
+        expect(handCardMargin(5, 63, 344)).toBe(CARD_GAP);
+        expect(handCardMargin(1, 63, 10)).toBe(CARD_GAP);
+    });
+
+    it('overlaps a longer hand just enough to fit', () => {
+        const margin = handCardMargin(8, 63, 344);
+        expect(margin).toBeLessThan(0);
+        expect(8 * 63 + 7 * margin).toBeLessThanOrEqual(344);
+    });
+
+    it('keeps 60% of each card visible; longer hands scroll', () => {
+        expect(handCardMargin(15, 63, 344)).toBe(Math.floor(63 * 0.6 - 63));
     });
 });
 

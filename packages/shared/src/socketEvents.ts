@@ -2,7 +2,7 @@
 //   Socket<ServerToClientEvents, ClientToServerEvents>
 // Server handlers live in backend/src/{rooms,game,chat,guests}.js.
 
-import type { ChatMessage, Game, TCard, TRooms } from './types';
+import type { ChatMessage, Game, RoomSettings, TCard, TRooms } from './types';
 
 /** Reply to `get-game-state`: everything a client needs to re-sync after a reconnect. */
 export type GameState = {
@@ -36,7 +36,13 @@ export interface ServerToClientEvents {
 /** Events clients emit to the server. */
 export interface ClientToServerEvents {
     'list-rooms': () => void;
-    'create-room': (room: { name: string; owner: string; slots: number; visibility: string }) => void;
+    /** `settings` is optional; missing or invalid values get the defaults (`DEFAULT_ROOM_SETTINGS`). */
+    'create-room': (room: { name: string; owner: string; slots: number; visibility: string; settings?: Partial<RoomSettings> }) => void;
+    /**
+     * Owner only, before the game starts. Keys left out keep their current value. On success
+     * the server broadcasts `rooms-listed`; otherwise the sender gets `action-rejected`.
+     */
+    'update-room-settings': (payload: { roomId: number; settings: Partial<RoomSettings> }) => void;
     'delete-room': (roomId: number) => void;
     'join-room': (payload: { username: string; roomId: number }) => void;
     'leave-room': (payload: { username: string; roomId: number }) => void;

@@ -1,8 +1,9 @@
 import { Text, View } from 'react-native';
-import type { TRoom } from '@dutch-pub/shared';
+import { normalizeRoomSettings, type TRoom } from '@dutch-pub/shared';
 
 import { Button } from '@/components/ui';
 import { isPrivate, type RoomPermissions } from '@/hooks/useRooms';
+import { describeRoomSettings } from './RoomSettingsFields';
 
 export type RoomCardProps = {
     room: TRoom;
@@ -15,6 +16,8 @@ export type RoomCardProps = {
     onLeave: () => void;
     onDelete: () => void;
     onStart: () => void;
+    /** Opens the room settings sheet (editable for the owner, read-only for the others). */
+    onSettings: () => void;
 };
 
 function Badge({ label, className }: { label: string; className: string }) {
@@ -26,10 +29,11 @@ function Badge({ label, className }: { label: string; className: string }) {
 }
 
 /** One room in the lobby list: name, owner, players and the actions allowed for the user. */
-export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoin, onLeave, onDelete, onStart }: RoomCardProps) {
+export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoin, onLeave, onDelete, onStart, onSettings }: RoomCardProps) {
     const { name, owner, players, slots, inGame = false, visibility = 'private' } = room;
-    const { canJoin, canLeave, canDelete, canStart } = permissions;
-    const hasActions = canJoin || canLeave || canDelete || canStart;
+    const { canJoin, canLeave, canDelete, canStart, canViewSettings, canEditSettings } = permissions;
+    const hasActions = canJoin || canLeave || canDelete || canStart || canViewSettings;
+    const settingsSummary = describeRoomSettings(normalizeRoomSettings(room.settings));
     const privateRoom = isPrivate(visibility);
 
     return (
@@ -55,6 +59,9 @@ export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoi
             <Text numberOfLines={2} className="text-base text-gray-900">
                 Players: {players.map(player => player.username).join(', ')} ({players.length}/{slots})
             </Text>
+            <Text numberOfLines={1} className="text-sm text-gray-700">
+                Settings: {settingsSummary}
+            </Text>
             {hasActions ? (
                 <View className="flex-row flex-wrap gap-2 pt-1">
                     {canJoin ? (
@@ -78,6 +85,15 @@ export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoi
                             disabled={disabled}
                             onPress={onDelete}
                             accessibilityLabel={`Delete room ${name}`}
+                        />
+                    ) : null}
+                    {canViewSettings ? (
+                        <Button
+                            label="Settings"
+                            variant="gray"
+                            size="sm"
+                            onPress={onSettings}
+                            accessibilityLabel={`${canEditSettings ? 'Change' : 'View'} settings of room ${name}`}
                         />
                     ) : null}
                     {canStart ? (

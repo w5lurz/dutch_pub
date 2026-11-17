@@ -213,10 +213,17 @@ describe('socket game flow', () => {
 
     test('creates a room and broadcasts it', async () => {
         const broadcast = waitFor(b, 'rooms-listed');
-        a.emit('create-room', { name: `room_${stamp}`, owner: user.username, slots: 2, visibility: 'public' });
+        a.emit('create-room', {
+            name: `room_${stamp}`,
+            owner: user.username,
+            slots: 2,
+            visibility: 'public',
+            settings: { showCardPowers: false, cardBack: 'green', unknownSetting: 'dropped' },
+        });
         const [rooms] = await broadcast;
         roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `room_${stamp}`));
         assert.ok(roomId, 'room not found in broadcast');
+        assert.deepEqual(rooms[roomId].settings, { showCardPowers: false, cardBack: 'red' }, 'settings are validated');
     });
 
     test('rejects joining a room as someone else', async () => {
@@ -233,6 +240,26 @@ describe('socket game flow', () => {
             rooms[roomId].players.map(player => player.username),
             [user.username, guestName],
         );
+    });
+
+    test('only the owner can change the room settings', async () => {
+        b.emit('update-room-settings', { roomId, settings: { showCardPowers: true } });
+        const [reason] = await waitFor(b, 'action-rejected');
+        assert.equal(reason, 'Only the room owner can do that.');
+    });
+
+    test('the owner changes the room settings and everyone gets them', async () => {
+        const broadcast = waitFor(b, 'rooms-listed');
+        a.emit('update-room-settings', { roomId, settings: { showCardPowers: true, cardBack: 'blue', unknownSetting: 1 } });
+        const [rooms] = await broadcast;
+        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue' });
+    });
+
+    test('an unknown card back colour keeps the current one', async () => {
+        const broadcast = waitFor(b, 'rooms-listed');
+        a.emit('update-room-settings', { roomId, settings: { cardBack: 'green' } });
+        const [rooms] = await broadcast;
+        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue' });
     });
 
     test('only the owner can start the game', async () => {
@@ -255,6 +282,12 @@ describe('socket game flow', () => {
             assert.equal(game.laidCards, null);
         }
         assert.notEqual(!!gameA.active, !!gameB.active, 'exactly one player must be active');
+    });
+
+    test('room settings cannot be changed after the game has started', async () => {
+        a.emit('update-room-settings', { roomId, settings: { showCardPowers: false } });
+        const [reason] = await waitFor(a, 'action-rejected');
+        assert.equal(reason, 'Settings cannot be changed after the game has started.');
     });
 
     test('players who reconnect with a new socket get their seat and state back', async () => {

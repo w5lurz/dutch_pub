@@ -2,6 +2,7 @@ import {
 	createContext,
 	useCallback,
 	useContext,
+	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -9,7 +10,7 @@ import {
 	type ReactNode,
 	type RefObject,
 } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import type { TCard } from '@dutch-pub/shared';
@@ -82,9 +83,12 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 	const geometry = useRef<{ origin: Rect; host: Rect; zone: Rect | null } | null>(null);
 	const translation = useRef({ x: 0, y: 0 });
 	const returnTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	// Bumped by every clear: a drag start whose measuring finishes after that is dropped.
+	const generation = useRef(0);
 
 	const clear = useCallback(() => {
 		clearTimeout(returnTimer.current);
+		generation.current += 1;
 		geometry.current = null;
 		dragging.set(false);
 		hovering.set(false);
@@ -115,9 +119,10 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 			clearTimeout(returnTimer.current);
 			translation.current = { x: 0, y: 0 };
 			geometry.current = null;
+			const current = generation.current;
 			Promise.all([measure(source), measure(hostRef.current), measure(dropZoneRef.current)]).then(
 				([origin, host, zone]) => {
-					if (!origin || !host) return;
+					if (!origin || !host || generation.current !== current) return;
 					geometry.current = { origin, host, zone };
 					dragging.set(true);
 					update();
@@ -148,6 +153,13 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 		clearTimeout(returnTimer.current);
 		returnTimer.current = setTimeout(clear, RETURN_MS);
 	}, [clear, hovering, x, y]);
+
+	// The window changed size (phone turned, browser resized): the layout moves, so the
+	// measured rects are stale. Drop a drag in progress; the gesture then ends as a no-op.
+	useEffect(() => {
+		const subscription = Dimensions.addEventListener('change', clear);
+		return () => subscription.remove();
+	}, [clear]);
 
 	const overlayStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: x.get() }, { translateY: y.get() }, { scale: hovering.get() ? 1.1 : 1.05 }],
