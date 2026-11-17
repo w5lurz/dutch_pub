@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 
 import { getDeviceSetting, setDeviceSetting } from '@/lib/deviceSettings';
 
+import { Ashtray } from '../Ashtray';
 import { LampButton } from '../LampButton';
 import { tableModeFor, TableThemeProvider, useTableTheme } from '../tableTheme';
 
@@ -61,5 +62,22 @@ describe('LampButton', () => {
             </TableThemeProvider>,
         );
         expect(screen.getByText('night night-palette')).toBeTruthy();
+    });
+});
+
+describe('Ashtray', () => {
+    it('is on the table at night only, hidden from screen readers', async () => {
+        const { rerender } = await render(
+            <TableThemeProvider mode="day">
+                <Ashtray size={60} />
+            </TableThemeProvider>,
+        );
+        expect(screen.queryByTestId('ashtray', { includeHiddenElements: true })).toBeNull();
+        await rerender(
+            <TableThemeProvider mode="night">
+                <Ashtray size={60} />
+            </TableThemeProvider>,
+        );
+        expect(screen.getByTestId('ashtray', { includeHiddenElements: true })).toHaveProp('accessibilityElementsHidden', true);
     });
 });

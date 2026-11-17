@@ -5,9 +5,10 @@ import type { ChatMessage, Game, TCard } from '@dutch-pub/shared';
 
 import { Screen } from '@/components/ui';
 
+import { Ashtray } from './Ashtray';
 import { CardDragProvider } from './CardDrag';
 import { CardSettingsProvider, type CardSettings } from './cardSettings';
-import { tableLayout, type CardSize } from './cardSize';
+import { tableLayout, useCardSize, type CardSize } from './cardSize';
 import { ChatButton } from './ChatButton';
 import { ChatModal } from './ChatModal';
 import { PileArea } from './PileArea';
@@ -75,6 +76,7 @@ export function GameTable({
     const insets = useSafeAreaInsets();
     const layout = tableLayout(window);
     const short = window.height < SHORT_HEIGHT;
+    const { height: cardHeight } = useCardSize('md');
 
     // Chat: unread = messages that arrived while the modal was closed.
     const [chatOpen, setChatOpen] = useState(false);
@@ -136,6 +138,12 @@ export function GameTable({
         <View className={`${paletteClass} flex-1`}>
             <TableBackground layout={layout} />
             <TableLighting layer="table" />
+            {/* Night only: an ashtray with a burning cigarette near the table's bottom-left corner, a bit
+                in from the edge (portrait: on the left between the left seat's cards and yours). */}
+            <Ashtray
+                size={Math.round(cardHeight * (layout === 'portrait' ? 0.75 : 0.85))}
+                style={layout === 'portrait' ? { left: '7%', top: '56%' } : { left: '10%', bottom: '13%' }}
+            />
             <Screen edges={['top', 'bottom', 'left', 'right']} padded={false} background="none">
                 <CardSettingsProvider settings={cardSettings}>
                     <CardDragProvider>
