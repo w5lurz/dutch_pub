@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { normalizeRoomSettings, type TRoom } from '@dutch-pub/shared';
 
-import { Button } from '@/components/ui';
+import { Avatar, Button } from '@/components/ui';
 import { isPrivate, type RoomPermissions } from '@/hooks/useRooms';
 import { describeRoomSettings } from './RoomSettingsFields';
 
@@ -56,9 +56,23 @@ export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoi
             <Text numberOfLines={1} className="text-sm text-gray-700">
                 Owner: {owner}
             </Text>
-            <Text numberOfLines={2} className="text-base text-gray-900">
-                Players: {players.map(player => player.username).join(', ')} ({players.length}/{slots})
-            </Text>
+            <View className="gap-1">
+                <Text className="text-base text-gray-900">
+                    Players ({players.length}/{slots}){players.length === 0 ? ': none yet' : ':'}
+                </Text>
+                {players.length > 0 ? (
+                    <View className="flex-row flex-wrap gap-2">
+                        {players.map(player => (
+                            <View key={player.username} className="flex-row items-center gap-1 rounded-full bg-gray-100 py-0.5 pl-0.5 pr-2">
+                                <Avatar username={player.username} avatar={player.avatar} size={24} />
+                                <Text numberOfLines={1} className="max-w-28 text-xs text-gray-800">
+                                    {player.username}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                ) : null}
+            </View>
             <Text numberOfLines={1} className="text-sm text-gray-700">
                 Settings: {settingsSummary}
             </Text>

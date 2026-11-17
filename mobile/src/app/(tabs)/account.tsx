@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { AvatarSection } from '@/components/account/AvatarSection';
 import { GuestBadge } from '@/components/auth';
 import { DutchPubLogo } from '@/components/icons';
 import { Button, Screen } from '@/components/ui';
@@ -62,12 +63,10 @@ export default function AccountScreen() {
 		<Screen scroll background="gray" contentClassName="items-center justify-center">
 			{user ? (
 				<View className="w-full max-w-md items-center gap-3 rounded-lg border border-gray-200 bg-white p-6 shadow">
-					<View className="h-24 w-24 items-center justify-center rounded-full bg-gray-700">
-						<DutchPubLogo size={56} />
-					</View>
 					<Text accessibilityRole="header" className="text-2xl font-bold text-gray-900">
 						{user.username}
 					</Text>
+					<AvatarSection user={user} />
 					{user.isGuest ? <GuestBadge /> : null}
 					{!user.isGuest && user.email ? <Text className="text-base text-gray-600">{user.email}</Text> : null}
 					{user.isGuest ? (
@@ -84,9 +83,10 @@ export default function AccountScreen() {
 				<SignedOut />
 			)}
 			{__DEV__ ? (
-				<View className="mt-6 flex-row gap-2">
+				<View className="mt-6 flex-row flex-wrap justify-center gap-2">
 					<Button label="Table preview (dev)" variant="gray" size="sm" onPress={() => router.push('/dev/table')} />
 					<Button label="Card preview (dev)" variant="gray" size="sm" onPress={() => router.push('/dev/cards')} />
+					<Button label="Avatars (dev)" variant="gray" size="sm" onPress={() => router.push('/dev/avatars')} />
 				</View>
 			) : null}
 		</Screen>

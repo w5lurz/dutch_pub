@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 
 import { signGuestToken, signUserToken, TOKEN_TTL_SECONDS } from '../middleware/authJwt.js';
 
+import { getAvatarSafe } from '../avatars.js';
 import db from '../models/index.js';
 const User = db.user;
 
@@ -51,6 +52,7 @@ export const loginUser = async (req, res, next) => {
             id: user.id,
             username: user.username,
             email: user.email,
+            avatar: await getAvatarSafe(user.id),
             token,
         });
     } catch (error) {

@@ -20,6 +20,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Register, log in, log out, log in again; the session survives an app restart.
 - [ ] Join as a guest; the guest name stays taken while that guest is away.
 - [ ] Wrong password / unknown user / taken name show a message.
+- [ ] Avatars: a new account shows the avatar generated from its name (the same on every device). Account → "Change avatar": pick one; it shows at once on the Account screen, in your room card, at your seat and at the other players' tables (also mid-game), and on the leaderboard; it survives log out / log in, an app restart and a second device. "Use my generated one" goes back. Guests see their generated avatar with a note and no picker. Saving offline shows an error and keeps the old one. (Dev: Account tab → Avatars, or /dev/avatars, shows all presets.)
 
 ### Rooms
 
@@ -31,7 +32,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 
 - [ ] The game opens in portrait; turning the phone switches to the wide layout and back (the other screens stay portrait); Android back is blocked in a game.
 - [ ] Seats follow the turn order clockwise from you (you at the bottom): portrait 2p top, 3p top-left / top-right, 4p left / top / right; wide 2p top, 3p left / right (upper half), 4p left / top / right. The same player sits in the same place on every device relative to its owner.
-- [ ] Opponents: avatar initial and name, hand as a fan of backs without a number ("×N" only when it is too long), face-up cards on their face-down stacks; side seats' cards turned toward the centre, text upright; a green glow around the avatar of whoever is on turn (yours too).
+- [ ] Opponents: avatar (chosen, or generated from the name) and name, hand as a fan of backs without a number ("×N" only when it is too long), face-up cards on their face-down stacks; side seats' cards turned toward the centre, text upright; a green glow around the avatar of whoever is on turn (yours too).
 - [ ] Tap selects a card (lifts, blue outline), tap again deselects.
 - [ ] Drag a card onto the laid pile to play it; anywhere else it flies back; an illegal card flies back with a message. In both layouts, and from your table stacks too.
 - [ ] Turn the phone while dragging a card: the drag is dropped, the card is back in your hand, nothing is played.
@@ -56,3 +57,4 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Wide: a phone turned sideways (your stacks beside the hand), a tablet in both orientations, the desktop browser; a narrow browser window gets the portrait layout. Cards readable, nothing cut off.
 - [ ] The dev preview (Account tab → table preview, or /dev/table) shows the layout name and window size on its first chip; check 2, 3 and 4 players, "Opp. hands: many", hand 15, in both layouts.
 - [ ] Animations: laid card zooms in, cards slide in / out, burnt pile fades in.
+- [ ] Realistic look: cards have a soft shadow and paper shading; the laid pile is a little messy (cards below peek out, each card keeps its tilt), the deck shows its thickness (thinner as it runs out), the burnt pile is a heap of backs only; table cards lie a little crooked. On a short landscape screen the hand hangs partly off the bottom edge. Check that drag & drop is smooth on a mid-range Android (shadows on ~30 cards).

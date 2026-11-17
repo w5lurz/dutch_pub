@@ -1,3 +1,4 @@
+import { getAvatarSafe } from '../avatars.js';
 import db from '../models/index.js';
 const User = db.user;
 
@@ -20,5 +21,5 @@ export const userBoard = async (req, res) => {
         return res.status(404).send({ message: 'No user with this username found.' });
     }
 
-    return res.status(200).send({ id: user.id, username: user.username, email: user.email });
+    return res.status(200).send({ id: user.id, username: user.username, email: user.email, avatar: await getAvatarSafe(user.id) });
 };

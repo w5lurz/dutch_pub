@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import type { Opponent, TCard, UserCards } from '@dutch-pub/shared';
+import { generatedAvatarId, type Opponent, type TCard, type UserCards } from '@dutch-pub/shared';
 
 import { CardDragProvider } from '../CardDrag';
 import { HandFan } from '../HandFan';
@@ -68,7 +68,7 @@ describe('Seat', () => {
     it('shows the name with counts and turn, the hand and the stacks', async () => {
         await render(<Seat name="anna" opponent={anna} position="top" layout="portrait" />);
         expect(screen.getByLabelText('anna, on turn: 4 in hand, 2 face-up, 3 face-down')).toBeTruthy();
-        expect(screen.getByText('A')).toBeTruthy(); // avatar placeholder: the initial
+        expect(screen.getByTestId(`avatar-${generatedAvatarId('anna')}`)).toBeTruthy(); // generated from the name
         expect(screen.getByLabelText('4 cards in hand')).toBeTruthy();
         expect(screen.getByLabelText('5 of hearts')).toBeTruthy();
         expect(screen.getByLabelText('9 of hearts')).toBeTruthy();
@@ -91,10 +91,15 @@ describe('Seat', () => {
         expect(turned).toBe(2);
     });
 
-    it('shows an avatar picture instead of the initial when given', async () => {
+    it('shows the chosen avatar', async () => {
+        await render(<Seat name="anna" opponent={anna} position="top" layout="wide" avatarId="penguin" />);
+        expect(screen.getByTestId('avatar-penguin')).toBeTruthy();
+    });
+
+    it('shows a given picture instead of the avatar', async () => {
         await render(<Seat name="anna" opponent={anna} position="top" layout="wide" avatar={<PlayingCard faceDown accessibilityLabel="avatar" />} />);
         expect(screen.getByLabelText('avatar')).toBeTruthy();
-        expect(screen.queryByText('A')).toBeNull();
+        expect(screen.queryByTestId(/^avatar-/)).toBeNull();
     });
 });
 

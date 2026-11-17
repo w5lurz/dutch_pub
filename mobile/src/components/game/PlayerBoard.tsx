@@ -14,12 +14,16 @@ const HAND_PADDING = 8;
 const CORNER_SPACE = 60;
 /** How far a selected hand card lifts (along its tilt); the hand keeps this much room above it. */
 const HAND_LIFT = 14;
+/** Share of a hand card below the screen edge on short windows (`overlapStacks`). */
+const HANG_OFF = 0.3;
 
 type PlayerBoardProps = {
 	userCards: UserCards;
 	laidCards: Cards | null;
 	active: boolean;
 	username?: string;
+	/** Your chosen avatar id; null / missing: the one generated from your name. */
+	avatar?: string | null;
 	/**
 	 * `touchable`: whether this card may be played at all right now (hand first, then face-up,
 	 * then face-down). Returns whether the card was played.
@@ -55,6 +59,7 @@ export function PlayerBoard({
 	laidCards,
 	active,
 	username,
+	avatar,
 	onLayCard,
 	handSize = 'md',
 	overlapStacks = false,
@@ -89,7 +94,9 @@ export function PlayerBoard({
 	const handView = handPlayable ? (
 		<View
 			onLayout={event => setHandWidth(event.nativeEvent.layout.width)}
-			style={{ height: arc.height }}
+			// On short windows the hand hangs partly off the bottom edge (its corner indices stay
+			// visible), like cards held at the table edge: the piles and seats keep their room.
+			style={{ height: arc.height, marginBottom: overlapStacks ? -Math.round(cardHeight * HANG_OFF) : 0 }}
 			accessibilityLabel={`Your hand, ${hand.length} cards`}
 		>
 			{hand.map((card, i) => {
@@ -139,7 +146,7 @@ export function PlayerBoard({
 			accessibilityLabel={`You, ${username ?? ''}${active ? ', on turn' : ''}`}
 			className="flex-row items-center justify-center gap-1.5"
 		>
-			<SeatAvatar name={username ?? '?'} active={active} size={Math.max(24, Math.round(avatarCard * 0.8))} />
+			<SeatAvatar name={username ?? '?'} active={active} size={Math.max(24, Math.round(avatarCard * 0.8))} avatarId={avatar} />
 			<Text numberOfLines={1} className={`max-w-32 text-xs font-semibold ${active ? 'text-green-800' : 'text-gray-900'}`}>
 				{username ?? ''}
 			</Text>

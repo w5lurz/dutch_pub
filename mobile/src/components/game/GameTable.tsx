@@ -26,6 +26,11 @@ export type GameTableProps = {
      * clockwise. Without it (or for names missing from it) the opponents' order is used.
      */
     playerOrder?: readonly string[];
+    /**
+     * Chosen avatar ids by username (you included), e.g. from the room's player list. Players
+     * missing from it (or with null) get the avatar generated from their name.
+     */
+    avatars?: Readonly<Record<string, string | null | undefined>>;
     /** Plays a card; returns whether the move was legal (see `useGameActions.layCard`). */
     onLayCard: (card: TCard | number, cardIndex: number, touchable: boolean) => boolean;
     messages: ChatMessage[];
@@ -54,6 +59,7 @@ export function GameTable({
     active,
     username,
     playerOrder,
+    avatars,
     onLayCard,
     messages,
     onSendMessage,
@@ -89,7 +95,14 @@ export function GameTable({
         seats
             .filter(seat => seat.position === position)
             .map(seat => (
-                <Seat key={seat.name} name={seat.name} opponent={game.opponents[seat.name]} position={position} layout={layout} />
+                <Seat
+                    key={seat.name}
+                    name={seat.name}
+                    opponent={game.opponents[seat.name]}
+                    position={position}
+                    layout={layout}
+                    avatarId={avatars?.[seat.name]}
+                />
             ));
     const hasSides = seats.some(seat => seat.position === 'left' || seat.position === 'right');
     // Smaller piles: portrait with seats beside them on a narrow window, or a short window (your
@@ -133,6 +146,7 @@ export function GameTable({
                             laidCards={game.laidCards}
                             active={active}
                             username={username}
+                            avatar={username ? avatars?.[username] : undefined}
                             onLayCard={onLayCard}
                             handSize={layout === 'wide' ? 'lg' : 'md'}
                             overlapStacks={window.height < SHORT_HEIGHT}

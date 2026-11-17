@@ -1,3 +1,5 @@
+export { Avatar, describeAvatar, type AvatarProps } from './Avatar';
+export { AvatarPicker, type AvatarPickerProps } from './AvatarPicker';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { ChoiceRow, type ChoiceRowProps } from './ChoiceRow';

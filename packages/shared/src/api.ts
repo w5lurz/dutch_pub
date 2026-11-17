@@ -1,11 +1,15 @@
 // REST client for the backend. Platform-agnostic: only relies on the global `fetch`.
 
+import type { AvatarId } from './avatars';
+
 /** Body of a successful `loginUser` / `addGuest` response. */
 export type AuthResponse = {
     id: number;
     username: string;
     email?: string;
     isGuest?: boolean;
+    /** The chosen avatar (registered users); null = generated from the name. Missing for guests. */
+    avatar?: AvatarId | null;
     /** JWT; send back as `Authorization: Bearer <token>` and in the socket handshake (`auth.token`). */
     token: string;
 };
@@ -25,8 +29,9 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
     };
 
     const get = async (path: string) => fetch(`${baseUrl}${path}`, { method: 'GET', headers: await headers() });
-    const post = async (path: string, body: unknown) =>
-        fetch(`${baseUrl}${path}`, { method: 'POST', headers: await headers(), body: JSON.stringify(body) });
+    const send = async (method: 'POST' | 'PUT', path: string, body: unknown) =>
+        fetch(`${baseUrl}${path}`, { method, headers: await headers(), body: JSON.stringify(body) });
+    const post = (path: string, body: unknown) => send('POST', path, body);
 
     /** 201 on success; 400 + `{ message }` for a duplicate username / email. */
     const registration = (username: string, email: string, password: string) => post('/api/auth/signup', { username, email, password });
@@ -42,7 +47,13 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
 
     const getLeaderBoard = () => get('/api/games/leaderboard');
 
-    return { registration, loginUser, getUser, addGuest, getLeaderBoard };
+    /**
+     * Saves the logged-in user's avatar (`null` = back to the generated one).
+     * 200 + `{ avatar }`; 400 unknown id, 403 guest / no token, 401 invalid token.
+     */
+    const setAvatar = (avatar: AvatarId | null) => send('PUT', '/api/auth/me/avatar', { avatar });
+
+    return { registration, loginUser, getUser, addGuest, getLeaderBoard, setAvatar };
 }
 
 export type Api = ReturnType<typeof createApi>;

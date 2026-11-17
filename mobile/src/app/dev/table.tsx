@@ -46,6 +46,8 @@ const HAND_SIZES = [0, 3, 8, 15];
 const OPPONENT_HANDS = { few: [3, 7, 5], many: [9, 14, 20] };
 /** Turn order for the seats: you first, so Julcsi sits next (left with 4 players). */
 const PLAYER_ORDER = ['test', ...OPPONENT_NAMES];
+/** Chosen avatars of the mock players (UI-PLAN.md U6); the others get the one generated from their name. */
+const AVATARS = { lacika: 'owl' };
 
 function mockGame(opponents: number, handSize: number, piles: boolean, yourTurn: boolean, many: boolean): Game {
     const others: Opponents = {};
@@ -143,6 +145,7 @@ export default function TablePreview() {
                 active={!!game.active}
                 username="test"
                 playerOrder={PLAYER_ORDER}
+                avatars={AVATARS}
                 onLayCard={layCard}
                 messages={MESSAGES}
                 onSendMessage={() => true}

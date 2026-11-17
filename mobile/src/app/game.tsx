@@ -25,6 +25,15 @@ export default function GameScreen() {
     const roomPlayers = useAppSelector(state => (inGame !== undefined ? state.rooms[inGame]?.players : undefined));
     const playerOrder = useMemo(() => roomPlayers?.map(player => player.username), [roomPlayers]);
     const { layCard, sendMessage, canSend, active, username } = useGameActions();
+    // Chosen avatars from the room (kept current by the server); yours from your account, so a
+    // change shows at once.
+    const ownAvatar = useAppSelector(state => state.user?.avatar);
+    const avatars = useMemo(() => {
+        const byName: Record<string, string | null | undefined> = Object.fromEntries(
+            (roomPlayers ?? []).map(player => [player.username, player.avatar]),
+        );
+        return ownAvatar !== undefined && username ? { ...byName, [username]: ownAvatar } : byName;
+    }, [roomPlayers, ownAvatar, username]);
     const roomSettings = useRoomSettings();
     const running = inGame !== undefined;
 
@@ -61,6 +70,7 @@ export default function GameScreen() {
                 active={active}
                 username={username}
                 playerOrder={playerOrder}
+                avatars={avatars}
                 cardSettings={roomSettings}
                 onLayCard={layCard}
                 messages={messages}

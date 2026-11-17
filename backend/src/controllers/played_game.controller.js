@@ -1,3 +1,4 @@
+import { getAvatarsByUsername } from '../avatars.js';
 import db from '../models/index.js';
 const PlayedGame = db.played_game;
 
@@ -60,6 +61,19 @@ export const leaderBoard = async (req, res) => {
     });
     const sortedLeaderBoard = leaderBoard.sort((a, b) => b.wins - a.wins);
     leaderBoard = sortedLeaderBoard.map((game, i) => ({ ...game, rank: i + 1 }));
+
+    // Chosen avatars (null: the clients show the one generated from the name).
+    let avatars = {};
+    try {
+        avatars = await getAvatarsByUsername(leaderBoard.flatMap(entry => [entry.winner, entry.favouriteFriend]));
+    } catch (error) {
+        console.log('LEADERBOARD AVATARS FAILED', error.message);
+    }
+    leaderBoard = leaderBoard.map(entry => ({
+        ...entry,
+        winnerAvatar: avatars[entry.winner] ?? null,
+        favouriteFriendAvatar: (entry.favouriteFriend && avatars[entry.favouriteFriend]) ?? null,
+    }));
 
     return res.status(200).send(leaderBoard);
 };

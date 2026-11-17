@@ -73,6 +73,37 @@ export const modifyRooms = newRooms => {
     roomsList = newRooms;
 };
 
+/** A room player entry for `socket`'s user, with their chosen avatar (null: generated on the clients). */
+const roomPlayer = (socket, username) => ({ username, socketId: socket?.id, avatar: socket?.data?.user?.avatar ?? null });
+
+let ioServer = null;
+
+/**
+ * After user `userId` saved a new avatar (REST): updates their entry in every room and the
+ * cached identity of their sockets, then broadcasts the room list so the change shows at
+ * once (also on the game screen, which takes avatars from the room). Returns whether a
+ * room changed.
+ */
+export const applyAvatarChange = (userId, username, avatar, io = ioServer) => {
+    io?.of('/').sockets.forEach(socket => {
+        const user = socket.data.user;
+        if (user && !user.isGuest && user.id === userId) {
+            socket.data.user = { ...user, avatar };
+        }
+    });
+    let changed = false;
+    roomsList = Object.fromEntries(
+        Object.entries(roomsList).map(([roomId, room]) => {
+            if (!room.players.some(player => player.username === username)) return [roomId, room];
+            changed = true;
+            const players = room.players.map(player => (player.username === username ? { ...player, avatar } : player));
+            return [roomId, { ...room, players }];
+        }),
+    );
+    if (changed) io?.emit('rooms-listed', roomsList);
+    return changed;
+};
+
 /**
  * Points the user's seat in their room at this socket and re-joins the room's socket.io
  * room. Runs on every connection of an identified socket (new or recovered), so a player
@@ -94,6 +125,7 @@ const rebindPlayer = socket => {
 };
 
 export const rooms = io => {
+    ioServer = io;
     io.on('connection', socket => {
         console.log('Client connected', socket.id);
 
@@ -110,7 +142,7 @@ export const rooms = io => {
             const newRoom = {
                 name,
                 owner,
-                players: [{ username: owner, socketId: socket?.id }],
+                players: [roomPlayer(socket, owner)],
                 slots,
                 socketRoomId,
                 visibility,
@@ -147,7 +179,7 @@ export const rooms = io => {
             if (rejected(socket, identityError(socket, username) ?? roomError(socket, roomId))) return;
             roomsList = {
                 ...roomsList,
-                [roomId]: { ...roomsList[roomId], players: [...roomsList[roomId].players, { username, socketId: socket?.id }] },
+                [roomId]: { ...roomsList[roomId], players: [...roomsList[roomId].players, roomPlayer(socket, username)] },
             };
 
             // Socket joins new room -- TODO IS THIS NEEDED??? --> maybe for chat yes

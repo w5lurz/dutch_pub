@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, renderHook, screen } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
-import type { TRoom, TRooms } from '@dutch-pub/shared';
+import { generatedAvatarId, type TRoom, type TRooms } from '@dutch-pub/shared';
 
 import { ChoiceRow, SettingRow } from '@/components/ui';
 import { CreateRoomModal } from '../CreateRoomModal';
@@ -175,6 +175,20 @@ describe('RoomCard', () => {
         expect(screen.getByText('Settings: Card powers hidden · Blue backs')).toBeTruthy();
         await fireEvent.press(screen.getByRole('button', { name: 'Change settings of room Pub' }));
         expect(onSettings).toHaveBeenCalled();
+    });
+
+    it('shows each player with their avatar (chosen, or generated from the name)', async () => {
+        const players = [
+            { username: 'me', socketId: 's1', avatar: 'owl' as const },
+            { username: 'Julcsi', socketId: 's2', avatar: null },
+            { username: 'old', socketId: 's3' }, // older servers send no avatar
+        ];
+        await render(<RoomCard room={room({ players, slots: 4 })} isCurrent permissions={permissions} {...handlers} onSettings={jest.fn()} />);
+        expect(screen.getByText('Players (3/4):')).toBeTruthy();
+        expect(screen.getByText('Julcsi')).toBeTruthy();
+        expect(screen.getByTestId('avatar-owl')).toBeTruthy();
+        expect(screen.getAllByTestId(/^avatar-/)).toHaveLength(3);
+        expect(screen.getAllByTestId(`avatar-${generatedAvatarId('Julcsi')}`).length).toBeGreaterThan(0);
     });
 
     it('offers a read-only view to the other players and defaults for rooms without settings', async () => {

@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { User } from '@dutch-pub/shared';
+import type { AvatarId, User } from '@dutch-pub/shared';
 
 const userSlice = createSlice({
     name: 'user',
@@ -13,8 +13,14 @@ const userSlice = createSlice({
                 state.inGame = action.payload;
             }
         },
+        /** The chosen avatar (null: generated from the name). Registered users only. */
+        setAvatar(state, action: PayloadAction<AvatarId | null>) {
+            if (state && !state.isGuest) {
+                state.avatar = action.payload;
+            }
+        },
     },
 });
 
-export const { setUser, setInGame } = userSlice.actions;
+export const { setUser, setInGame, setAvatar } = userSlice.actions;
 export default userSlice.reducer;

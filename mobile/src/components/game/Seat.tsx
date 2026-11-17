@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import type { Opponent } from '@dutch-pub/shared';
 
+import { Avatar } from '@/components/ui';
+
 import { useCardSize, type CardSize, type TableLayout } from './cardSize';
 import { HandFan } from './HandFan';
 import { Rotated } from './Rotated';
@@ -13,29 +15,25 @@ type SeatAvatarProps = {
     active: boolean;
     /** Diameter in dp. */
     size: number;
-    /** A picture to show instead of the initial (avatars come in UI-PLAN.md U6). */
+    /** The player's chosen avatar id; null / missing: the one generated from the name. */
+    avatarId?: string | null;
+    /** A picture to show instead of the avatar (e.g. in tests). */
     avatar?: ReactNode;
 };
 
 /**
- * A player's avatar: a circle with the name's initial (until real avatars exist, U6), with
- * a green glow around it while the player is on turn. (Only colours toggle: NativeWind
- * must not get `shadow-*` / `ring-*` classes added later, see AGENTS.md.)
+ * A player's avatar (chosen, or generated from the name: `Avatar`), with a green glow
+ * around it while the player is on turn. (Only colours toggle: NativeWind must not get
+ * `shadow-*` / `ring-*` classes added later, see AGENTS.md.)
  */
-export function SeatAvatar({ name, active, size, avatar }: SeatAvatarProps) {
+export function SeatAvatar({ name, active, size, avatarId, avatar }: SeatAvatarProps) {
     return (
         <View style={{ padding: 3 }} className={`rounded-full ${active ? 'bg-green-400/70' : 'bg-transparent'}`}>
             <View
                 style={{ width: size, height: size }}
-                className={`items-center justify-center overflow-hidden rounded-full border-2 bg-blue-200 ${
-                    active ? 'border-green-600' : 'border-white'
-                }`}
+                className={`items-center justify-center overflow-hidden rounded-full border-2 ${active ? 'border-green-600' : 'border-white'}`}
             >
-                {avatar ?? (
-                    <Text style={{ fontSize: Math.round(size * 0.5) }} className="font-bold text-blue-900">
-                        {name.slice(0, 1).toUpperCase()}
-                    </Text>
-                )}
+                {avatar ?? <Avatar username={name} avatar={avatarId} size={size - 4} />}
             </View>
         </View>
     );
@@ -46,7 +44,9 @@ type SeatProps = {
     opponent: Opponent;
     position: SeatPosition;
     layout: TableLayout;
-    /** Slot for the player's avatar picture (U6); the initial is shown until then. */
+    /** The player's chosen avatar id; null / missing: the one generated from the name. */
+    avatarId?: string | null;
+    /** A picture to show instead of the avatar (e.g. in tests). */
     avatar?: ReactNode;
 };
 
@@ -63,7 +63,7 @@ const SIZES: Record<'top' | 'side' | 'sidePortrait', { stacks: CardSize; fit: nu
  * Left and right seats turn their cards toward the centre, as if the player sat there;
  * text stays upright. Seats have no background: they sit directly on the table.
  */
-export function Seat({ name, opponent, position, layout, avatar }: SeatProps) {
+export function Seat({ name, opponent, position, layout, avatarId, avatar }: SeatProps) {
     const side = position === 'left' || position === 'right';
     const sizes = SIZES[side ? (layout === 'portrait' ? 'sidePortrait' : 'side') : 'top'];
     const spots = tableSpots(opponent.tableFlipped, opponent.table);
@@ -89,7 +89,7 @@ export function Seat({ name, opponent, position, layout, avatar }: SeatProps) {
             {name}
         </Text>
     );
-    const avatarView = <SeatAvatar name={name} active={active} size={avatarSize} avatar={avatar} />;
+    const avatarView = <SeatAvatar name={name} active={active} size={avatarSize} avatarId={avatarId} avatar={avatar} />;
     const fan = <HandFan count={opponent.hand} fit={sizes.fit} rotate={rotate} />;
     const stacks =
         spots.length > 0 ? (

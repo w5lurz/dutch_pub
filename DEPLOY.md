@@ -44,7 +44,19 @@ cd backend && npm run test:e2e   # starts the real server on a free port against
 cd mobile && npm test            # app logic and components (Jest)
 ```
 
-The e2e tests exercise the REST API, bearer-token auth, guest tokens (incl. name reservation while disconnected), the health endpoint, socket authentication (anonymous / token) and a full socket game flow (rooms, room settings (`update-room-settings`: owner only, not after the start), start, reconnect + re-sync, valid/invalid moves, picking up the pile, impersonation, owner-only actions, chat) and a full game played by two bots until one wins (`game-won`, room removal, `played_games` row, leaderboard). They create one `e2e_*` user and one `played_games` row and delete both again. See also [mobile/TESTING.md](mobile/TESTING.md). Run them before deploying.
+The e2e tests exercise the REST API, bearer-token auth, guest tokens (incl. name reservation while disconnected), the health endpoint, socket authentication (anonymous / token) and a full socket game flow (rooms, room settings (`update-room-settings`: owner only, not after the start), start, reconnect + re-sync, valid/invalid moves, picking up the pile, impersonation, owner-only actions, chat) and a full game played by two bots until one wins (`game-won`, room removal, `played_games` row, leaderboard) and avatars (`PUT /api/auth/me/avatar`: save, reset, invalid id, guests rejected; in the login, `/api/users/user`, room player and leaderboard payloads). They create one `e2e_*` user (with its `user_profiles` row) and one `played_games` row and delete them again. See also [mobile/TESTING.md](mobile/TESTING.md). Run them before deploying.
+
+## Database tables
+
+The backend calls `sequelize.sync()` at start-up. It creates missing tables but never changes existing ones, so new data goes into new tables:
+
+| Table | Created | Contents |
+|---|---|---|
+| `users` | originally | accounts |
+| `played_games` | originally | finished games (leaderboard) |
+| `user_profiles` | automatically on the first start of a version with avatars (UI-PLAN.md U6) | `user_id` (primary key, = `users.id`), `avatar` (preset id, null = generated from the name), timestamps |
+
+No manual migration or `ALTER TABLE` is needed for avatars. The API: `PUT` (or `PATCH`) `/api/auth/me/avatar` with `{ "avatar": "<id>" | null }` (bearer token, registered users only; guests get 403, unknown ids 400). The login response and `GET /api/users/user` include `avatar`; room players (`{ username, socketId, avatar }`) and leaderboard rows (`winnerAvatar`, `favouriteFriendAvatar`) carry it too. When an account is deleted by hand, delete its `user_profiles` row as well.
 
 ## Local run with Docker
 

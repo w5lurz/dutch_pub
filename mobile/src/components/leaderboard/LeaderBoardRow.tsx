@@ -1,6 +1,8 @@
 import type { TLeaderBoard } from '@dutch-pub/shared';
 import { Text, View } from 'react-native';
 
+import { Avatar } from '@/components/ui';
+
 export type LeaderBoardEntry = TLeaderBoard[number];
 
 export type LeaderBoardRowProps = {
@@ -59,7 +61,7 @@ export function LeaderBoardHeader() {
 }
 
 export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
-    const { rank, winner, wins, favouriteFriend, latestWin } = entry;
+    const { rank, winner, wins, favouriteFriend, latestWin, winnerAvatar, favouriteFriendAvatar } = entry;
     const isPodium = rank <= 3;
     const latest = formatLatestWin(latestWin);
     const friend = favouriteFriend || '-';
@@ -75,13 +77,19 @@ export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
                     <Text className={`text-sm text-gray-900 ${isPodium ? 'font-bold' : 'font-medium'}`}>#{rank}</Text>
                 </View>
             </View>
-            <View className={col.player}>
-                <Text numberOfLines={1} className={`text-base text-gray-900 ${isPodium ? 'font-bold' : 'font-medium'}`}>
-                    {winner}
-                </Text>
-                <Text numberOfLines={1} className="text-sm text-gray-500">
-                    {friend}
-                </Text>
+            <View className={`${col.player} flex-row items-center gap-2`}>
+                <Avatar username={winner} avatar={winnerAvatar} size={36} />
+                <View className="min-w-0 flex-1">
+                    <Text numberOfLines={1} className={`text-base text-gray-900 ${isPodium ? 'font-bold' : 'font-medium'}`}>
+                        {winner}
+                    </Text>
+                    <View className="flex-row items-center gap-1">
+                        {favouriteFriend ? <Avatar username={favouriteFriend} avatar={favouriteFriendAvatar} size={16} /> : null}
+                        <Text numberOfLines={1} className="flex-shrink text-sm text-gray-500">
+                            {friend}
+                        </Text>
+                    </View>
+                </View>
             </View>
             <View className={col.wins}>
                 <Text className="text-base font-semibold text-gray-900">{wins}</Text>

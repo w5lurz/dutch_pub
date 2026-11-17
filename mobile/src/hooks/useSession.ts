@@ -28,7 +28,7 @@ export function useSession() {
     const startSession = useCallback(
         async (auth: AuthResponse) => {
             await setToken(auth.token);
-            dispatch(setUser({ id: auth.id, username: auth.username, email: auth.email, isGuest: auth.isGuest }));
+            dispatch(setUser({ id: auth.id, username: auth.username, email: auth.email, isGuest: auth.isGuest, avatar: auth.avatar ?? null }));
             reconnect();
         },
         [dispatch, reconnect],

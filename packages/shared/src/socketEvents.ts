@@ -17,6 +17,7 @@ export type GameState = {
 
 /** Events the server emits to clients. */
 export interface ServerToClientEvents {
+    /** Also broadcast when a player in a room changes their avatar (`PUT /api/auth/me/avatar`). */
     'rooms-listed': (rooms: TRooms) => void;
     'joined-room': (rooms: TRooms) => void;
     'left-room': (rooms: TRooms) => void;

@@ -1,6 +1,6 @@
 // End-to-end tests: run the real server against the database configured in backend/.env.
-// Creates one `e2e_*` user (and, by playing a game to the end, one `played_games` row) and
-// deletes them again afterwards.
+// Creates one `e2e_*` user with a `user_profiles` row (their avatar) and, by playing a game to
+// the end, one `played_games` row, and deletes them again afterwards.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { canLayCard } from '@dutch-pub/shared';
@@ -43,6 +43,8 @@ before(async () => {
 
 after(async () => {
     await server?.stop();
+    const created = await db.user.findOne({ where: { username: user.username }, attributes: ['id'], raw: true });
+    if (created) await db.user_profile.destroy({ where: { user_id: created.id } });
     await db.user.destroy({ where: { username: user.username } });
     await db.played_game.destroy({ where: { winner: [user.username, guestName] } });
     await db.sequelize.close();
@@ -76,6 +78,7 @@ describe('auth API', () => {
         assert.equal(body.username, user.username);
         assert.equal(body.password, undefined);
         assert.equal(typeof body.token, 'string');
+        assert.equal(body.avatar, null, 'no avatar chosen yet');
         userToken = body.token;
         assert.equal(res.headers.get('set-cookie'), null, 'no cookies: the app uses bearer tokens only');
     });
@@ -131,6 +134,44 @@ describe('users API', () => {
         for (const u of users) {
             assert.deepEqual(Object.keys(u).sort(), ['id', 'username']);
         }
+    });
+});
+
+describe('avatar API', () => {
+    const setAvatar = (avatar, token, method = 'PUT') => request('/api/auth/me/avatar', { method, body: { avatar }, token });
+
+    test('a logged-in user saves an avatar', async () => {
+        const res = await setAvatar('fox', userToken);
+        assert.equal(res.status, 200);
+        assert.deepEqual(await res.json(), { avatar: 'fox' });
+        assert.equal((await (await request('/api/users/user', { token: userToken })).json()).avatar, 'fox');
+    });
+
+    test('it survives logging in again', async () => {
+        const res = await request('/api/auth/login', { method: 'POST', body: { username: user.username, password: user.password } });
+        assert.equal((await res.json()).avatar, 'fox');
+    });
+
+    test('null goes back to the generated avatar; PATCH works too', async () => {
+        const res = await setAvatar(null, userToken, 'PATCH');
+        assert.equal(res.status, 200);
+        assert.equal((await (await request('/api/users/user', { token: userToken })).json()).avatar, null);
+        assert.equal((await setAvatar('fox', userToken)).status, 200);
+    });
+
+    test('rejects an unknown avatar id', async () => {
+        assert.equal((await setAvatar('unicorn', userToken)).status, 400);
+        assert.equal((await request('/api/auth/me/avatar', { method: 'PUT', body: {}, token: userToken })).status, 400);
+        assert.equal((await (await request('/api/users/user', { token: userToken })).json()).avatar, 'fox', 'unchanged');
+    });
+
+    test('guests cannot choose one', async () => {
+        assert.equal((await setAvatar('fox', guestToken)).status, 403);
+    });
+
+    test('requires a valid token', async () => {
+        assert.equal((await setAvatar('fox')).status, 403);
+        assert.equal((await setAvatar('fox', 'not-a-jwt')).status, 401);
     });
 });
 
@@ -224,6 +265,7 @@ describe('socket game flow', () => {
         roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `room_${stamp}`));
         assert.ok(roomId, 'room not found in broadcast');
         assert.deepEqual(rooms[roomId].settings, { showCardPowers: false, cardBack: 'red' }, 'settings are validated');
+        assert.equal(rooms[roomId].players[0].avatar, 'fox', "the owner's chosen avatar");
     });
 
     test('rejects joining a room as someone else', async () => {
@@ -239,6 +281,17 @@ describe('socket game flow', () => {
         assert.deepEqual(
             rooms[roomId].players.map(player => player.username),
             [user.username, guestName],
+        );
+        assert.equal(rooms[roomId].players[1].avatar, null, 'guests have none (generated on the clients)');
+    });
+
+    test('a new avatar shows in the room at once', async () => {
+        const broadcast = waitFor(b, 'rooms-listed');
+        assert.equal((await request('/api/auth/me/avatar', { method: 'PUT', body: { avatar: 'owl' }, token: userToken })).status, 200);
+        const [rooms] = await broadcast;
+        assert.deepEqual(
+            rooms[roomId].players.map(player => player.avatar),
+            ['owl', null],
         );
     });
 
@@ -444,6 +497,7 @@ describe('socket game flow', () => {
         assert.equal(res.status, 200);
         const entry = (await res.json()).find(e => e.winner === winnerA);
         assert.ok(entry && entry.wins >= 1, 'the winner is on the leaderboard');
+        assert.equal(entry.winnerAvatar, winnerA === user.username ? 'owl' : null);
     });
 });
 

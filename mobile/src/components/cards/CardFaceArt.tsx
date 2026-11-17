@@ -1,6 +1,6 @@
-import { memo } from 'react';
+import { memo, useId } from 'react';
 import { View } from 'react-native';
-import Svg, { G, Path, Rect } from 'react-native-svg';
+import Svg, { Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { cardRank, isRedSuit, type CardRank, type CardSuit, type TCard } from '@dutch-pub/shared';
 
 import { iconA11y } from '@/components/icons/types';
@@ -124,17 +124,26 @@ export const CardFaceArt = memo(function CardFaceArt({
     const color = isRedSuit(suit) ? CARD_COLORS.red : CARD_COLORS.black;
     const compact = (variant ?? (width < COMPACT_BELOW_WIDTH ? 'compact' : 'full')) === 'compact';
     const stamp = card && showStamp ? stampText(card) : null;
+    // Unique gradient id per card (ids are global on web).
+    const paperId = `paper${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
     return (
         <View style={{ width, height }} {...viewA11y(accessibilityLabel)}>
             <Svg width={width} height={height} viewBox={CARD_VIEWBOX} preserveAspectRatio="none" {...iconA11y(accessibilityLabel)}>
+                {/* Paper: a faint light-to-warm gradient, like a real card under light. */}
+                <Defs>
+                    <LinearGradient id={paperId} x1="0" y1="0" x2="0.35" y2="1">
+                        <Stop offset="0" stopColor={CARD_COLORS.face} />
+                        <Stop offset="1" stopColor={CARD_COLORS.paperShade} />
+                    </LinearGradient>
+                </Defs>
                 <Rect
                     x={-119.5}
                     y={-167.5}
                     width={239}
                     height={335}
                     rx={12}
-                    fill={CARD_COLORS.face}
+                    fill={`url(#${paperId})`}
                     stroke={edge ? CARD_COLORS.edge : 'none'}
                     strokeWidth={edge ? 1.5 : 0}
                 />

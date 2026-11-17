@@ -1,14 +1,22 @@
 // Domain types shared by the backend contract and the mobile client.
 
+import type { AvatarId } from './avatars';
+
 export type User = {
     id: number;
     username: string;
     email?: string;
     inGame?: number;
     isGuest?: boolean;
+    /** The chosen avatar (registered users only); null / missing = generated from the name. */
+    avatar?: AvatarId | null;
 } | null;
 
-export type Player = { username: string; socketId: string };
+/**
+ * A player in a room. `avatar` is their chosen avatar (null or missing: not chosen, or a
+ * guest; show the one generated from the name, see `avatarFor`). Older servers omit it.
+ */
+export type Player = { username: string; socketId: string; avatar?: AvatarId | null };
 
 /** Colour of the card backs. */
 export type CardBackColor = 'red' | 'blue';
@@ -65,7 +73,16 @@ export type Game = {
     burntCards: Array<TCard> | null;
 };
 
-export type TLeaderBoard = Array<{ rank: number; winner: string; wins: number; favouriteFriend: string; latestWin: string }>;
+export type TLeaderBoard = Array<{
+    rank: number;
+    winner: string;
+    wins: number;
+    favouriteFriend: string;
+    latestWin: string;
+    /** Chosen avatars (null / missing: generated from the name). */
+    winnerAvatar?: AvatarId | null;
+    favouriteFriendAvatar?: AvatarId | null;
+}>;
 
 export type ChatMessage = {
     id: number;

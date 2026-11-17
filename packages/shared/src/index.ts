@@ -4,3 +4,4 @@ export * from './rules';
 export * from './socketEvents';
 export * from './api';
 export * from './roomSettings';
+export * from './avatars';

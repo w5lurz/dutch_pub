@@ -84,6 +84,7 @@ export default function RootLayout() {
                                 {/* Dev-only mock game table (UI work), see src/app/dev/table.tsx. */}
                                 <Stack.Screen name="dev/table" options={{ headerShown: false }} />
                                 <Stack.Screen name="dev/cards" options={{ title: 'Card preview' }} />
+                                <Stack.Screen name="dev/avatars" options={{ title: 'Avatar preview' }} />
                                 {/* No way back out of a running game: no header (so no back button), no swipe-back. */}
                                 <Stack.Screen
                                     name="game"

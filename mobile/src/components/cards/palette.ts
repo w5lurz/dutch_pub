@@ -3,6 +3,8 @@ import type { CourtColor } from './art/courts.generated';
 /** Card art colours. Fixed (no dark mode): card faces stay light, like real cards. */
 export const CARD_COLORS = {
     face: '#ffffff',
+    /** Bottom of the face's paper gradient (a faint warm grey). */
+    paperShade: '#efede6',
     edge: '#b8bcc4',
     red: '#d4122b',
     black: '#141414',

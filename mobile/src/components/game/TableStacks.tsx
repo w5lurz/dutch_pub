@@ -3,6 +3,7 @@ import type { Cards, TCard } from '@dutch-pub/shared';
 
 import { CARD_GAP, useCardSize, type CardSize } from './cardSize';
 import { DraggableCard } from './DraggableCard';
+import { cardJitter } from './jitter';
 import { PlayingCard } from './PlayingCard';
 
 /** One table spot: the face-up card on top (if any), whether a face-down card lies below. */
@@ -21,6 +22,10 @@ export function tableSpots(faceUp: Cards, faceDownCount: number): TableSpot[] {
 	}
 	return spots;
 }
+
+/** Small fixed tilts: a face-down card by its spot, a face-up card by itself and its spot. */
+const downTilt = (spot: number) => cardJitter(`down-${spot}`, 2.5).rotation;
+const upTilt = (card: TCard, spot: number) => cardJitter(`up-${spot}-${card.color}-${card.value}`, 4).rotation;
 
 /** Selection / drag id of a face-up table card. */
 const upId = (card: TCard, i: number) => `up-${i}-${card.color}-${card.value}`;
@@ -57,8 +62,9 @@ type TableStacksProps = {
 
 /**
  * A row of table stacks: each spot shows its face-down card peeking out below and to the
- * right of the face-up card on top. A spot without a face-up card shows only its
- * face-down card (in the same place, so nothing jumps).
+ * right of the face-up card on top, both lying a little crooked like dealt cards (fixed per
+ * spot / card, see `cardJitter`). A spot without a face-up card shows only its face-down
+ * card (in the same place, so nothing jumps).
  */
 export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }: TableStacksProps) {
 	const { width, height } = useCardSize(size);
@@ -79,13 +85,19 @@ export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }
 								size={size}
 								faded={faded}
 								style={{ position: 'absolute', left: offset, top: offset }}
+								rotation={downTilt(i)}
 								selected={play.selectedId === `down-${i}`}
 								accessibilityHint={play.faceDownPlayable ? undefined : 'Play your other cards first'}
 								onSelect={() => play.onSelect(`down-${i}`)}
 								onPlay={() => play.onLayCard(i, i, play.faceDownPlayable)}
 							/>
 						) : (
-							<PlayingCard faceDown size={size} faded={faded} style={{ position: 'absolute', left: offset, top: offset }} />
+							<PlayingCard
+								faceDown
+								size={size}
+								faded={faded}
+								style={{ position: 'absolute', left: offset, top: offset, transform: [{ rotate: `${downTilt(i)}deg` }] }}
+							/>
 						)
 					) : null}
 					{spot.faceUp ? (
@@ -96,6 +108,7 @@ export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }
 								size={size}
 								faded={faded}
 								style={{ position: 'absolute', left: 0, top: 0 }}
+								rotation={upTilt(spot.faceUp, i)}
 								selected={play.selectedId === upId(spot.faceUp, i)}
 								dimmed={play.faceUpPlayable && play.dim(spot.faceUp)}
 								accessibilityHint={play.faceUpPlayable ? undefined : 'Play your hand first'}
@@ -103,7 +116,12 @@ export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }
 								onPlay={() => play.onLayCard(spot.faceUp as TCard, i, play.faceUpPlayable)}
 							/>
 						) : (
-							<PlayingCard card={spot.faceUp} size={size} faded={faded} style={{ position: 'absolute', left: 0, top: 0 }} />
+							<PlayingCard
+								card={spot.faceUp}
+								size={size}
+								faded={faded}
+								style={{ position: 'absolute', left: 0, top: 0, transform: [{ rotate: `${upTilt(spot.faceUp, i)}deg` }] }}
+							/>
 						)
 					) : null}
 				</View>

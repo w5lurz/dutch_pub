@@ -28,9 +28,14 @@ export type PlayingCardProps = {
     plusCount?: number;
     accessibilityLabel?: string;
     accessibilityHint?: string;
+    /** Only decoration (cards under a pile's top card, the deck's edges): hidden from screen readers. */
+    decorative?: boolean;
     style?: StyleProp<ViewStyle>;
     testID?: string;
 };
+
+/** A soft shadow under every card, so cards lie on the table (and on each other) instead of floating flat. */
+const CARD_SHADOW = '0px 1px 3px rgba(0, 0, 0, 0.3)';
 
 /** "7 of hearts", "Mirror (0) of clubs". */
 export function cardLabel(card: TCard): string {
@@ -81,6 +86,7 @@ export function PlayingCard({
     plusCount = 0,
     accessibilityLabel,
     accessibilityHint,
+    decorative = false,
     style,
     testID,
 }: PlayingCardProps) {
@@ -102,18 +108,18 @@ export function PlayingCard({
     // below it (table stacks, overlapping hand), and Android applies a parent's opacity to
     // each child separately.
     const fadeAlpha = dimmed ? 0.6 : faded ? 0.3 : 0;
-    const content =
-        fadeAlpha > 0 ? (
-            <>
-                {face}
+    const content = (
+        // The shadow sits on the card itself (inside the selection outline).
+        <View style={{ flex: 1, borderRadius: 7, boxShadow: CARD_SHADOW }}>
+            {face}
+            {fadeAlpha > 0 ? (
                 <View
                     pointerEvents="none"
                     style={[StyleSheet.absoluteFill, { borderRadius: 6, backgroundColor: fadeColor, opacity: fadeAlpha }]}
                 />
-            </>
-        ) : (
-            face
-        );
+            ) : null}
+        </View>
+    );
     const baseStyle: ViewStyle = {
         width,
         height,
@@ -121,6 +127,20 @@ export function PlayingCard({
         borderWidth: 2,
         borderColor: selected ? '#2563eb' : 'transparent', // blue-600
     };
+
+    if (decorative) {
+        return (
+            <View
+                accessible={false}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={[baseStyle, style]}
+                testID={testID}
+            >
+                {content}
+            </View>
+        );
+    }
 
     if (!onPress) {
         return (

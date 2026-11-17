@@ -4,6 +4,7 @@ import { pileDrawSignature } from '../autoDraw';
 import { baseCardHeight, cardDimensions, tableLayout } from '../cardSize';
 import { handFanLayout } from '../HandFan';
 import { handArcLayout } from '../handArc';
+import { cardJitter } from '../jitter';
 import { seatPositions } from '../seats';
 import { stackOffset, tableSpots } from '../TableStacks';
 
@@ -189,6 +190,28 @@ describe('handArcLayout (hand held as a fan)', () => {
         expect(cards[29].rotation - cards[0].rotation).toBeLessThanOrEqual(50);
         expect(height).toBeGreaterThan(14 + H);
         expect(Math.max(...cards.map(c => c.top))).toBeLessThan(height - H);
+    });
+});
+
+describe('cardJitter (how a card lies on a pile)', () => {
+    it('is the same for the same key (no jumping between renders)', () => {
+        expect(cardJitter('hearts-5-3', 6, 4)).toEqual(cardJitter('hearts-5-3', 6, 4));
+    });
+
+    it('stays within the limits', () => {
+        for (let i = 0; i < 200; i++) {
+            const { rotation, dx, dy } = cardJitter(`card-${i}`, 6, 4);
+            expect(Math.abs(rotation)).toBeLessThanOrEqual(6);
+            expect(Math.abs(dx)).toBeLessThanOrEqual(4);
+            expect(Math.abs(dy)).toBeLessThanOrEqual(4);
+        }
+    });
+
+    it('differs between cards and spreads both ways', () => {
+        const rotations = Array.from({ length: 50 }, (_, i) => cardJitter(`card-${i}`, 6).rotation);
+        expect(new Set(rotations).size).toBeGreaterThan(30);
+        expect(Math.min(...rotations)).toBeLessThan(-2);
+        expect(Math.max(...rotations)).toBeGreaterThan(2);
     });
 });
 
