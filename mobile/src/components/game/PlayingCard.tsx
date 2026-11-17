@@ -34,6 +34,11 @@ export type PlayingCardProps = {
     testID?: string;
 };
 
+/** Corner radius of the drawn face: its art's rx 12 on a 239-wide card (CardFaceArt). */
+const faceRadius = (faceWidth: number) => (faceWidth * 12) / 239;
+/** Corner radius of the back (its `rounded-md` clip). */
+const BACK_RADIUS = 6;
+
 /** A soft shadow under every card, so cards lie on the table (and on each other) instead of floating flat. */
 const CARD_SHADOW = '0px 1px 3px rgba(0, 0, 0, 0.3)';
 
@@ -91,7 +96,7 @@ export function PlayingCard({
     testID,
 }: PlayingCardProps) {
     const { width, height } = useCardSize(size);
-    const { fadeColor } = useTableTheme();
+    const { fadeColor, fadeAlpha: fadeAlphas } = useTableTheme();
     const [pressed, setPressed] = useState(false);
     const showFace = !!card && !faceDown;
     const label =
@@ -107,7 +112,7 @@ export function PlayingCard({
     // Fading is an overlay in the table theme's fade colour, not `opacity`: a see-through card would show the card
     // below it (table stacks, overlapping hand), and Android applies a parent's opacity to
     // each child separately.
-    const fadeAlpha = dimmed ? 0.6 : faded ? 0.3 : 0;
+    const fadeAlpha = dimmed ? fadeAlphas.dimmed : faded ? fadeAlphas.faded : 0;
     const content = (
         // The shadow sits on the card itself (inside the selection outline).
         <View style={{ flex: 1, borderRadius: 7, boxShadow: CARD_SHADOW }}>
@@ -115,7 +120,11 @@ export function PlayingCard({
             {fadeAlpha > 0 ? (
                 <View
                     pointerEvents="none"
-                    style={[StyleSheet.absoluteFill, { borderRadius: 6, backgroundColor: fadeColor, opacity: fadeAlpha }]}
+                    // Same corners as the face / back below it, or their corners would show unfaded.
+                    style={[
+                        StyleSheet.absoluteFill,
+                        { borderRadius: showFace ? faceRadius(width - 4) : BACK_RADIUS, backgroundColor: fadeColor, opacity: fadeAlpha },
+                    ]}
                 />
             ) : null}
         </View>

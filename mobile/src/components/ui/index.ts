@@ -3,6 +3,7 @@ export { AvatarPicker, type AvatarPickerProps } from './AvatarPicker';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { ChoiceRow, type ChoiceRowProps } from './ChoiceRow';
+export { KeyboardSpacer, type KeyboardSpacerProps } from './KeyboardSpacer';
 export { Screen, type ScreenProps } from './Screen';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption } from './SegmentedControl';
 export { SettingRow, type SettingRowProps } from './SettingRow';

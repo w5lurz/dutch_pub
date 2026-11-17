@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChatMessage, Game, TCard } from '@dutch-pub/shared';
 
 import { Screen } from '@/components/ui';
 
 import { CardDragProvider } from './CardDrag';
 import { CardSettingsProvider, type CardSettings } from './cardSettings';
-import { tableLayout } from './cardSize';
+import { tableLayout, type CardSize } from './cardSize';
 import { ChatButton } from './ChatButton';
 import { ChatModal } from './ChatModal';
 import { PileArea } from './PileArea';
 import { PlayerBoard } from './PlayerBoard';
 import { Seat } from './Seat';
 import { seatPositions, type SeatPosition } from './seats';
+import { LampButton } from './LampButton';
 import { TableBackground } from './TableBackground';
+import { TableLighting } from './TableLighting';
 import { useTableTheme } from './tableTheme';
 
 export type GameTableProps = {
@@ -42,8 +45,8 @@ export type GameTableProps = {
 
 /** Below this window height your hand covers half of your table stacks (a phone turned sideways). */
 const SHORT_HEIGHT = 600;
-/** Below this window width the portrait piles shrink when seats sit beside them (4 players). */
-const NARROW_WIDTH = 600;
+/** Below this window height the portrait pile column uses smaller cards (it stacks three cards). */
+const COLUMN_SHORT_HEIGHT = 800;
 
 /**
  * The game table: opponents seated around it, deck / laid / burnt piles in the centre, your
@@ -52,7 +55,8 @@ const NARROW_WIDTH = 600;
  * desktop browser, phones turned sideways); see `seatPositions` for who sits where.
  * Purely presentational (data and actions come in as props), so the game screen and the
  * dev preview screen render the same thing. Cards are played by dragging them onto the
- * laid pile (`CardDragProvider`).
+ * laid pile (`CardDragProvider`). At night (`TableThemeProvider`, the lamp switch in the
+ * bottom-right corner) the table is lit by a lamp (`TableLighting`).
  */
 export function GameTable({
     game,
@@ -68,7 +72,9 @@ export function GameTable({
 }: GameTableProps) {
     const { paletteClass } = useTableTheme();
     const window = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const layout = tableLayout(window);
+    const short = window.height < SHORT_HEIGHT;
 
     // Chat: unread = messages that arrived while the modal was closed.
     const [chatOpen, setChatOpen] = useState(false);
@@ -102,23 +108,38 @@ export function GameTable({
                     position={position}
                     layout={layout}
                     avatarId={avatars?.[seat.name]}
+                    // A phone turned sideways: the top seat in one row, close to the table's edge.
+                    compact={layout === 'wide' && short}
                 />
             ));
     const hasSides = seats.some(seat => seat.position === 'left' || seat.position === 'right');
-    // Smaller piles: portrait with seats beside them on a narrow window, or a short window (your
-    // bigger hand needs the height, e.g. a phone turned sideways).
-    const narrowPiles = (layout === 'portrait' && hasSides && window.width < NARROW_WIDTH) || window.height < SHORT_HEIGHT;
-    // 3 players in the wide layout: the side seats sit in the upper half.
-    const sidesHigh = layout === 'wide' && seats.length === 2;
+    // Portrait with seats beside the piles (4 players): the piles stand in a column between the
+    // side seats (at the table's edges), so they need little width.
+    const pilesColumn = layout === 'portrait' && hasSides;
+    // Smaller piles on a short window (your bigger hand needs the height, e.g. a phone turned
+    // sideways); the column (three cards high) is smaller still unless the window is tall.
+    const pileSize: CardSize = pilesColumn ? (short || window.height < COLUMN_SHORT_HEIGHT ? 'sm' : 'md') : short ? 'md' : 'lg';
+    const piles = (
+        <PileArea
+            deck={game.deck}
+            laidCards={game.laidCards}
+            burntCards={game.burntCards}
+            turnOf={turnOf}
+            size={pileSize}
+            tight={short}
+            column={pilesColumn}
+        />
+    );
 
     return (
         // The table's own palette (light on the white table, also in dark mode).
         <View className={`${paletteClass} flex-1`}>
             <TableBackground layout={layout} />
+            <TableLighting layer="table" />
             <Screen edges={['top', 'bottom', 'left', 'right']} padded={false} background="none">
                 <CardSettingsProvider settings={cardSettings}>
                     <CardDragProvider>
-                        <View className="flex-row items-start justify-around px-2 pt-1" accessibilityLabel={`Opponents, ${seats.length}`}>
+                        <View className={`flex-row items-start justify-around px-2 ${layout === 'wide' && short ? '' : 'pt-1'}`} accessibilityLabel={`Opponents, ${seats.length}`}>
                             {seatAt('top-left')}
                             {seatAt('top')}
                             {seatAt('top-right')}
@@ -126,20 +147,18 @@ export function GameTable({
 
                         {/* minHeight 0: the row may get shorter than the side seats; they then reach down beside
                             your cards (which are centred), and your hand always stays fully on screen. */}
-                        <View className={`flex-1 flex-row ${sidesHigh ? 'items-start' : 'items-center'}`} style={{ minHeight: 0 }}>
-                            <View className={layout === 'wide' ? 'pl-4' : 'pl-1'}>{seatAt('left')}</View>
-                            <View className="flex-1 items-center justify-center self-stretch">
-                                <PileArea
-                                    deck={game.deck}
-                                    laidCards={game.laidCards}
-                                    burntCards={game.burntCards}
-                                    turnOf={turnOf}
-                                    size={narrowPiles ? 'md' : 'lg'}
-                                    tight={narrowPiles}
-                                />
+                        {layout === 'portrait' && hasSides ? (
+                            // The side seats at the table's edges, the pile column in the middle.
+                            <View className="flex-1 flex-row items-center justify-between px-1" style={{ minHeight: 0 }}>
+                                {seatAt('left')}
+                                {piles}
+                                {seatAt('right')}
                             </View>
-                            <View className={layout === 'wide' ? 'pr-4' : 'pr-1'}>{seatAt('right')}</View>
-                        </View>
+                        ) : (
+                            <View className="flex-1 items-center justify-center" style={{ minHeight: 0 }}>
+                                {piles}
+                            </View>
+                        )}
 
                         <PlayerBoard
                             userCards={game.userCards}
@@ -151,7 +170,21 @@ export function GameTable({
                             handSize={layout === 'wide' ? 'lg' : 'md'}
                             overlapStacks={window.height < SHORT_HEIGHT}
                             corner={<ChatButton unread={unread} onPress={() => toggleChat(true)} />}
+                            cornerRight={<LampButton />}
                         />
+
+                        {layout === 'wide' && hasSides ? (
+                            // Wide: the side seats at the edges, centred on the whole screen (the safe-area padding
+                            // undone), so they stay put while your hand grows or shrinks and sit at the table's middle.
+                            <View
+                                pointerEvents="box-none"
+                                className="absolute left-0 right-0 flex-row items-center justify-between px-4"
+                                style={{ top: -insets.top, bottom: -insets.bottom }}
+                            >
+                                <View pointerEvents="box-none">{seatAt('left')}</View>
+                                <View pointerEvents="box-none">{seatAt('right')}</View>
+                            </View>
+                        ) : null}
                     </CardDragProvider>
                 </CardSettingsProvider>
 
@@ -164,6 +197,8 @@ export function GameTable({
                     canSend={canSendMessage}
                 />
             </Screen>
+            {/* Last: the lamp lights every card the same, the dragged one included (night only). */}
+            <TableLighting layer="cards" />
         </View>
     );
 }

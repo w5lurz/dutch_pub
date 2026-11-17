@@ -17,6 +17,7 @@ import type { TCard } from '@dutch-pub/shared';
 
 import { cardDimensions, type CardSize } from './cardSize';
 import { PlayingCard } from './PlayingCard';
+import { useTableTheme } from './tableTheme';
 
 /** A mounted View (refs to host views are element instances, not the `View` component type). */
 export type ViewRef = ComponentRef<typeof View>;
@@ -222,8 +223,12 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 /** Wraps the drop target (the laid pile): outlined while dragging, green while a card is over it. */
 export function CardDropZone({ children }: { children: ReactNode }) {
 	const { dropZoneRef, dragging, hovering } = useCardDrag();
+	// Strong enough to see on the white table by day (blue-600, green-600); lighter on the dark night table.
+	const night = useTableTheme().mode === 'night';
+	const dragColor = night ? '#93c5fd' : '#2563eb';
+	const hoverColor = night ? '#4ade80' : '#16a34a';
 	const style = useAnimatedStyle(() => ({
-		borderColor: hovering.get() ? '#22c55e' : dragging.get() ? '#93c5fd' : 'transparent', // green-500, blue-300
+		borderColor: hovering.get() ? hoverColor : dragging.get() ? dragColor : 'transparent',
 		backgroundColor: hovering.get() ? 'rgba(34, 197, 94, 0.12)' : 'transparent',
 	}));
 	return (

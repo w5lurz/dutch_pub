@@ -9,6 +9,7 @@ import { HandFan } from './HandFan';
 import { Rotated } from './Rotated';
 import type { SeatPosition } from './seats';
 import { stackOffset, TableStacks, tableSpots, useTableStacksWidth } from './TableStacks';
+import { useTableTheme } from './tableTheme';
 
 type SeatAvatarProps = {
     name: string;
@@ -48,6 +49,8 @@ type SeatProps = {
     avatarId?: string | null;
     /** A picture to show instead of the avatar (e.g. in tests). */
     avatar?: ReactNode;
+    /** Top seats: avatar and name beside the cards instead of above them (short windows). */
+    compact?: boolean;
 };
 
 /** Cards of a seat, by where it is. */
@@ -63,7 +66,8 @@ const SIZES: Record<'top' | 'side' | 'sidePortrait', { stacks: CardSize; fit: nu
  * Left and right seats turn their cards toward the centre, as if the player sat there;
  * text stays upright. Seats have no background: they sit directly on the table.
  */
-export function Seat({ name, opponent, position, layout, avatarId, avatar }: SeatProps) {
+export function Seat({ name, opponent, position, layout, avatarId, avatar, compact = false }: SeatProps) {
+    const { labelStyle } = useTableTheme();
     const side = position === 'left' || position === 'right';
     const sizes = SIZES[side ? (layout === 'portrait' ? 'sidePortrait' : 'side') : 'top'];
     const spots = tableSpots(opponent.tableFlipped, opponent.table);
@@ -84,7 +88,7 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar }: Sea
             accessibilityLabel={summary}
             numberOfLines={1}
             className={`text-xs font-semibold ${active ? 'text-green-800' : 'text-gray-900'}`}
-            style={{ maxWidth: side ? sideWidth : 120 }}
+            style={[{ maxWidth: side ? sideWidth : 120 }, labelStyle]}
         >
             {name}
         </Text>
@@ -98,6 +102,19 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar }: Sea
             </Rotated>
         ) : null;
 
+    if (!side && compact) {
+        // One row: avatar over the name, then the hand and the stacks.
+        return (
+            <View className="flex-row items-center gap-2">
+                <View className="items-center gap-0.5">
+                    {avatarView}
+                    {nameText}
+                </View>
+                {fan}
+                {stacks}
+            </View>
+        );
+    }
     if (!side) {
         // Top seats: avatar and name, then the hand and the stacks (side by side when alone
         // at the top, one above the other in the narrower top-left / top-right seats).

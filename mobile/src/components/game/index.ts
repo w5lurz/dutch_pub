@@ -24,6 +24,17 @@ export { Rotated } from './Rotated';
 export { Seat, SeatAvatar } from './Seat';
 export { seatPositions, type SeatAssignment, type SeatPosition } from './seats';
 export { TableBackground } from './TableBackground';
-export { TABLE_THEMES, TableThemeProvider, useTableTheme, type TableMode, type TableTheme } from './tableTheme';
+export { LampButton } from './LampButton';
+export { TableLighting } from './TableLighting';
+export {
+    TABLE_THEMES,
+    tableModeFor,
+    TableThemeProvider,
+    useLampSwitch,
+    useTableTheme,
+    type LampPreference,
+    type TableMode,
+    type TableTheme,
+} from './tableTheme';
 export { stackOffset, TableStacks, tableSpots, useTableStacksWidth, type TableSpot } from './TableStacks';
 export { cardLabel, EmptyCardSlot, PlayingCard, type PlayingCardProps } from './PlayingCard';

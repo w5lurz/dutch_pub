@@ -64,7 +64,7 @@ export default function GameScreen() {
     );
 
     return (
-        <TableThemeProvider mode="day">
+        <TableThemeProvider>
             <GameTable
                 game={game}
                 active={active}

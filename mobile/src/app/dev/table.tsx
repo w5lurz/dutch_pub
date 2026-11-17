@@ -3,7 +3,7 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { canLayCard, type Cards, type ChatMessage, type Game, type Opponents, type TCard } from '@dutch-pub/shared';
 
-import { GameTable, TableThemeProvider, useAnyOrientationWhileFocused, useTableLayout, type TableMode } from '@/components/game';
+import { GameTable, TableThemeProvider, useAnyOrientationWhileFocused, useTableLayout } from '@/components/game';
 
 /**
  * Dev-only preview of the game table with mock data (UI-PLAN.md U0): check layout and card
@@ -91,7 +91,6 @@ export default function TablePreview() {
     const [piles, setPiles] = useState(true);
     const [yourTurn, setYourTurn] = useState(params.turn !== 'other');
     const [many, setMany] = useState(params.many === '1');
-    const [mode, setMode] = useState<TableMode>('day');
     const [showCardPowers, setShowCardPowers] = useState(true);
     const [cardBack, setCardBack] = useState<'red' | 'blue'>('red');
     const [panelOpen, setPanelOpen] = useState(params.panel !== '0');
@@ -139,7 +138,7 @@ export default function TablePreview() {
     };
 
     return (
-        <TableThemeProvider mode={mode}>
+        <TableThemeProvider>
             <GameTable
                 game={game}
                 active={!!game.active}
@@ -167,7 +166,6 @@ export default function TablePreview() {
                         <Chip label={many ? 'Opp. hands: many' : 'Opp. hands: few'} onPress={() => rebuild({ many: !many })} />
                         <Chip label={piles ? 'Piles: full' : 'Piles: empty'} onPress={() => rebuild({ piles: !piles })} />
                         <Chip label={yourTurn ? 'Turn: you' : 'Turn: Julcsi'} onPress={() => rebuild({ yourTurn: !yourTurn })} />
-                        <Chip label={`Mode: ${mode}`} onPress={() => setMode(mode === 'day' ? 'night' : 'day')} />
                         <Chip label={showCardPowers ? 'Powers: shown' : 'Powers: hidden'} onPress={() => setShowCardPowers(!showCardPowers)} />
                         <Chip label={`Backs: ${cardBack}`} onPress={() => setCardBack(cardBack === 'red' ? 'blue' : 'red')} />
                         <Chip label="Reset" onPress={() => rebuild({})} />

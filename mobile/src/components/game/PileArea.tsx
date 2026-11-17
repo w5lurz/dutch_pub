@@ -8,6 +8,7 @@ import { CardDropZone } from './CardDrag';
 import { useCardSize, type CardSize } from './cardSize';
 import { cardJitter } from './jitter';
 import { EmptyCardSlot, PlayingCard } from './PlayingCard';
+import { useTableTheme } from './tableTheme';
 
 type PileAreaProps = {
     deck: number;
@@ -19,6 +20,8 @@ type PileAreaProps = {
     size?: CardSize;
     /** Less space between the piles (narrow screens). */
     tight?: boolean;
+    /** The piles one above the other (portrait with seats beside them) instead of in a row. */
+    column?: boolean;
 };
 
 /** The drop zone's border + padding, added around the other piles too so all three line up. */
@@ -33,9 +36,12 @@ const BURNT_BACKS = 5;
 const CARDS_PER_BACK = 4;
 
 function Pile({ title, children, inset = false }: { title: string; children: ReactNode; inset?: boolean }) {
+    const { labelStyle } = useTableTheme();
     return (
         <View className="items-center gap-0.5">
-            <Text className="text-xs font-bold text-gray-800">{title}</Text>
+            <Text className="text-xs font-bold text-gray-800" style={labelStyle}>
+                {title}
+            </Text>
             {inset ? <View style={{ padding: ZONE_INSET }}>{children}</View> : children}
         </View>
     );
@@ -124,12 +130,12 @@ function BurntHeap({ count, size }: { count: number; size: CardSize }) {
 }
 
 /**
- * Centre of the table: deck, laid cards (top card first) and burnt cards in a row, with whose
+ * Centre of the table: deck, laid cards (top card first) and burnt cards in a row (or a column), with whose
  * turn it is above them. They look like real piles: a deck with thickness, a messy laid pile,
  * a heap of burnt backs.
  * The laid pile is where you drop a card to play it (`CardDropZone`).
  */
-export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false }: PileAreaProps) {
+export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false }: PileAreaProps) {
     const burnt = burntCards?.length ?? 0;
     const turnText = turnOf === null ? 'Your turn' : turnOf ? `${turnOf}'s turn` : 'Waiting…';
 
@@ -143,7 +149,7 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
             >
                 {turnText}
             </Text>
-            <View className={`flex-row items-start justify-center ${tight ? 'gap-1' : 'gap-4'}`}>
+            <View className={column ? 'items-center gap-1' : `flex-row items-start justify-center ${tight ? 'gap-1' : 'gap-4'}`}>
                 <Pile title={`Deck (${deck})`} inset>
                     {deck > 0 ? <Deck count={deck} size={size} /> : <EmptyCardSlot size={size} label="Deck, empty" />}
                 </Pile>
