@@ -36,10 +36,16 @@ type HandFanProps = {
 	rotate?: 0 | 90 | -90;
 };
 
+/** Total tilt of an opponent's fan, first to last back (degrees), and per back. */
+const FAN_SPREAD = 28;
+const FAN_DEG_PER_CARD = 4;
+
 /**
  * An opponent's hand: a fan of overlapping card backs, one per card and without a number,
  * like at a real table. With more cards than fit (`fit`), the fan is squeezed to a fixed
- * width and "×N" says the count.
+ * width and "×N" says the count. The backs are tilted on a small arc, mirrored compared to
+ * your own hand: the opponent holds them facing themselves, so the middle of the fan is
+ * nearest the table centre.
  */
 export function HandFan({ count, size = 'xxs', fit = FAN_FIT, rotate = 0 }: HandFanProps) {
 	const { width: cardWidth, height: cardHeight } = useCardSize(size);
@@ -54,22 +60,38 @@ export function HandFan({ count, size = 'xxs', fit = FAN_FIT, rotate = 0 }: Hand
 		);
 	}
 
+	const spread = Math.min(FAN_SPREAD, (fan.drawn - 1) * FAN_DEG_PER_CARD);
+	const radius = cardHeight * 2.2;
+	const dropAt = (degrees: number) => radius * (1 - Math.cos((degrees * Math.PI) / 180));
+	const maxDrop = dropAt(spread / 2);
+	const height = Math.ceil(cardHeight + maxDrop);
+
 	return (
 		<View
 			accessible
 			accessibilityLabel={label}
 			className={`items-center gap-1 ${rotate === 0 ? 'flex-row' : ''}`}
 		>
-			<Rotated degrees={rotate} width={fan.width} height={cardHeight}>
-				<View style={{ width: fan.width, height: cardHeight }}>
-					{Array.from({ length: fan.drawn }, (_, i) => (
-						<PlayingCard
-							key={i}
-							faceDown
-							size={size}
-							style={{ position: 'absolute', top: 0, left: Math.round(i * fan.step) }}
-						/>
-					))}
+			<Rotated degrees={rotate} width={fan.width} height={height}>
+				<View style={{ width: fan.width, height }}>
+					{Array.from({ length: fan.drawn }, (_, i) => {
+						const t = fan.drawn > 1 ? i / (fan.drawn - 1) - 0.5 : 0;
+						const tilt = -spread * t;
+						return (
+							<PlayingCard
+								key={i}
+								faceDown
+								size={size}
+								style={{
+									position: 'absolute',
+									// Ends higher than the middle (an arc opening toward the opponent).
+									top: Math.round(maxDrop - dropAt(tilt)),
+									left: Math.round(i * fan.step),
+									transform: [{ rotate: `${tilt}deg` }],
+								}}
+							/>
+						);
+					})}
 				</View>
 			</Rotated>
 			{fan.compressed ? <Text className="text-xs font-semibold text-gray-700">×{count}</Text> : null}

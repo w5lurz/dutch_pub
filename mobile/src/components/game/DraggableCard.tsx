@@ -8,7 +8,7 @@ import { useCardDrag, type ViewRef } from './CardDrag';
 import type { CardSize } from './cardSize';
 import { cardLabel, PlayingCard } from './PlayingCard';
 
-/** How far a selected card is lifted. */
+/** How far a selected card is lifted (along its tilt) by default. */
 const SELECTED_LIFT = 8;
 /** Card animations: in (dealt / picked up), out (played), and the others closing the gap. */
 const ENTERING = FadeInDown.duration(220);
@@ -24,8 +24,10 @@ type DraggableCardProps = {
 	selected?: boolean;
 	dimmed?: boolean;
 	faded?: boolean;
-	/** Inside the hand's horizontal ScrollView: only a mostly vertical drag picks the card up. */
-	inHorizontalScroll?: boolean;
+	/** Tilt in degrees (cards in the hand fan). A selected card lifts along its tilt. */
+	rotation?: number;
+	/** How far the card lifts when selected. Default 8. */
+	lift?: number;
 	/** Tap: select / deselect. */
 	onSelect: () => void;
 	/** Dropped on the laid pile: play it. Returns false if it was not played (it flies back). */
@@ -48,7 +50,8 @@ export function DraggableCard({
 	selected = false,
 	dimmed = false,
 	faded = false,
-	inHorizontalScroll = false,
+	rotation = 0,
+	lift = SELECTED_LIFT,
 	onSelect,
 	onPlay,
 	accessibilityHint,
@@ -59,13 +62,11 @@ export function DraggableCard({
 
 	const pan = usePanGesture({
 		runOnJS: true,
-		// In the hand, horizontal swipes scroll it; elsewhere any direction picks the card up.
-		// (No object spread here: the worklets Babel plugin rejects it in gesture hook configs.)
-		activeOffsetY: inHorizontalScroll ? [-10, 10] : undefined,
-		failOffsetX: inHorizontalScroll ? [-20, 20] : undefined,
-		minDistance: inHorizontalScroll ? undefined : 6,
+		// Any direction picks the card up. (No object spread in gesture hook configs: the
+		// worklets Babel plugin rejects it.)
+		minDistance: 6,
 		onActivate: () => {
-			if (ref.current) drag.start({ id, card, size }, ref.current);
+			if (ref.current) drag.start({ id, card, size, rotation }, ref.current);
 		},
 		onUpdate: event => drag.move(event.translationX, event.translationY),
 		onDeactivate: () => {
@@ -80,8 +81,14 @@ export function DraggableCard({
 	const gesture = useCompetingGestures(pan, tap);
 
 	const label = card ? cardLabel(card) : 'Face-down card';
+	// Lifted along the card's own axis (straight up for an untilted card), then tilted.
+	const angle = (rotation * Math.PI) / 180;
 	const liftStyle = useAnimatedStyle(() => ({
-		transform: [{ translateY: withTiming(selected ? -SELECTED_LIFT : 0, { duration: 120 }) }],
+		transform: [
+			{ translateX: withTiming(selected ? Math.sin(angle) * lift : 0, { duration: 120 }) },
+			{ translateY: withTiming(selected ? -Math.cos(angle) * lift : 0, { duration: 120 }) },
+			{ rotate: `${rotation}deg` },
+		],
 	}));
 
 	return (

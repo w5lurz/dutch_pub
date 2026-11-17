@@ -51,7 +51,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 ### Look
 
 - [ ] Light and dark mode (system setting) on every screen; card faces stay light.
-- [ ] Portrait on a small phone (360×640dp) with 4 players and a 10+ card hand: every seat, the piles, your stacks and the hand fit; the hand overlaps to fit, longer hands scroll.
+- [ ] Portrait on a small phone (360×640dp) with 4 players and a 10+ card hand: every seat, the piles, your stacks and the hand fit; the hand is a fan (tilted cards on an arc) that closes up to fit, every card's corner index visible (try 20+ cards); a tilted card straightens when dragged and tilts back when it flies home.
 - [ ] Portrait on a tall phone (360×800dp, 20:9): the table photo is not visibly distorted.
 - [ ] Wide: a phone turned sideways (your stacks beside the hand), a tablet in both orientations, the desktop browser; a narrow browser window gets the portrait layout. Cards readable, nothing cut off.
 - [ ] The dev preview (Account tab → table preview, or /dev/table) shows the layout name and window size on its first chip; check 2, 3 and 4 players, "Opp. hands: many", hand 15, in both layouts.

@@ -1,9 +1,9 @@
 import type { Cards, Game, TCard } from '@dutch-pub/shared';
 
 import { pileDrawSignature } from '../autoDraw';
-import { baseCardHeight, CARD_GAP, cardDimensions, tableLayout } from '../cardSize';
+import { baseCardHeight, cardDimensions, tableLayout } from '../cardSize';
 import { handFanLayout } from '../HandFan';
-import { handCardMargin } from '../PlayerBoard';
+import { handArcLayout } from '../handArc';
 import { seatPositions } from '../seats';
 import { stackOffset, tableSpots } from '../TableStacks';
 
@@ -150,20 +150,45 @@ describe('handFanLayout', () => {
     });
 });
 
-describe('handCardMargin', () => {
-    it('keeps the normal gap while the hand fits', () => {
-        expect(handCardMargin(5, 63, 344)).toBe(CARD_GAP);
-        expect(handCardMargin(1, 63, 10)).toBe(CARD_GAP);
+describe('handArcLayout (hand held as a fan)', () => {
+    const W = 63;
+    const H = 88;
+
+    it('is empty without cards', () => {
+        expect(handArcLayout(0, W, H, 300)).toEqual({ cards: [], height: 0, step: 0 });
     });
 
-    it('overlaps a longer hand just enough to fit', () => {
-        const margin = handCardMargin(8, 63, 344);
-        expect(margin).toBeLessThan(0);
-        expect(8 * 63 + 7 * margin).toBeLessThanOrEqual(344);
+    it('centres a single card, untilted', () => {
+        const { cards } = handArcLayout(1, W, H, 300, 10);
+        expect(cards).toEqual([{ left: Math.round((300 - W) / 2), top: 10, rotation: 0 }]);
     });
 
-    it('keeps 60% of each card visible; longer hands scroll', () => {
-        expect(handCardMargin(15, 63, 344)).toBe(Math.floor(63 * 0.6 - 63));
+    it('tilts the cards symmetrically, left to right, and drops the ends (an arch)', () => {
+        const { cards } = handArcLayout(5, W, H, 300);
+        const rotations = cards.map(c => c.rotation);
+        expect(rotations[0]).toBeLessThan(0);
+        expect(rotations[2]).toBe(0);
+        expect(rotations[4]).toBe(-rotations[0]);
+        expect(cards[0].top).toBe(cards[4].top);
+        expect(cards[0].top).toBeGreaterThan(cards[2].top);
+        // Centred: equal room on both sides.
+        expect(cards[0].left).toBeCloseTo(300 - (cards[4].left + W), -1);
+    });
+
+    it('spreads a short hand comfortably and closes up a long one to fit, without scrolling', () => {
+        expect(handArcLayout(4, W, H, 344).step).toBeCloseTo(W * 0.62);
+        const long = handArcLayout(20, W, H, 344);
+        expect(long.cards[19].left + W).toBeLessThanOrEqual(344 + 1);
+        expect(long.cards[0].left).toBeGreaterThanOrEqual(-1);
+        // Still each card's corner index (about a quarter of the width) shows.
+        expect(long.step).toBeGreaterThan(W * 0.22);
+    });
+
+    it('caps the total tilt and has room for the lift and the dropped, tilted ends', () => {
+        const { cards, height } = handArcLayout(30, W, H, 344, 14);
+        expect(cards[29].rotation - cards[0].rotation).toBeLessThanOrEqual(50);
+        expect(height).toBeGreaterThan(14 + H);
+        expect(Math.max(...cards.map(c => c.top))).toBeLessThan(height - H);
     });
 });
 

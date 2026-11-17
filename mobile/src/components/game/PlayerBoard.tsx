@@ -1,31 +1,19 @@
 import { useState, type ReactNode } from 'react';
-import { Text, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { Text, useWindowDimensions, View } from 'react-native';
 import { canLayCard, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
 
-import { CARD_GAP, useCardSize, type CardSize } from './cardSize';
+import { useCardSize, type CardSize } from './cardSize';
 import { DraggableCard } from './DraggableCard';
+import { handArcLayout } from './handArc';
 import { SeatAvatar } from './Seat';
 import { TableStacks } from './TableStacks';
 
-/** Share of a hand card that stays visible at least when the hand overlaps to fit; longer hands scroll. */
-const MIN_VISIBLE = 0.6;
-/** Horizontal padding of the hand's row (each side). */
+/** Horizontal room kept free on each side of the hand. */
 const HAND_PADDING = 8;
 /** Room kept free on both sides of the hand for the chat button in the bottom-left corner (48dp + margins). */
 const CORNER_SPACE = 60;
-
-/**
- * Margin between hand cards: the normal gap when the hand fits `available` dp, otherwise a
- * negative margin that overlaps the cards just enough to fit, but each card keeps at least
- * 60% visible (beyond that the hand scrolls).
- */
-export function handCardMargin(count: number, cardWidth: number, available: number): number {
-	if (count < 2 || available <= 0) return CARD_GAP;
-	if (count * cardWidth + (count - 1) * CARD_GAP <= available) return CARD_GAP;
-	const step = Math.max(cardWidth * MIN_VISIBLE, (available - cardWidth) / (count - 1));
-	return Math.floor(step - cardWidth);
-}
+/** How far a selected hand card lifts (along its tilt); the hand keeps this much room above it. */
+const HAND_LIFT = 14;
 
 type PlayerBoardProps = {
 	userCards: UserCards;
@@ -51,9 +39,10 @@ type PlayerBoardProps = {
 
 /**
  * Your side of the table (bottom of the game screen), one centred column: your avatar and
- * name, your table stacks on the table in front of you, and your hand along the bottom edge
- * (overlapping when long, then scrolling); the chat button (`corner`) in the bottom-left corner. On short
- * windows the hand covers the lower half of the stacks (`overlapStacks`).
+ * name, your table stacks on the table in front of you, and your hand along the bottom edge,
+ * held as a fan (`handArcLayout`: tilted cards on an arc, closing up when long instead of
+ * scrolling); the chat button (`corner`) in the bottom-left corner. On short windows the
+ * hand covers the lower half of the stacks (`overlapStacks`).
  * Play order: hand, then face-up cards once the hand is empty, then face-down cards once
  * both are empty. While the hand still has cards the stacks are drawn small and faded (not
  * playable yet). On your turn, cards that cannot be laid on the pile are dimmed.
@@ -72,7 +61,7 @@ export function PlayerBoard({
 	corner,
 }: PlayerBoardProps) {
 	const { hand, tableFlipped, table } = userCards;
-	const { width: cardWidth } = useCardSize(handSize);
+	const { width: cardWidth, height: cardHeight } = useCardSize(handSize);
 	const { height: stackCardHeight } = useCardSize('sm');
 	const { width: avatarCard } = useCardSize('xs');
 	const handPlayable = hand.length > 0;
@@ -81,10 +70,12 @@ export function PlayerBoard({
 	const dim = (card: TCard) => active && !canLayCard(card, laidCards);
 	const hasTableCards = tableFlipped.length > 0 || table > 0;
 
-	// Width the hand has, for overlapping a long hand so it fits.
+	// The fan is laid out in the width the hand has (measured), minus room at the sides.
 	const handPadding = corner ? CORNER_SPACE : HAND_PADDING;
+	// Until it is measured, the window width (no empty first frame).
+	const { width: windowWidth } = useWindowDimensions();
 	const [handWidth, setHandWidth] = useState(0);
-	const margin = handCardMargin(hand.length, cardWidth, handWidth - 2 * handPadding);
+	const arc = handArcLayout(hand.length, cardWidth, cardHeight, (handWidth || windowWidth) - 2 * handPadding, HAND_LIFT);
 
 	// Ids include the card, so a selection never jumps to a different card when the cards change.
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -96,43 +87,34 @@ export function PlayerBoard({
 	};
 
 	const handView = handPlayable ? (
-		<View onLayout={event => setHandWidth(event.nativeEvent.layout.width)}>
-			<ScrollView
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				style={{ flexGrow: 0 }}
-				// Room above for the selected card's lift. (Gesture Handler's ScrollView, so it
-				// works together with the cards' drag gesture; it takes no className.)
-				contentContainerStyle={{
-					flexGrow: 1,
-					justifyContent: 'center',
-					paddingHorizontal: handPadding,
-					paddingTop: 10,
-					gap: margin >= 0 ? margin : 0,
-				}}
-				accessibilityLabel={`Your hand, ${hand.length} cards`}
-			>
-				{hand.map((card, i) => {
-					// Keyed by the card (plus its occurrence, in case of duplicates), not its
-					// position: the cards then animate in / out instead of all re-mounting.
-					const occurrence = hand.slice(0, i).filter(c => c.color === card.color && c.value === card.value).length;
-					const id = `hand-${card.color}-${card.value}-${occurrence}`;
-					return (
-						<DraggableCard
-							key={id}
-							id={id}
-							card={card}
-							size={handSize}
-							inHorizontalScroll
-							selected={selectedId === id}
-							dimmed={dim(card)}
-							style={margin < 0 && i > 0 ? { marginLeft: margin } : undefined}
-							onSelect={() => toggleSelected(id)}
-							onPlay={() => play(card, i, true)}
-						/>
-					);
-				})}
-			</ScrollView>
+		<View
+			onLayout={event => setHandWidth(event.nativeEvent.layout.width)}
+			style={{ height: arc.height }}
+			accessibilityLabel={`Your hand, ${hand.length} cards`}
+		>
+			{hand.map((card, i) => {
+				// Keyed by the card (plus its occurrence, in case of duplicates), not its
+				// position: the cards then animate in / out and glide along the arc.
+				const occurrence = hand.slice(0, i).filter(c => c.color === card.color && c.value === card.value).length;
+				const id = `hand-${card.color}-${card.value}-${occurrence}`;
+				const place = arc.cards[i];
+				return (
+					<DraggableCard
+						key={id}
+						id={id}
+						card={card}
+						size={handSize}
+						rotation={place.rotation}
+						lift={HAND_LIFT}
+						selected={selectedId === id}
+						dimmed={dim(card)}
+						// Later cards lie on top, so each card's top-left corner index stays visible.
+						style={{ position: 'absolute', left: handPadding + place.left, top: place.top, zIndex: i }}
+						onSelect={() => toggleSelected(id)}
+						onPlay={() => play(card, i, true)}
+					/>
+				);
+			})}
 		</View>
 	) : null;
 

@@ -15,7 +15,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValu
 import * as Haptics from 'expo-haptics';
 import type { TCard } from '@dutch-pub/shared';
 
-import type { CardSize } from './cardSize';
+import { cardDimensions, type CardSize } from './cardSize';
 import { PlayingCard } from './PlayingCard';
 
 /** A mounted View (refs to host views are element instances, not the `View` component type). */
@@ -23,8 +23,8 @@ export type ViewRef = ComponentRef<typeof View>;
 
 type Rect = { x: number; y: number; width: number; height: number };
 
-/** The card being dragged: `card` null = a face-down card. */
-type DraggedCard = { id: string; card: TCard | null; size: CardSize };
+/** The card being dragged: `card` null = a face-down card; `rotation` its tilt in place (degrees). */
+type DraggedCard = { id: string; card: TCard | null; size: CardSize; rotation?: number };
 
 type CardDragContextValue = {
 	/** The drop target (the laid pile). */
@@ -63,6 +63,20 @@ function measure(view: ViewRef | null): Promise<Rect | null> {
 }
 
 const RETURN_MS = 160;
+/** How long a tilted card takes to straighten once picked up. */
+const STRAIGHTEN_MS = 150;
+
+/**
+ * The card's untilted rect in the window. A tilted view measures differently per platform
+ * (bounding box on web, the frame elsewhere), but every platform agrees on its centre, so
+ * the rect is rebuilt around the centre with the card's real size.
+ */
+function cardRect(measured: Rect, size: CardSize): Rect {
+	const { width, height } = cardDimensions(Dimensions.get('window'), size);
+	const cx = measured.x + measured.width / 2;
+	const cy = measured.y + measured.height / 2;
+	return { x: cx - width / 2, y: cy - height / 2, width, height };
+}
 
 /**
  * Drag & drop of your cards onto the laid pile. The dragged card is drawn in an overlay
@@ -79,8 +93,9 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 	const hovering = useSharedValue(false);
 	const x = useSharedValue(0);
 	const y = useSharedValue(0);
+	const rotation = useSharedValue(0);
 	// Window rects captured when the drag starts (measuring is async: moves before it are ignored).
-	const geometry = useRef<{ origin: Rect; host: Rect; zone: Rect | null } | null>(null);
+	const geometry = useRef<{ origin: Rect; host: Rect; zone: Rect | null; rotation: number } | null>(null);
 	const translation = useRef({ x: 0, y: 0 });
 	const returnTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	// Bumped by every clear: a drag start whose measuring finishes after that is dropped.
@@ -121,9 +136,13 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 			geometry.current = null;
 			const current = generation.current;
 			Promise.all([measure(source), measure(hostRef.current), measure(dropZoneRef.current)]).then(
-				([origin, host, zone]) => {
-					if (!origin || !host || generation.current !== current) return;
-					geometry.current = { origin, host, zone };
+				([measured, host, zone]) => {
+					if (!measured || !host || generation.current !== current) return;
+					const tilt = card.rotation ?? 0;
+					geometry.current = { origin: cardRect(measured, card.size), host, zone, rotation: tilt };
+					// Picked up: straightens from its tilt in the hand.
+					rotation.set(tilt);
+					rotation.set(withTiming(0, { duration: STRAIGHTEN_MS }));
 					dragging.set(true);
 					update();
 					setDragged(card);
@@ -131,7 +150,7 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 				},
 			);
 		},
-		[dragging, update],
+		[dragging, rotation, update],
 	);
 
 	const move = useCallback(
@@ -150,9 +169,10 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 		hovering.set(false);
 		x.set(withTiming(g.origin.x - g.host.x, { duration: RETURN_MS }));
 		y.set(withTiming(g.origin.y - g.host.y, { duration: RETURN_MS }));
+		rotation.set(withTiming(g.rotation, { duration: RETURN_MS }));
 		clearTimeout(returnTimer.current);
 		returnTimer.current = setTimeout(clear, RETURN_MS);
-	}, [clear, hovering, x, y]);
+	}, [clear, hovering, rotation, x, y]);
 
 	// The window changed size (phone turned, browser resized): the layout moves, so the
 	// measured rects are stale. Drop a drag in progress; the gesture then ends as a no-op.
@@ -162,7 +182,12 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 	}, [clear]);
 
 	const overlayStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: x.get() }, { translateY: y.get() }, { scale: hovering.get() ? 1.1 : 1.05 }],
+		transform: [
+			{ translateX: x.get() },
+			{ translateY: y.get() },
+			{ rotate: `${rotation.get()}deg` },
+			{ scale: hovering.get() ? 1.1 : 1.05 },
+		],
 	}));
 
 	const value = useMemo<CardDragContextValue>(
