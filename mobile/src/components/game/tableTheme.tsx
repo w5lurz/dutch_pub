@@ -21,6 +21,8 @@ export type TableTheme = {
     fadeAlpha: { dimmed: number; faded: number };
     /** Extra style for labels lying on the table (names, pile titles): a dark pill at night. */
     labelStyle?: TextStyle;
+    /** The soft shadow under every card (`boxShadow`), so cards lie on the table instead of floating flat. */
+    cardShadow: string;
 };
 
 const DAY: TableTheme = {
@@ -28,6 +30,7 @@ const DAY: TableTheme = {
     paletteClass: 'light-palette',
     fadeColor: '#f9fafb', // card-face
     fadeAlpha: { dimmed: 0.6, faded: 0.3 },
+    cardShadow: '0px 1px 3px rgba(0, 0, 0, 0.3)',
 };
 
 const NIGHT: TableTheme = {
@@ -43,6 +46,8 @@ const NIGHT: TableTheme = {
         borderRadius: 8,
         overflow: 'hidden',
     },
+    // The lamp hangs at the top edge: shadows fall further downward, away from it, and darker.
+    cardShadow: '0px 3px 5px rgba(0, 0, 0, 0.45)',
 };
 
 export const TABLE_THEMES: Record<TableMode, TableTheme> = { day: DAY, night: NIGHT };

@@ -3,7 +3,7 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { canLayCard, type Cards, type ChatMessage, type Game, type Opponents, type TCard } from '@dutch-pub/shared';
 
-import { GameTable, TableThemeProvider, useAnyOrientationWhileFocused, useTableLayout } from '@/components/game';
+import { GameTable, summonVisitor, TableThemeProvider, useAnyOrientationWhileFocused, useTableLayout } from '@/components/game';
 
 /**
  * Dev-only preview of the game table with mock data (UI-PLAN.md U0): check layout and card
@@ -125,17 +125,34 @@ export default function TablePreview() {
             return cards.filter((_, j) => j !== i);
         };
         const fromHand = hand.length > 0;
+        // Like the real game: refill the hand to 3 from the deck, and a 10 burns the laid pile.
+        let newHand = fromHand ? without(hand) : hand;
+        let deck = game.deck;
+        while (fromHand && newHand.length < 3 && deck > 0) {
+            newHand = [...newHand, deal(1, deck * 3)[0]].sort((a, b) => a.value - b.value);
+            deck -= 1;
+        }
+        const burns = played.value === 10;
         setGame({
             ...game,
-            userCards: {
-                hand: fromHand ? without(hand) : hand,
-                tableFlipped: fromHand ? tableFlipped : without(tableFlipped),
-                table,
-            },
-            laidCards: [played, ...(game.laidCards ?? [])],
+            deck,
+            userCards: { hand: newHand, tableFlipped: fromHand ? tableFlipped : without(tableFlipped), table },
+            laidCards: burns ? null : [played, ...(game.laidCards ?? [])],
+            burntCards: burns ? [played, ...(game.laidCards ?? []), ...(game.burntCards ?? [])] : game.burntCards,
         });
         return true;
     };
+
+    // Picks up the laid pile into your hand (as when you cannot play).
+    const pickUp = () =>
+        setGame({
+            ...game,
+            userCards: {
+                ...game.userCards,
+                hand: [...game.userCards.hand, ...(game.laidCards ?? [])].sort((a, b) => a.value - b.value),
+            },
+            laidCards: null,
+        });
 
     return (
         <TableThemeProvider>
@@ -168,6 +185,10 @@ export default function TablePreview() {
                         <Chip label={yourTurn ? 'Turn: you' : 'Turn: Julcsi'} onPress={() => rebuild({ yourTurn: !yourTurn })} />
                         <Chip label={showCardPowers ? 'Powers: shown' : 'Powers: hidden'} onPress={() => setShowCardPowers(!showCardPowers)} />
                         <Chip label={`Backs: ${cardBack}`} onPress={() => setCardBack(cardBack === 'red' ? 'blue' : 'red')} />
+                        <Chip label="Pick up pile" onPress={pickUp} />
+                        <Chip label="Bee" onPress={() => summonVisitor('bee')} />
+                        <Chip label="Butterfly" onPress={() => summonVisitor('butterfly')} />
+                        <Chip label="Frisbee" onPress={() => summonVisitor('frisbee')} />
                         <Chip label="Reset" onPress={() => rebuild({})} />
                         <Chip label="Close" onPress={() => router.back()} />
                     </View>

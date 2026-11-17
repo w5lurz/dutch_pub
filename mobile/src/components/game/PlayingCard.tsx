@@ -39,9 +39,6 @@ const faceRadius = (faceWidth: number) => (faceWidth * 12) / 239;
 /** Corner radius of the back (its `rounded-md` clip). */
 const BACK_RADIUS = 6;
 
-/** A soft shadow under every card, so cards lie on the table (and on each other) instead of floating flat. */
-const CARD_SHADOW = '0px 1px 3px rgba(0, 0, 0, 0.3)';
-
 /** "7 of hearts", "Mirror (0) of clubs". */
 export function cardLabel(card: TCard): string {
     const name = card.name === String(card.value) ? card.name : `${card.name} (${card.value})`;
@@ -96,7 +93,7 @@ export function PlayingCard({
     testID,
 }: PlayingCardProps) {
     const { width, height } = useCardSize(size);
-    const { fadeColor, fadeAlpha: fadeAlphas } = useTableTheme();
+    const { fadeColor, fadeAlpha: fadeAlphas, cardShadow } = useTableTheme();
     const [pressed, setPressed] = useState(false);
     const showFace = !!card && !faceDown;
     const label =
@@ -114,8 +111,8 @@ export function PlayingCard({
     // each child separately.
     const fadeAlpha = dimmed ? fadeAlphas.dimmed : faded ? fadeAlphas.faded : 0;
     const content = (
-        // The shadow sits on the card itself (inside the selection outline).
-        <View style={{ flex: 1, borderRadius: 7, boxShadow: CARD_SHADOW }}>
+        // The table theme's shadow (longer at night, away from the lamp) sits on the card itself (inside the selection outline).
+        <View style={{ flex: 1, borderRadius: 7, boxShadow: cardShadow }}>
             {face}
             {fadeAlpha > 0 ? (
                 <View

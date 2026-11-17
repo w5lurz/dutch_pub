@@ -22,7 +22,7 @@ import { useTableTheme } from './tableTheme';
 /** A mounted View (refs to host views are element instances, not the `View` component type). */
 export type ViewRef = ComponentRef<typeof View>;
 
-type Rect = { x: number; y: number; width: number; height: number };
+export type Rect = { x: number; y: number; width: number; height: number };
 
 /** The card being dragged: `card` null = a face-down card; `rotation` its tilt in place (degrees). */
 type DraggedCard = { id: string; card: TCard | null; size: CardSize; rotation?: number };
@@ -30,6 +30,8 @@ type DraggedCard = { id: string; card: TCard | null; size: CardSize; rotation?: 
 type CardDragContextValue = {
 	/** The drop target (the laid pile). */
 	dropZoneRef: RefObject<ViewRef | null>;
+	/** The deck (cards you draw fly in from it). */
+	deckRef: RefObject<ViewRef | null>;
 	/** True while a card is being dragged. */
 	dragging: SharedValue<boolean>;
 	/** True while the dragged card is over the drop target. */
@@ -56,7 +58,8 @@ export function useCardDrag(): CardDragContextValue {
 	return value;
 }
 
-function measure(view: ViewRef | null): Promise<Rect | null> {
+/** A view's rect in the window, or null if it is not mounted. */
+export function measure(view: ViewRef | null): Promise<Rect | null> {
 	return new Promise(resolve => {
 		if (!view) return resolve(null);
 		view.measureInWindow((x, y, width, height) => resolve({ x, y, width, height }));
@@ -88,6 +91,7 @@ function cardRect(measured: Rect, size: CardSize): Rect {
  */
 export function CardDragProvider({ children }: { children: ReactNode }) {
 	const dropZoneRef = useRef<ViewRef | null>(null);
+	const deckRef = useRef<ViewRef | null>(null);
 	const hostRef = useRef<ViewRef | null>(null);
 	const [dragged, setDragged] = useState<DraggedCard | null>(null);
 	const dragging = useSharedValue(false);
@@ -194,6 +198,7 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 	const value = useMemo<CardDragContextValue>(
 		() => ({
 			dropZoneRef,
+			deckRef,
 			dragging,
 			hovering,
 			draggedId: dragged?.id ?? null,

@@ -1,10 +1,19 @@
-import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import type { Cards, TCard } from '@dutch-pub/shared';
 
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import Animated, {
+    Easing,
+    FadeIn,
+    interpolate,
+    useAnimatedStyle,
+    useReducedMotion,
+    useSharedValue,
+    withTiming,
+    ZoomIn,
+} from 'react-native-reanimated';
 
-import { CardDropZone } from './CardDrag';
+import { CardDropZone, measure, useCardDrag, type Rect, type ViewRef } from './CardDrag';
 import { useCardSize, type CardSize } from './cardSize';
 import { cardJitter } from './jitter';
 import { EmptyCardSlot, PlayingCard } from './PlayingCard';
@@ -44,6 +53,43 @@ function Pile({ title, children, inset = false }: { title: string; children: Rea
             </Text>
             {inset ? <View style={{ padding: ZONE_INSET }}>{children}</View> : children}
         </View>
+    );
+}
+
+/** How long the burnt card takes to sweep from the laid pile onto the burnt heap. */
+const BURN_MS = 450;
+
+/**
+ * The burn: the card that burnt the pile sweeps from the laid pile onto the burnt heap,
+ * spinning, arcing a little and turning face-down on the way (`dx` / `dy`: the heap's centre
+ * relative to the pile's).
+ */
+function BurnSweep({ card, size, dx, dy, onDone }: { card: TCard; size: CardSize; dx: number; dy: number; onDone: () => void }) {
+    const progress = useSharedValue(0);
+    useEffect(() => {
+        progress.set(withTiming(1, { duration: BURN_MS, easing: Easing.inOut(Easing.cubic) }));
+        const timer = setTimeout(onDone, BURN_MS + 50);
+        return () => clearTimeout(timer);
+    }, [progress, onDone]);
+    const moving = useAnimatedStyle(() => {
+        const p = progress.get();
+        return {
+            transform: [
+                { translateX: dx * p },
+                { translateY: dy * p - Math.sin(p * Math.PI) * 18 },
+                { rotate: `${interpolate(p, [0, 1], [0, 160])}deg` },
+                { scale: interpolate(p, [0, 0.5, 1], [1, 1.08, 0.94]) },
+            ],
+        };
+    });
+    const face = useAnimatedStyle(() => ({ opacity: interpolate(progress.get(), [0.3, 0.55], [1, 0], 'clamp') }));
+    return (
+        <Animated.View pointerEvents="none" style={moving}>
+            <PlayingCard faceDown size={size} decorative />
+            <Animated.View style={[StyleSheet.absoluteFill, face]}>
+                <PlayingCard card={card} size={size} decorative />
+            </Animated.View>
+        </Animated.View>
     );
 }
 
@@ -137,10 +183,51 @@ function BurntHeap({ count, size }: { count: number; size: CardSize }) {
  */
 export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false }: PileAreaProps) {
     const burnt = burntCards?.length ?? 0;
+    const { deckRef, dropZoneRef } = useCardDrag();
+    const still = useReducedMotion();
+    const { width: cardWidth, height: cardHeight } = useCardSize(size);
+
+    // The burn sweep: when the burnt pile grows, its newest card (burntCards[0]) sweeps over
+    // from the laid pile. The piles are measured after each change, ready for the next burn.
+    const areaRef = useRef<ViewRef | null>(null);
+    const burntRef = useRef<ViewRef | null>(null);
+    const rects = useRef<{ area: Rect | null; laid: Rect | null; heap: Rect | null }>({ area: null, laid: null, heap: null });
+    const [sweep, setSweep] = useState<{ key: number; card: TCard; x: number; y: number; dx: number; dy: number } | null>(null);
+    const endSweep = useCallback(() => setSweep(null), []);
+    const lastBurnt = useRef(burnt);
+    useEffect(() => {
+        const { area, laid, heap } = rects.current;
+        const grew = burnt > lastBurnt.current;
+        lastBurnt.current = burnt;
+        if (grew && !still && burntCards?.[0] && area && laid && heap) {
+            const centre = (r: Rect) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+            const from = centre(laid);
+            const to = centre(heap);
+            setSweep({
+                key: burnt,
+                card: burntCards[0],
+                // Card-sized, centred on the laid pile (the drop zone adds a border and padding).
+                x: from.x - area.x - cardWidth / 2,
+                y: from.y - area.y - cardHeight / 2,
+                dx: to.x - from.x,
+                dy: to.y - from.y,
+            });
+        }
+        let cancelled = false;
+        Promise.all([measure(areaRef.current), measure(dropZoneRef.current), measure(burntRef.current)]).then(
+            ([areaRect, laidRect, heapRect]) => {
+                if (!cancelled) rects.current = { area: areaRect, laid: laidRect, heap: heapRect };
+            },
+        );
+        return () => {
+            cancelled = true;
+        };
+    }, [burnt, burntCards, still, dropZoneRef, cardWidth, cardHeight, column]);
+
     const turnText = turnOf === null ? 'Your turn' : turnOf ? `${turnOf}'s turn` : 'Waiting…';
 
     return (
-        <View className="items-center gap-1.5">
+        <View ref={areaRef} collapsable={false} className="items-center gap-1.5">
             <Text
                 accessibilityLiveRegion="polite"
                 className={`rounded-full px-3 py-0.5 text-sm font-semibold ${
@@ -151,7 +238,10 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
             </Text>
             <View className={column ? 'items-center gap-1' : `flex-row items-start justify-center ${tight ? 'gap-1' : 'gap-4'}`}>
                 <Pile title={`Deck (${deck})`} inset>
-                    {deck > 0 ? <Deck count={deck} size={size} /> : <EmptyCardSlot size={size} label="Deck, empty" />}
+                    {/* Measured by your hand: drawn cards fly in from here. */}
+                    <View ref={deckRef} collapsable={false}>
+                        {deck > 0 ? <Deck count={deck} size={size} /> : <EmptyCardSlot size={size} label="Deck, empty" />}
+                    </View>
                 </Pile>
                 <Pile title={`Laid (${laidCards?.length ?? 0})`}>
                     <CardDropZone>
@@ -163,16 +253,23 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
                     </CardDropZone>
                 </Pile>
                 <Pile title={`Burnt (${burnt})`} inset>
-                    {burnt > 0 ? (
-                        // Fades in whenever the laid pile is burnt.
-                        <Animated.View key={`burnt-${burnt}`} entering={FadeIn.duration(400)}>
-                            <BurntHeap count={burnt} size={size} />
-                        </Animated.View>
-                    ) : (
-                        <EmptyCardSlot size={size} label="Burnt cards, empty" />
-                    )}
+                    <View ref={burntRef} collapsable={false}>
+                        {burnt > 0 ? (
+                            // Stays in place when cards are burnt (the burnt card sweeps onto it); the first heap fades in.
+                            <Animated.View entering={FadeIn.duration(400)}>
+                                <BurntHeap count={burnt} size={size} />
+                            </Animated.View>
+                        ) : (
+                            <EmptyCardSlot size={size} label="Burnt cards, empty" />
+                        )}
+                    </View>
                 </Pile>
             </View>
+            {sweep ? (
+                <View pointerEvents="none" style={{ position: 'absolute', left: sweep.x, top: sweep.y }}>
+                    <BurnSweep key={sweep.key} card={sweep.card} size={size} dx={sweep.dx} dy={sweep.dy} onDone={endSweep} />
+                </View>
+            ) : null}
         </View>
     );
 }

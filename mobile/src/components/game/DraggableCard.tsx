@@ -1,6 +1,15 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { FadeInDown, FadeOut, LinearTransition, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, {
+	Easing,
+	FadeInDown,
+	FadeOut,
+	LinearTransition,
+	useAnimatedStyle,
+	useSharedValue,
+	withDelay,
+	withTiming,
+} from 'react-native-reanimated';
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import type { TCard } from '@dutch-pub/shared';
 
@@ -14,6 +23,11 @@ const SELECTED_LIFT = 8;
 const ENTERING = FadeInDown.duration(220);
 const EXITING = FadeOut.duration(150);
 const LAYOUT = LinearTransition.duration(200);
+/** How long a drawn card takes to fly from the deck (or the laid pile) into its place. */
+const FLY_MS = 420;
+
+/** Where a newly drawn card comes from, relative to its place: offset of its centre, size, delay (ms). */
+export type EnterFrom = { dx: number; dy: number; scale: number; delay: number };
 
 type DraggableCardProps = {
 	/** Unique among your cards right now (selection and drag state). */
@@ -34,6 +48,8 @@ type DraggableCardProps = {
 	onPlay: () => boolean;
 	accessibilityHint?: string;
 	style?: StyleProp<ViewStyle>;
+	/** Just drawn: flies in from here (relative to its place) instead of sliding in. */
+	enterFrom?: EnterFrom;
 };
 
 /**
@@ -56,6 +72,7 @@ export function DraggableCard({
 	onPlay,
 	accessibilityHint,
 	style,
+	enterFrom,
 }: DraggableCardProps) {
 	const ref = useRef<ViewRef>(null);
 	const drag = useCardDrag();
@@ -83,17 +100,34 @@ export function DraggableCard({
 	const label = card ? cardLabel(card) : 'Face-down card';
 	// Lifted along the card's own axis (straight up for an untilted card), then tilted.
 	const angle = (rotation * Math.PI) / 180;
-	const liftStyle = useAnimatedStyle(() => ({
-		transform: [
-			{ translateX: withTiming(selected ? Math.sin(angle) * lift : 0, { duration: 120 }) },
-			{ translateY: withTiming(selected ? -Math.cos(angle) * lift : 0, { duration: 120 }) },
-			{ rotate: `${rotation}deg` },
-		],
-	}));
+	const lifted = useSharedValue(selected ? 1 : 0);
+	useEffect(() => {
+		lifted.set(withTiming(selected ? 1 : 0, { duration: 120 }));
+	}, [selected, lifted]);
+	// A drawn card flies in: 1 = on the deck (untilted, the deck's size), 0 = in its place. Only
+	// the flight it mounted with counts (a plain animated value: custom entering animations
+	// don't run on web).
+	const [flight] = useState(enterFrom);
+	const away = useSharedValue(flight ? 1 : 0);
+	useEffect(() => {
+		if (flight) away.set(withDelay(flight.delay, withTiming(0, { duration: FLY_MS, easing: Easing.out(Easing.cubic) })));
+	}, [flight, away]);
+	const from = flight ?? { dx: 0, dy: 0, scale: 1 };
+	const liftStyle = useAnimatedStyle(() => {
+		const a = away.get();
+		return {
+			transform: [
+				{ translateX: Math.sin(angle) * lift * lifted.get() + from.dx * a },
+				{ translateY: -Math.cos(angle) * lift * lifted.get() + from.dy * a },
+				{ rotate: `${rotation * (1 - a)}deg` },
+				{ scale: 1 + (from.scale - 1) * a },
+			],
+		};
+	});
 
 	return (
 		// Outer view: position (from `style`) and animations; inner view: gestures, measuring, a11y.
-		<Animated.View entering={ENTERING} exiting={EXITING} layout={LAYOUT} style={[style, liftStyle]}>
+		<Animated.View entering={flight ? undefined : ENTERING} exiting={EXITING} layout={LAYOUT} style={[style, liftStyle]}>
 			<GestureDetector gesture={gesture}>
 				<View
 					ref={ref}

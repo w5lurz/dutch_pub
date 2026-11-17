@@ -24,6 +24,7 @@ export { Rotated } from './Rotated';
 export { Seat, SeatAvatar } from './Seat';
 export { seatPositions, type SeatAssignment, type SeatPosition } from './seats';
 export { TableBackground } from './TableBackground';
+export { DayVisitors, pickVisitor, summonVisitor, type VisitorKind } from './DayVisitors';
 export { LampButton } from './LampButton';
 export { TableLighting } from './TableLighting';
 export {

@@ -4,7 +4,9 @@ import { canLayCard, type Cards, type TCard, type UserCards } from '@dutch-pub/s
 
 import { useCardSize, type CardSize } from './cardSize';
 import { DraggableCard } from './DraggableCard';
+import { useDrawnCards } from './drawnCards';
 import { handArcLayout } from './handArc';
+import { HandSilhouette } from './HandSilhouette';
 import { SeatAvatar } from './Seat';
 import { TableStacks } from './TableStacks';
 import { useTableTheme } from './tableTheme';
@@ -102,20 +104,33 @@ export function PlayerBoard({
 		return played;
 	};
 
+	// Keyed by the card (plus its occurrence, in case of duplicates), not its position: the cards
+	// then animate in / out and glide along the arc, and newly drawn ones fly in (useDrawnCards).
+	const handIds = hand.map((card, i) => {
+		const occurrence = hand.slice(0, i).filter((c) => c.color === card.color && c.value === card.value).length;
+		return `hand-${card.color}-${card.value}-${occurrence}`;
+	});
+	const hangOff = overlapStacks ? Math.round(cardHeight * HANG_OFF) : 0;
+	const { boardRef, enterFrom: drawnFrom } = useDrawnCards(handIds, laidCards?.length ?? 0);
+
 	const handView = handPlayable ? (
 		<View
 			onLayout={(event) => setHandWidth(event.nativeEvent.layout.width)}
 			// On short windows the hand hangs partly off the bottom edge (its corner indices stay
 			// visible), like cards held at the table edge: the piles and seats keep their room.
-			style={{ height: arc.height, marginBottom: overlapStacks ? -Math.round(cardHeight * HANG_OFF) : 0 }}
+			style={{ height: arc.height, marginBottom: -hangOff }}
 			accessibilityLabel={`Your hand, ${hand.length} cards`}
 		>
 			{hand.map((card, i) => {
-				// Keyed by the card (plus its occurrence, in case of duplicates), not its
-				// position: the cards then animate in / out and glide along the arc.
-				const occurrence = hand.slice(0, i).filter((c) => c.color === card.color && c.value === card.value).length;
-				const id = `hand-${card.color}-${card.value}-${occurrence}`;
+				const id = handIds[i];
 				const place = arc.cards[i];
+				// From the board's bottom: its padding (pb-1, 4dp), less what hangs off the screen.
+				const enterFrom = drawnFrom(
+					id,
+					handPadding + place.left + cardWidth / 2,
+					hangOff - 4 - (arc.height - place.top - cardHeight / 2),
+					cardWidth,
+				);
 				return (
 					<DraggableCard
 						key={id}
@@ -128,11 +143,20 @@ export function PlayerBoard({
 						dimmed={dim(card)}
 						// Later cards lie on top, so each card's top-left corner index stays visible.
 						style={{ position: 'absolute', left: handPadding + place.left, top: place.top, zIndex: i }}
+						enterFrom={enterFrom}
 						onSelect={() => toggleSelected(id)}
 						onPlay={() => play(card, i, true)}
 					/>
 				);
 			})}
+			{/* Your thumb on the front of the fan (only a drawing: touches reach the cards below it). */}
+			<HandSilhouette
+				centre={(handWidth || windowWidth) / 2}
+				// The hand's bottom edge, less what hangs off the screen.
+				bottom={arc.height - hangOff}
+				cardWidth={cardWidth}
+				style={{ zIndex: hand.length }}
+			/>
 		</View>
 	) : null;
 
@@ -177,7 +201,7 @@ export function PlayerBoard({
 	// covered stacks). The chat button (`corner`) and the lamp switch (`cornerRight`) sit in the
 	// bottom corners; the hand keeps room on both sides, so it never covers them and stays centred.
 	return (
-		<View className="pb-1">
+		<View ref={boardRef} collapsable={false} className="pb-1">
 			{you}
 			{stacks}
 			{handView}
