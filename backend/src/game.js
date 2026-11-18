@@ -6,8 +6,6 @@ import { identityError } from './socketAuth.js';
 import db from './models/index.js';
 const PlayedGame = db.played_game;
 
-const handleClearAll = () => {};
-
 /**
  * Checks that `socket` is authenticated as `username`, plays in game `roomId` and that it
  * is their turn. Returns `{ error }` or `{ player }` (the server-side player state).
@@ -37,9 +35,12 @@ const validateTurn = (socket, { roomId, username }) => {
  * Checks a `lay-card` request against the server-side game state.
  * Returns `{ error }` when the move must be rejected, otherwise `{ card }`: the server's own
  * copy of the card (so client-sent flags like isMagicCard are never trusted), or the
- * face-down table card index for a blind play.
+ * face-down table card index for a blind play. With `cards` (several cards laid together)
+ * it returns `{ card, cards }`: the server's copies, one per requested card (two requests
+ * for the same card need two copies, possible with two decks), all of the same value, the
+ * first one fitting the pile.
  */
-export const validateLayCard = (socket, { card, roomId, username }) => {
+export const validateLayCard = (socket, { card, cards, roomId, username }) => {
     const { error, player } = validateTurn(socket, { roomId, username });
     if (error) {
         return { error };
@@ -59,6 +60,24 @@ export const validateLayCard = (socket, { card, roomId, username }) => {
     }
 
     const playableCards = hand.length !== 0 ? hand : tableFlipped;
+    if (Array.isArray(cards) && cards.length > 0) {
+        const pool = [...playableCards];
+        const serverCards = [];
+        for (const requested of cards) {
+            const i = requested ? pool.findIndex(own => own.value === requested.value && own.color === requested.color) : -1;
+            if (i < 0) {
+                return { error: "You don't have that card." };
+            }
+            serverCards.push(pool.splice(i, 1)[0]);
+        }
+        if (serverCards.some(own => own.value !== serverCards[0].value)) {
+            return { error: 'Only cards of the same value can be laid together.' };
+        }
+        if (!canLayCard(serverCards[0], currentGame.laidCards)) {
+            return { error: 'You cannot lay that card.' };
+        }
+        return { card: serverCards[0], cards: serverCards };
+    }
     const serverCard = card && playableCards.find(ownCard => ownCard.value === card.value && ownCard.color === card.color);
     if (!serverCard) {
         return { error: "You don't have that card." };
@@ -79,115 +98,46 @@ export const game = io => {
                 socket.emit('lay-card-rejected', validation.error);
                 return;
             }
-            const card = validation.card;
             const currentRoom = roomsList[roomId];
             const currentGame = games[roomId];
-            let currentLaidCard = card;
-            console.log('LAY CARD1', card, cardIndex, roomId, username);
-            // TODO: with >3 players two decks are used, so a hand can hold identical cards (same value + color).
-            // These filters remove every matching copy instead of just the one laid; remove a single card instead.
-            // Deleting laid card from hand
-            if (currentGame.players[username].userCards.hand.length !== 0) {
-                currentGame.players[username].userCards.hand = currentGame.players[username].userCards.hand.filter(
-                    handCard => !(handCard.value === card.value && handCard.color === card.color),
-                );
-            }
-            // Deleting table flipped card (if hand is empty)
-            if (
-                currentGame.players[username].userCards.hand.length === 0 &&
-                currentGame.players[username].userCards.tableFlipped.length !== 0
-            ) {
-                currentGame.players[username].userCards.tableFlipped = currentGame.players[username].userCards.tableFlipped.filter(
-                    tableFlippedCard => !(tableFlippedCard.value === card.value && tableFlippedCard.color === card.color),
-                );
-            }
-            let isValidLastLaidCard = true;
-            if (
-                // TODO TEST what if it is a number, we should reveal that to UI
-                typeof card === 'number' &&
-                currentGame.players[username].userCards.hand.length === 0 &&
-                currentGame.players[username].userCards.tableFlipped.length === 0
-            ) {
-                console.log('LASTLAID', username, card);
-                console.log('LASTLAID', currentGame.players[username].userCards.table);
-                currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
-                currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
-                isValidLastLaidCard = canLayCard(currentLaidCard, currentGame.laidCards);
-                console.log('LAST ROUND', isValidLastLaidCard, currentGame.laidCards);
-            }
-            if (!isValidLastLaidCard) {
-                // const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                // TODO this is filtered up, will be undefined, FIXMEE
-                // currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
-                console.log('LAST ROUND1', isValidLastLaidCard, currentLaidCard, currentGame.players[username].userCards.table);
-                // Setting hand with drawn cards
-                currentGame.players[username].userCards.hand = [currentLaidCard, ...currentGame.laidCards].sort(
-                    (a, b) => a.value - b.value,
-                );
+            const userCards = currentGame.players[username].userCards;
 
-                // Setting laidCards to null (given to hand)
-                currentGame.laidCards = null;
-
-                // Setting active player to next
-                setActivePlayerNext(currentGame.players, username);
-
-                // Send new game data to sockets
-                console.log('DRAWNHEHE', currentGame.players[username].userCards.hand);
-                sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
-            } else {
-                // Add top card from deck to hand if hand.length < 3
-                const cardToAddToHand =
-                    currentGame.deck.length && currentGame.players[username].userCards.hand.length < 3 && currentGame.deck.shift();
-                cardToAddToHand && currentGame.players[username].userCards.hand.splice(cardIndex, 0, cardToAddToHand);
-
-                // If laid card is a 10 we burn all laid cards
-                // TODO TEST of setting active player next when burning cards
-                if (currentLaidCard?.value === 10) {
-                    currentGame.burntCards = currentGame.burntCards
-                        ? [currentLaidCard, ...(currentGame.laidCards ? currentGame.laidCards : []), ...currentGame.burntCards]
-                        : [currentLaidCard, ...(currentGame.laidCards ? currentGame.laidCards : [])];
+            if (typeof validation.card === 'number') {
+                // A face-down card, played blind: revealed now, it either fits the pile or the
+                // player picks up the pile together with it.
+                const blindCard = userCards.table[validation.card];
+                userCards.table = userCards.table.filter((_, i) => i !== validation.card);
+                if (!canLayCard(blindCard, currentGame.laidCards)) {
+                    userCards.hand = [blindCard, ...(currentGame.laidCards ?? [])].sort((a, b) => a.value - b.value);
                     currentGame.laidCards = null;
-                } else if (isLastFourCardsSame(currentGame.laidCards, currentLaidCard)) {
-                    currentGame.burntCards = [
-                        currentLaidCard,
-                        ...currentGame.laidCards,
-                        ...(currentGame.burntCards ? currentGame.burntCards : []),
-                    ];
-                    currentGame.laidCards = null;
-                } else {
-                    console.log('ELSE', card, cardIndex);
-                    currentGame.laidCards = currentGame.laidCards ? [currentLaidCard, ...currentGame.laidCards] : [currentLaidCard];
-                    console.log('SET NEXT', username);
-                    // Setting active player to next
                     setActivePlayerNext(currentGame.players, username);
+                    sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
+                    return;
                 }
-                // TODO SET WINNER HERE
-                if (
-                    currentGame.players[username].userCards.hand.length === 0 &&
-                    currentGame.players[username].userCards.tableFlipped.length === 0 &&
-                    currentGame.players[username].userCards.table.length === 0
-                ) {
-                    const gameId = `game-${roomId}`;
-                    let { [roomId]: omit, ...rest } = roomsList;
-                    console.log('REST1', rest);
-                    modifyRooms(rest);
-                    io.to(gameId).emit('game-won', username, roomsList);
+                applyLay(currentGame, username, [blindCard], cardIndex, { fromTable: true });
+            } else {
+                applyLay(currentGame, username, validation.cards ?? [validation.card], cardIndex);
+            }
 
-                    console.log('GAMEWON', card);
-                    // TODO DELETE ROOM
-                    io.in(gameId).socketsLeave(gameId);
-                    let { [gameId]: deleted, ...restRoomMessages } = roomMessages;
-                    modifyRoomMessages(restRoomMessages);
-                    console.log('GAMEWON1', roomsList);
-                    await PlayedGame.create({
-                        winner: username,
-                        players: currentRoom.players.map(player => player.username).join(','),
-                    });
-                }
+            const won = userCards.hand.length === 0 && userCards.tableFlipped.length === 0 && userCards.table.length === 0;
+            if (won) {
+                const gameId = `game-${roomId}`;
+                const { [roomId]: _won, ...rest } = roomsList;
+                modifyRooms(rest);
+                // The game is over: free it (the players' last view is sent below from `currentGame`).
+                delete games[roomId];
+                io.to(gameId).emit('game-won', username, roomsList);
+                io.in(gameId).socketsLeave(gameId);
+                const { [gameId]: _messages, ...restRoomMessages } = roomMessages;
+                modifyRoomMessages(restRoomMessages);
+            }
 
-                // Send new game data to sockets
-                console.log('CARD LAYED', card, currentLaidCard, username, currentGame.players);
-                sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
+            sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
+            if (won) {
+                await PlayedGame.create({
+                    winner: username,
+                    players: currentRoom.players.map(player => player.username).join(','),
+                });
             }
         });
 
@@ -226,14 +176,55 @@ export const game = io => {
     });
 };
 
-const isLastFourCardsSame = (laidCards, card) =>
-    laidCards &&
-    laidCards[0] &&
-    laidCards[1] &&
-    laidCards[2] &&
-    card.value === laidCards[0].value &&
-    laidCards[0].value === laidCards[1].value &&
-    laidCards[1].value === laidCards[2].value;
+/**
+ * `from` without one copy of each of `cards` (same value and colour). With two decks a
+ * player can hold two identical cards; only as many copies as were laid are removed.
+ */
+export const withoutCards = (from, cards) => {
+    const rest = [...from];
+    for (const card of cards) {
+        const i = rest.findIndex(own => own.value === card.value && own.color === card.color);
+        if (i >= 0) rest.splice(i, 1);
+    }
+    return rest;
+};
+
+/** How many cards on top of `pile` (top first) have the top card's value. */
+const topRun = pile => {
+    let count = 0;
+    while (count < pile.length && pile[count].value === pile[0].value) count++;
+    return count;
+};
+
+/**
+ * Lays `cards` (one or several of the same value, already validated) for `username`:
+ * removes them from their hand, or from their face-up cards once the hand is empty (unless
+ * `fromTable`: a revealed face-down card, already removed), refills the hand to 3 from the
+ * deck, then puts them on the pile one after the other (the last one on top). A 10, or four
+ * of a kind on top of the pile, burns it and the same player goes again; otherwise the turn
+ * passes on.
+ */
+export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = false } = {}) => {
+    const userCards = game.players[username].userCards;
+    if (!fromTable) {
+        if (userCards.hand.length !== 0) userCards.hand = withoutCards(userCards.hand, cards);
+        else userCards.tableFlipped = withoutCards(userCards.tableFlipped, cards);
+    }
+    // New cards go where the laid one was (the client keeps the hand in its order).
+    let at = Math.max(0, Math.min(Number.isInteger(cardIndex) ? cardIndex : 0, userCards.hand.length));
+    while (userCards.hand.length < 3 && game.deck.length > 0) {
+        userCards.hand.splice(at++, 0, game.deck.shift());
+    }
+
+    const pile = [...[...cards].reverse(), ...(game.laidCards ?? [])];
+    if (cards[0].value === 10 || topRun(pile) >= 4) {
+        game.burntCards = [...pile, ...(game.burntCards ?? [])];
+        game.laidCards = null;
+    } else {
+        game.laidCards = pile;
+        setActivePlayerNext(game.players, username);
+    }
+};
 
 /**
  * What `username` may see of `game`: their own cards (face-down table cards only as a

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { canLayCard, type TCard } from '@dutch-pub/shared';
+import { canLayCard, type Cards, type TCard } from '@dutch-pub/shared';
 
 import { pileDrawSignature } from '@/components/game/autoDraw';
 import { useSocket } from '@/providers/SocketProvider';
@@ -12,8 +12,8 @@ export const CHAT_COOLDOWN_MS = 3000;
 
 /**
  * The player's moves in the running game (`user.inGame` is the room id):
- * - `layCard(card, cardIndex, touchable)`: `card` is a hand / face-up card, or the index of
- *   a face-down card. Checked locally first (turn, `touchable`, `canLayCard`); the server
+ * - `layCard(card, cardIndex, touchable)`: `card` is a hand / face-up card, several of them
+ *   of the same value (laid together), or the index of a face-down card. Checked locally first (turn, `touchable`, `canLayCard`); the server
  *   validates again and answers `lay-card-rejected` (toasted by GameSync). Returns whether
  *   the card was sent (false: refused locally, with a toast).
  * - Auto pick-up: on your turn with no playable card it emits `draw-cards` once per state.
@@ -33,8 +33,22 @@ export function useGameActions() {
     const laidCards = game.laidCards;
 
     const layCard = useCallback(
-        (card: TCard | number, cardIndex: number, touchable = true): boolean => {
+        (card: TCard | number | Cards, cardIndex: number, touchable = true): boolean => {
             if (roomId === undefined) return false;
+            // Several cards laid together: all of the same value, the first must fit the pile.
+            const several = Array.isArray(card) ? card : null;
+            const first = several ? several[0] : (card as TCard | number);
+            if (several && (several.length === 0 || several.some(other => other.value !== several[0].value))) {
+                dispatch(
+                    setToast({
+                        id: `lay-cards-mixed-${Date.now()}`,
+                        type: 'warning',
+                        message: 'Only cards of the same value can be laid together.',
+                        duration: 3000,
+                    }),
+                );
+                return false;
+            }
             if (!active) {
                 dispatch(setToast({ id: `not-your-turn-${Date.now()}`, type: 'warning', message: "It's not your turn yet.", duration: 3000 }));
                 return false;
@@ -43,12 +57,12 @@ export function useGameActions() {
                 dispatch(setToast({ id: `place-card-failed-${Date.now()}`, type: 'warning', message: 'You cannot place that card!', duration: 3000 }));
                 return false;
             }
-            if (!canLayCard(card, laidCards)) {
+            if (first === undefined || !canLayCard(first, laidCards)) {
                 dispatch(setToast({ id: `lay-card-failed-${Date.now()}`, type: 'sad', message: 'You cannot lay that card.', duration: 3000 }));
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
                 return false;
             }
-            socket.emit('lay-card', { card, cardIndex, roomId, username });
+            socket.emit('lay-card', { card: first, ...(several && several.length > 1 ? { cards: several } : {}), cardIndex, roomId, username });
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             return true;
         },

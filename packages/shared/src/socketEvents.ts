@@ -56,8 +56,12 @@ export interface ClientToServerEvents {
      * sender gets `action-rejected`.
      */
     'stop-game': (roomId: number) => void;
-    /** `card` is a card from hand / face-up table, or the index of a face-down table card. */
-    'lay-card': (payload: { card: TCard | number; cardIndex: number; roomId: number; username?: string }) => void;
+    /**
+     * `card` is a card from hand / face-up table, or the index of a face-down table card.
+     * With `cards`: several cards of the same value laid together (`card` is the first of them);
+     * the first must fit the pile. Each listed card needs its own copy in the hand / face-up cards.
+     */
+    'lay-card': (payload: { card: TCard | number; cards?: TCard[]; cardIndex: number; roomId: number; username?: string }) => void;
     'draw-cards': (payload: { roomId: number; username?: string }) => void;
     'send-message': (payload: { roomId: number; username?: string; message: string }) => void;
     /** Ask for a `game-state` re-sync (after reconnecting / returning to the foreground). */

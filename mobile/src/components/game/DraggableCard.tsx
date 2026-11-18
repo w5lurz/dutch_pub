@@ -13,7 +13,7 @@ import Animated, {
 import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import type { TCard } from '@dutch-pub/shared';
 
-import { useCardDrag, type ViewRef } from './CardDrag';
+import { useCardDrag, type Companion, type ViewRef } from './CardDrag';
 import type { CardSize } from './cardSize';
 import { cardLabel, PlayingCard } from './PlayingCard';
 
@@ -50,6 +50,8 @@ type DraggableCardProps = {
 	style?: StyleProp<ViewStyle>;
 	/** Just drawn: flies in from here (relative to its place) instead of sliding in. */
 	enterFrom?: EnterFrom;
+	/** The other selected cards, carried along (and laid together) when this one is dragged. */
+	companions?: readonly Companion[];
 };
 
 /**
@@ -73,6 +75,7 @@ export function DraggableCard({
 	accessibilityHint,
 	style,
 	enterFrom,
+	companions,
 }: DraggableCardProps) {
 	const ref = useRef<ViewRef>(null);
 	const drag = useCardDrag();
@@ -83,7 +86,7 @@ export function DraggableCard({
 		// worklets Babel plugin rejects it.)
 		minDistance: 6,
 		onActivate: () => {
-			if (ref.current) drag.start({ id, card, size, rotation }, ref.current);
+			if (ref.current) drag.start({ id, card, size, rotation, companions }, ref.current);
 		},
 		onUpdate: event => drag.move(event.translationX, event.translationY),
 		onDeactivate: () => {
@@ -142,7 +145,7 @@ export function DraggableCard({
 						if (event.nativeEvent.actionName === 'play') onPlay();
 						else onSelect();
 					}}
-					style={{ opacity: drag.draggedId === id ? 0 : 1 }}
+					style={{ opacity: drag.draggedIds.includes(id) ? 0 : 1 }}
 				>
 					<PlayingCard card={card} faceDown={!card} size={size} selected={selected} dimmed={dimmed} faded={faded} />
 				</View>

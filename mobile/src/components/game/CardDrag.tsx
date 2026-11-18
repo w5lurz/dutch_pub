@@ -24,8 +24,14 @@ export type ViewRef = ComponentRef<typeof View>;
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
-/** The card being dragged: `card` null = a face-down card; `rotation` its tilt in place (degrees). */
-type DraggedCard = { id: string; card: TCard | null; size: CardSize; rotation?: number };
+/** Another selected card carried along with the dragged one (several cards laid together). */
+export type Companion = { id: string; card: TCard };
+
+/**
+ * The card being dragged: `card` null = a face-down card; `rotation` its tilt in place
+ * (degrees); `companions` the other selected cards, carried fanned out behind it.
+ */
+type DraggedCard = { id: string; card: TCard | null; size: CardSize; rotation?: number; companions?: readonly Companion[] };
 
 type CardDragContextValue = {
 	/** The drop target (the laid pile). */
@@ -36,8 +42,8 @@ type CardDragContextValue = {
 	dragging: SharedValue<boolean>;
 	/** True while the dragged card is over the drop target. */
 	hovering: SharedValue<boolean>;
-	/** Id of the card being dragged (hidden in its place meanwhile), or null. */
-	draggedId: string | null;
+	/** Ids of the card being dragged and the cards carried with it (hidden in their places meanwhile). */
+	draggedIds: readonly string[];
 	/** Starts dragging the card whose view is `source`. */
 	start: (dragged: DraggedCard, source: ViewRef) => void;
 	/** Moves the dragged card by the gesture's total translation. */
@@ -67,6 +73,10 @@ export function measure(view: ViewRef | null): Promise<Rect | null> {
 }
 
 const RETURN_MS = 160;
+/** How far each carried card peeks out to the right of the dragged one, and its extra tilt. */
+const COMPANION_SHIFT = 12;
+const COMPANION_TILT = 6;
+const NO_IDS: readonly string[] = [];
 /** How long a tilted card takes to straighten once picked up. */
 const STRAIGHTEN_MS = 150;
 
@@ -201,7 +211,7 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 			deckRef,
 			dragging,
 			hovering,
-			draggedId: dragged?.id ?? null,
+			draggedIds: dragged ? [dragged.id, ...(dragged.companions ?? []).map((companion) => companion.id)] : NO_IDS,
 			start,
 			move,
 			release,
@@ -217,6 +227,23 @@ export function CardDragProvider({ children }: { children: ReactNode }) {
 			<View ref={hostRef} collapsable={false} pointerEvents="none" style={StyleSheet.absoluteFill}>
 				{dragged ? (
 					<Animated.View style={[{ position: 'absolute', left: 0, top: 0 }, overlayStyle]}>
+						{/* The other selected cards, fanned out behind the dragged one (the furthest drawn first). */}
+						{(dragged.companions ?? [])
+							.map((companion, i) => (
+								<PlayingCard
+									key={companion.id}
+									card={companion.card}
+									size={dragged.size}
+									selected
+									style={{
+										position: 'absolute',
+										left: (i + 1) * COMPANION_SHIFT,
+										top: -(i + 1) * 2,
+										transform: [{ rotate: `${(i + 1) * COMPANION_TILT}deg` }],
+									}}
+								/>
+							))
+							.reverse()}
 						<PlayingCard card={dragged.card} faceDown={!dragged.card} size={dragged.size} selected />
 					</Animated.View>
 				) : null}

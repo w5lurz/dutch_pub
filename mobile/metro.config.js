@@ -1,8 +1,10 @@
 const path = require('path');
-const { getDefaultConfig } = require('expo/metro-config');
+// Expo's default config plus Sentry's (debug ids in the bundles, so crash stack traces can be
+// mapped back to the source once source maps are uploaded).
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 const { withNativeWind } = require('nativewind/metro');
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // @dutch-pub/shared is linked via "file:../packages/shared", which npm creates as a symlink
 // (a junction on Windows) pointing outside the project root. The dev server's on-demand

@@ -54,6 +54,24 @@ describe('useGameActions.layCard', () => {
         expect(mockSocket.emit).toHaveBeenCalledWith('lay-card', { card: card(5), cardIndex: 0, roomId: ROOM, username: 'me' });
     });
 
+    it('sends several cards of the same value together', async () => {
+        const { hook } = await setup({ laidCards: [card(4)] });
+        const fives = [card(5), card(5, 'spades'), card(5, 'clubs')];
+        await act(async () => {
+            expect(hook.result.current.layCard(fives, 1, true)).toBe(true);
+        });
+        expect(mockSocket.emit).toHaveBeenCalledWith('lay-card', { card: fives[0], cards: fives, cardIndex: 1, roomId: ROOM, username: 'me' });
+    });
+
+    it('refuses several cards of different values', async () => {
+        const { hook, store } = await setup({ laidCards: [card(4)] });
+        await act(async () => {
+            expect(hook.result.current.layCard([card(5), card(6)], 0, true)).toBe(false);
+        });
+        expect(mockSocket.emit).not.toHaveBeenCalledWith('lay-card', expect.anything());
+        expect(store.getState().general.toast?.message).toBe('Only cards of the same value can be laid together.');
+    });
+
     it('refuses a card that does not fit the pile, with a toast', async () => {
         const { hook, store } = await setup({ laidCards: [card(12)] });
         let sent = true;

@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import type { Cards, TCard } from '@dutch-pub/shared';
 
 import { CARD_GAP, useCardSize, type CardSize } from './cardSize';
+import type { Companion } from './CardDrag';
 import { DraggableCard } from './DraggableCard';
 import { cardJitter } from './jitter';
 import { PlayingCard } from './PlayingCard';
@@ -28,7 +29,7 @@ const downTilt = (spot: number) => cardJitter(`down-${spot}`, 2.5).rotation;
 const upTilt = (card: TCard, spot: number) => cardJitter(`up-${spot}-${card.color}-${card.value}`, 4).rotation;
 
 /** Selection / drag id of a face-up table card. */
-const upId = (card: TCard, i: number) => `up-${i}-${card.color}-${card.value}`;
+export const upId = (card: TCard, i: number) => `up-${i}-${card.color}-${card.value}`;
 
 /** How far the face-down card peeks out from under the face-up one (right and down). */
 export function stackOffset(cardWidth: number): number {
@@ -53,9 +54,14 @@ type TableStacksProps = {
 		faceDownPlayable: boolean;
 		/** Whether a face-up card is dimmed (cannot be laid on the pile right now). */
 		dim: (card: TCard) => boolean;
-		/** `touchable`: whether this card may be played at all right now. Returns whether it was played. */
-		onLayCard: (card: TCard | number, cardIndex: number, touchable: boolean) => boolean;
-		selectedId: string | null;
+		/**
+		 * `touchable`: whether this card may be played at all right now; `id` its selection id (several
+		 * selected cards are laid together). Returns whether it was played.
+		 */
+		onLayCard: (card: TCard | number, cardIndex: number, touchable: boolean, id: string) => boolean;
+		selectedIds: readonly string[];
+		/** The other selected cards, carried along when card `id` is dragged. */
+		companionsOf?: (id: string) => readonly Companion[] | undefined;
 		onSelect: (id: string) => void;
 	};
 };
@@ -86,10 +92,10 @@ export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }
 								faded={faded}
 								style={{ position: 'absolute', left: offset, top: offset }}
 								rotation={downTilt(i)}
-								selected={play.selectedId === `down-${i}`}
+								selected={play.selectedIds.includes(`down-${i}`)}
 								accessibilityHint={play.faceDownPlayable ? undefined : 'Play your other cards first'}
 								onSelect={() => play.onSelect(`down-${i}`)}
-								onPlay={() => play.onLayCard(i, i, play.faceDownPlayable)}
+								onPlay={() => play.onLayCard(i, i, play.faceDownPlayable, `down-${i}`)}
 							/>
 						) : (
 							<PlayingCard
@@ -109,11 +115,12 @@ export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }
 								faded={faded}
 								style={{ position: 'absolute', left: 0, top: 0 }}
 								rotation={upTilt(spot.faceUp, i)}
-								selected={play.selectedId === upId(spot.faceUp, i)}
+								selected={play.selectedIds.includes(upId(spot.faceUp, i))}
 								dimmed={play.faceUpPlayable && play.dim(spot.faceUp)}
 								accessibilityHint={play.faceUpPlayable ? undefined : 'Play your hand first'}
 								onSelect={() => play.onSelect(upId(spot.faceUp as TCard, i))}
-								onPlay={() => play.onLayCard(spot.faceUp as TCard, i, play.faceUpPlayable)}
+								onPlay={() => play.onLayCard(spot.faceUp as TCard, i, play.faceUpPlayable, upId(spot.faceUp as TCard, i))}
+								companions={play.companionsOf?.(upId(spot.faceUp, i))}
 							/>
 						) : (
 							<PlayingCard

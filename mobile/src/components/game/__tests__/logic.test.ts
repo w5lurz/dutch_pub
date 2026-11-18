@@ -6,6 +6,7 @@ import { handFanLayout } from '../HandFan';
 import { handArcLayout } from '../handArc';
 import { cardJitter } from '../jitter';
 import { seatPositions } from '../seats';
+import { nextSelection } from '../selection';
 import { stackOffset, tableSpots } from '../TableStacks';
 
 const card = (value: number, color = 'hearts', extra: Partial<TCard> = {}): TCard => ({
@@ -237,5 +238,29 @@ describe('pileDrawSignature (auto pick-up)', () => {
     it('is null for a player without cards (they have won)', () => {
         const empty = { hand: [], tableFlipped: [], table: 0 };
         expect(pileDrawSignature(1, game({ userCards: empty, laidCards: [card(13)] }))).toBeNull();
+    });
+});
+
+describe('nextSelection', () => {
+    const cards: Record<string, TCard> = {
+        'hand-clubs-5-0': { name: '5', value: 5, color: 'clubs' },
+        'hand-spades-5-0': { name: '5', value: 5, color: 'spades' },
+        'hand-hearts-8-0': { name: '8', value: 8, color: 'hearts' },
+        'up-0-diamonds-5': { name: '5', value: 5, color: 'diamonds' },
+    };
+    const cardOf = (id: string) => cards[id];
+
+    it('adds cards of the same value from the same place', () => {
+        expect(nextSelection(['hand-clubs-5-0'], 'hand-spades-5-0', cardOf)).toEqual(['hand-clubs-5-0', 'hand-spades-5-0']);
+    });
+
+    it('starts over with another value, another place or a face-down card', () => {
+        expect(nextSelection(['hand-clubs-5-0'], 'hand-hearts-8-0', cardOf)).toEqual(['hand-hearts-8-0']);
+        expect(nextSelection(['hand-clubs-5-0'], 'up-0-diamonds-5', cardOf)).toEqual(['up-0-diamonds-5']);
+        expect(nextSelection(['down-0'], 'down-1', cardOf)).toEqual(['down-1']);
+    });
+
+    it('deselects a selected card', () => {
+        expect(nextSelection(['hand-clubs-5-0', 'hand-spades-5-0'], 'hand-clubs-5-0', cardOf)).toEqual(['hand-spades-5-0']);
     });
 });

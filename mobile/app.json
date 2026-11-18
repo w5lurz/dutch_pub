@@ -8,9 +8,11 @@
     "scheme": "dutchpub",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "requireFullScreen": true
+      "requireFullScreen": true,
+      "bundleIdentifier": "hu.dutchpub.app"
     },
     "android": {
+      "package": "hu.dutchpub.app",
       "adaptiveIcon": {
         "backgroundColor": "#374151",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,11 +42,18 @@
         {
           "initialOrientation": "PORTRAIT_UP"
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c0bd4405-44d2-40ed-8c93-f876885e4680"
+      }
+    },
+    "owner": "w5larz"
   }
 }

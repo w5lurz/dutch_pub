@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { ChatMessage, Game, TCard } from '@dutch-pub/shared';
+import type { Cards, ChatMessage, Game, TCard } from '@dutch-pub/shared';
 
 import { Screen } from '@/components/ui';
 
@@ -42,8 +42,8 @@ export type GameTableProps = {
 	 * missing from it (or with null) get the avatar generated from their name.
 	 */
 	avatars?: Readonly<Record<string, string | null | undefined>>;
-	/** Plays a card; returns whether the move was legal (see `useGameActions.layCard`). */
-	onLayCard: (card: TCard | number, cardIndex: number, touchable: boolean) => boolean;
+	/** Plays a card (or several of the same value at once); returns whether the move was legal (see `useGameActions.layCard`). */
+	onLayCard: (card: TCard | number | Cards, cardIndex: number, touchable: boolean) => boolean;
 	messages: ChatMessage[];
 	onSendMessage: (message: string) => boolean;
 	canSendMessage: boolean;

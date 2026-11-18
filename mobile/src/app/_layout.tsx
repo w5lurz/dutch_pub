@@ -1,6 +1,7 @@
 import '../global.css';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/react-native';
 import { NavigationBar } from 'expo-navigation-bar';
 import { Stack, ThemeProvider, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -14,6 +15,7 @@ import Toast from '@/components/Toast';
 import { useSession } from '@/hooks/useSession';
 import { GameSync } from '@/providers/GameSync';
 import { navigationTheme, useTheme } from '@/lib/theme';
+import { initCrashReporting } from '@/lib/crashReporting';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { store, useAppSelector } from '@/store';
 
@@ -23,6 +25,9 @@ import { store, useAppSelector } from '@/store';
 // effects run, so it can never override the game screen's unlock on a cold start
 // straight into a running game.
 lockPortrait();
+
+// Crash and error reports (Sentry), in release builds with a DSN only.
+initCrashReporting();
 
 /** Loads the logged-in user from the stored token once, on app start. */
 function RestoreSession() {
@@ -55,7 +60,7 @@ function InGameRedirect() {
     return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
     const colors = useTheme();
     return (
         // Gesture Handler (card drag & drop in the game) needs its root view at the top.
@@ -100,3 +105,6 @@ export default function RootLayout() {
         </GestureHandlerRootView>
     );
 }
+
+// Wrapped so crashes during rendering are reported too (a no-op while reporting is off).
+export default Sentry.wrap(RootLayout);

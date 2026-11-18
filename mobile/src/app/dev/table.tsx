@@ -115,32 +115,41 @@ export default function TablePreview() {
     };
 
     // Plays on the mock pile: hand, then face-up, then face-down (by index), like the server.
-    const layCard = (played: TCard | number): boolean => {
+    const layCard = (played: TCard | number | Cards): boolean => {
         const { hand, tableFlipped, table } = game.userCards;
         if (typeof played === 'number') {
             setGame({ ...game, userCards: { ...game.userCards, table: table - 1 }, laidCards: [deal(1, played + 5)[0], ...(game.laidCards ?? [])] });
             return true;
         }
-        if (!canLayCard(played, game.laidCards)) return false;
-        const without = (cards: Cards) => {
-            const i = cards.findIndex(c => c.value === played.value && c.color === played.color);
-            return cards.filter((_, j) => j !== i);
+        // One card, or several of the same value laid together (the last one ends up on top).
+        const cards = Array.isArray(played) ? played : [played];
+        if (cards.some(c => c.value !== cards[0].value) || !canLayCard(cards[0], game.laidCards)) return false;
+        const without = (from: Cards) => {
+            const rest = [...from];
+            for (const laid of cards) {
+                const i = rest.findIndex(c => c.value === laid.value && c.color === laid.color);
+                if (i >= 0) rest.splice(i, 1);
+            }
+            return rest;
         };
         const fromHand = hand.length > 0;
-        // Like the real game: refill the hand to 3 from the deck, and a 10 burns the laid pile.
+        // Like the real game: refill the hand to 3 from the deck; a 10 or four of a kind on top burns the pile.
         let newHand = fromHand ? without(hand) : hand;
         let deck = game.deck;
         while (fromHand && newHand.length < 3 && deck > 0) {
             newHand = [...newHand, deal(1, deck * 3)[0]].sort((a, b) => a.value - b.value);
             deck -= 1;
         }
-        const burns = played.value === 10;
+        const pile = [...[...cards].reverse(), ...(game.laidCards ?? [])];
+        let run = 0;
+        while (run < pile.length && pile[run].value === pile[0].value) run++;
+        const burns = cards[0].value === 10 || run >= 4;
         setGame({
             ...game,
             deck,
             userCards: { hand: newHand, tableFlipped: fromHand ? tableFlipped : without(tableFlipped), table },
-            laidCards: burns ? null : [played, ...(game.laidCards ?? [])],
-            burntCards: burns ? [played, ...(game.laidCards ?? []), ...(game.burntCards ?? [])] : game.burntCards,
+            laidCards: burns ? null : pile,
+            burntCards: burns ? [...pile, ...(game.burntCards ?? [])] : game.burntCards,
         });
         return true;
     };

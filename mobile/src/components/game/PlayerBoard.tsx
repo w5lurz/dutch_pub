@@ -2,14 +2,15 @@ import { useState, type ReactNode, type Ref } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import { canLayCard, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
 
-import type { ViewRef } from './CardDrag';
+import type { Companion, ViewRef } from './CardDrag';
 import { useCardSize, type CardSize } from './cardSize';
 import { DraggableCard } from './DraggableCard';
 import { useDrawnCards } from './drawnCards';
 import { handArcLayout } from './handArc';
 import { HandSilhouette } from './HandSilhouette';
 import { SeatAvatar } from './Seat';
-import { TableStacks } from './TableStacks';
+import { nextSelection } from './selection';
+import { TableStacks, upId } from './TableStacks';
 import { useTableTheme } from './tableTheme';
 
 /** Horizontal room kept free on each side of the hand. */
@@ -29,10 +30,11 @@ type PlayerBoardProps = {
 	/** Your chosen avatar id; null / missing: the one generated from your name. */
 	avatar?: string | null;
 	/**
-	 * `touchable`: whether this card may be played at all right now (hand first, then face-up,
-	 * then face-down). Returns whether the card was played.
+	 * `card`: one card, a face-down card's index, or several cards of the same value laid
+	 * together. `touchable`: whether it may be played at all right now (hand first, then
+	 * face-up, then face-down). Returns whether it was played.
 	 */
-	onLayCard: (card: TCard | number, cardIndex: number, touchable: boolean) => boolean;
+	onLayCard: (card: TCard | number | Cards, cardIndex: number, touchable: boolean) => boolean;
 	/** Size of your hand cards (bigger in the wide layout). Default 'md'. */
 	handSize?: CardSize;
 	/**
@@ -59,8 +61,9 @@ type PlayerBoardProps = {
  * both are empty. While the hand still has cards the stacks are drawn small and faded (not
  * playable yet). On your turn, cards that cannot be laid on the pile are dimmed.
  *
- * Tap a card to select it (one at a time for now; selecting several cards of the same value
- * to lay them together is planned), drag it onto the laid pile to play it.
+ * Tap a card to select it, drag it onto the laid pile to play it. Several cards of the same
+ * value (from your hand, or from your face-up cards) can be selected: dragging any of them lays
+ * them all (`nextSelection`).
  */
 export function PlayerBoard({
 	userCards,
@@ -99,21 +102,38 @@ export function PlayerBoard({
 		HAND_LIFT,
 	);
 
-	// Ids include the card, so a selection never jumps to a different card when the cards change.
-	const [selectedId, setSelectedId] = useState<string | null>(null);
-	const toggleSelected = (id: string) => setSelectedId((current) => (current === id ? null : id));
-	const play = (card: TCard | number, cardIndex: number, touchable: boolean) => {
-		const played = onLayCard(card, cardIndex, touchable);
-		if (played) setSelectedId(null);
-		return played;
-	};
-
 	// Keyed by the card (plus its occurrence, in case of duplicates), not its position: the cards
 	// then animate in / out and glide along the arc, and newly drawn ones fly in (useDrawnCards).
 	const handIds = hand.map((card, i) => {
 		const occurrence = hand.slice(0, i).filter((c) => c.color === card.color && c.value === card.value).length;
 		return `hand-${card.color}-${card.value}-${occurrence}`;
 	});
+	// Selected cards (ids include the card, so a selection never jumps to a different card when
+	// the cards change; ids of cards no longer there are ignored).
+	const cardsById = new Map<string, TCard>([
+		...hand.map((card, i): [string, TCard] => [handIds[i], card]),
+		...tableFlipped.map((card, i): [string, TCard] => [upId(card, i), card]),
+	]);
+	const [selection, setSelection] = useState<readonly string[]>([]);
+	const selectedIds = selection.filter((id) => cardsById.has(id) || id.startsWith('down-'));
+	const toggleSelected = (id: string) => setSelection(nextSelection(selectedIds, id, (other) => cardsById.get(other)));
+	// Dragging a selected card lays every selected card (all of the same value); any other card alone.
+	const play = (card: TCard | number, cardIndex: number, touchable: boolean, id: string) => {
+		const group = selectedIds.includes(id) ? selectedIds.flatMap((selected) => cardsById.get(selected) ?? []) : [];
+		const played = onLayCard(group.length > 1 ? group : card, cardIndex, touchable);
+		if (played) setSelection([]);
+		return played;
+	};
+	const groupSize = selectedIds.filter((id) => cardsById.has(id)).length;
+	// The other selected cards, carried along when card `id` is dragged (it is part of a selection of several).
+	const companionsOf = (id: string): Companion[] | undefined =>
+		groupSize > 1 && selectedIds.includes(id)
+			? selectedIds.flatMap((other) => {
+					const card = cardsById.get(other);
+					return other !== id && card ? [{ id: other, card }] : [];
+				})
+			: undefined;
+
 	const hangOff = overlapStacks ? Math.round(cardHeight * HANG_OFF) : 0;
 	const { boardRef, enterFrom: drawnFrom } = useDrawnCards(handIds, laidCards?.length ?? 0);
 
@@ -143,13 +163,14 @@ export function PlayerBoard({
 						size={handSize}
 						rotation={place.rotation}
 						lift={HAND_LIFT}
-						selected={selectedId === id}
+						selected={selectedIds.includes(id)}
 						dimmed={dim(card)}
 						// Later cards lie on top, so each card's top-left corner index stays visible.
 						style={{ position: 'absolute', left: handPadding + place.left, top: place.top, zIndex: i }}
 						enterFrom={enterFrom}
 						onSelect={() => toggleSelected(id)}
-						onPlay={() => play(card, i, true)}
+						onPlay={() => play(card, i, true, id)}
+						companions={companionsOf(id)}
 					/>
 				);
 			})}
@@ -173,7 +194,7 @@ export function PlayerBoard({
 				faceDownCount={table}
 				size={handPlayable ? 'sm' : 'md'}
 				faded={handPlayable}
-				play={{ faceUpPlayable, faceDownPlayable, dim, onLayCard: play, selectedId, onSelect: toggleSelected }}
+				play={{ faceUpPlayable, faceDownPlayable, dim, onLayCard: play, selectedIds, onSelect: toggleSelected, companionsOf }}
 			/>
 		</View>
 	) : null;
@@ -200,6 +221,14 @@ export function PlayerBoard({
 				>
 					{username ?? ''}
 				</Text>
+				{groupSize > 1 ? (
+					// Literal colours: the table's palette doesn't follow the app's colours.
+					<View style={{ backgroundColor: '#2563eb', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+						<Text accessibilityLiveRegion="polite" style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>
+							{groupSize} selected · drag one to lay all
+						</Text>
+					</View>
+				) : null}
 			</View>
 		</View>
 	);
