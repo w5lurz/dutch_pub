@@ -7,12 +7,12 @@ import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setMessages } from '@/store/chatSlice';
 import { initialState as emptyGame, updateGame } from '@/store/gameSlice';
-import { setToast } from '@/store/generalSlice';
+import { setLastGameEnd, setToast, setWinner } from '@/store/generalSlice';
 import { setRooms } from '@/store/roomsSlice';
 import { setInGame } from '@/store/userSlice';
 
-/** How long the "won the game" toast stays before the game is cleared (as on the web). */
-const GAME_WON_DELAY_MS = 3000;
+/** How long the "won the game" toast stays before the game is cleared (the winner's shot glass slides meanwhile). */
+const GAME_WON_DELAY_MS = 4500;
 
 const haptic = (type: Haptics.NotificationFeedbackType) => {
     Haptics.notificationAsync(type).catch(() => {}); // unsupported on some platforms (web)
@@ -22,7 +22,8 @@ const haptic = (type: Haptics.NotificationFeedbackType) => {
  * Mirrors every server event into the store, so screens only read the store and emit.
  * - Rooms: `rooms-listed`, `joined-room`, `left-room`, `room-deleted`.
  * - Game: `game-started` (sets `user.inGame`, which redirects to /game), `card-laid`,
- *   `cards-drawn`, `game-won` (toast, then clears the game after 3 s), `lay-card-rejected`.
+ *   `cards-drawn`, `game-won` (toast and the winner's shot glass, then clears the game after 4.5 s), `game-stopped` (the
+ *   owner ended it: toast, clears the game at once), `lay-card-rejected`.
  * - Chat: `message-sent`. Re-sync: `game-state`.
  * - On every (re)connect it emits `list-rooms`, and `get-game-state` for a signed-in user
  *   (the server has already re-bound the user's seat to the new socket by then).
@@ -54,6 +55,8 @@ export function GameSync() {
             dispatch(setInGame(state.game && state.roomId !== null ? state.roomId : undefined));
         };
         const onGameStarted = (game: Game, rooms: TRooms, roomId: number) => {
+            dispatch(setLastGameEnd(null));
+            dispatch(setWinner(null));
             dispatch(setRooms(rooms));
             dispatch(updateGame(game));
             dispatch(setInGame(roomId));
@@ -72,14 +75,35 @@ export function GameSync() {
                 }),
             );
             haptic(Haptics.NotificationFeedbackType.Success);
+            dispatch(setLastGameEnd('won'));
+            dispatch(setWinner(winner));
             clearTimeout(gameWonTimer);
             gameWonTimer = setTimeout(() => {
                 dispatch(setRooms(rooms));
                 dispatch(updateGame(emptyGame));
                 dispatch(setInGame(undefined));
+                dispatch(setWinner(null));
             }, GAME_WON_DELAY_MS);
         };
-        const onLayCardRejected = (reason: string) => {
+        // The room owner stopped the game: leave it at once (nobody won, so nothing to wait for).
+        const onGameStopped = (owner: string, rooms: TRooms) => {
+            clearTimeout(gameWonTimer);
+            dispatch(
+                setToast({
+                    id: `game-stopped-${Date.now()}`,
+                    type: 'info',
+                    message: owner === usernameRef.current ? 'You stopped the game.' : `${owner} stopped the game.`,
+                    duration: 3000,
+                }),
+            );
+            haptic(Haptics.NotificationFeedbackType.Warning);
+            dispatch(setLastGameEnd('stopped'));
+            dispatch(setWinner(null));
+            dispatch(setRooms(rooms));
+            dispatch(updateGame(emptyGame));
+            dispatch(setInGame(undefined));
+        };
+        const onLayCardRejected =(reason: string) => {
             dispatch(setToast({ id: `lay-card-rejected-${Date.now()}`, type: 'sad', message: reason, duration: 3000 }));
             haptic(Haptics.NotificationFeedbackType.Error);
         };
@@ -93,6 +117,7 @@ export function GameSync() {
         socket.on('card-laid', onGameUpdated);
         socket.on('cards-drawn', onGameUpdated);
         socket.on('game-won', onGameWon);
+        socket.on('game-stopped', onGameStopped);
         socket.on('lay-card-rejected', onLayCardRejected);
         socket.on('game-state', onGameState);
         socket.on('message-sent', onMessageSent);
@@ -106,6 +131,7 @@ export function GameSync() {
             socket.off('card-laid', onGameUpdated);
             socket.off('cards-drawn', onGameUpdated);
             socket.off('game-won', onGameWon);
+            socket.off('game-stopped', onGameStopped);
             socket.off('lay-card-rejected', onLayCardRejected);
             socket.off('game-state', onGameState);
             socket.off('message-sent', onMessageSent);

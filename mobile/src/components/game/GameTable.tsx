@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChatMessage, Game, TCard } from '@dutch-pub/shared';
@@ -6,14 +6,18 @@ import type { ChatMessage, Game, TCard } from '@dutch-pub/shared';
 import { Screen } from '@/components/ui';
 
 import { Ashtray } from './Ashtray';
-import { CardDragProvider } from './CardDrag';
+import { useBigPickUp } from './bigPickUp';
+import { CardDragProvider, measure, type Rect, type ViewRef } from './CardDrag';
 import { CardSettingsProvider, type CardSettings } from './cardSettings';
 import { tableLayout, useCardSize, type CardSize } from './cardSize';
 import { ChatButton } from './ChatButton';
 import { ChatModal } from './ChatModal';
+import { Librarian } from './Librarian';
 import { PileArea } from './PileArea';
 import { PlayerBoard } from './PlayerBoard';
 import { Seat } from './Seat';
+import { ShotGlass, type Point } from './ShotGlass';
+import { StopGameButton } from './StopGameButton';
 import { seatPositions, type SeatPosition } from './seats';
 import { LampButton } from './LampButton';
 import { Moth } from './Moth';
@@ -45,12 +49,40 @@ export type GameTableProps = {
 	canSendMessage: boolean;
 	/** The room's card settings (special-card stamps, back colour); room defaults if omitted. */
 	cardSettings?: Partial<CardSettings>;
+	/** Ends the game for everyone; only for the room owner (shows the "Stop game" button above the chat). */
+	onStopGame?: () => void;
+	/** Who won (set while the game-won message shows): a shot glass slides over to them. */
+	winner?: string | null;
 };
 
 /** Below this window height your hand covers half of your table stacks (a phone turned sideways). */
 const SHORT_HEIGHT = 600;
 /** Below this window height the portrait pile column uses smaller cards (it stacks three cards). */
 const COLUMN_SHORT_HEIGHT = 800;
+/** The shot glass's diameter, and its gap to the winner's seat. */
+const GLASS_SIZE = 52;
+const GLASS_GAP = 10;
+
+/**
+ * The shot glass's way, in the table's coordinates: from the table's middle to beside the
+ * winner's seat `seat` (window coordinates, like `root`), on the side facing the middle (or
+ * the right for seats in the middle: the top seat, you), kept on the table.
+ */
+export function glassPath(root: Rect, seat: Rect): { from: Point; to: Point } {
+	const x = seat.x - root.x;
+	const y = seat.y - root.y;
+	const middle = root.width / 2;
+	const toRight = x + seat.width / 2 <= middle + 20;
+	const half = GLASS_SIZE / 2;
+	const clamp = (value: number, max: number) => Math.min(max - half - 4, Math.max(half + 4, value));
+	return {
+		from: { x: middle, y: root.height / 2 },
+		to: {
+			x: clamp(toRight ? x + seat.width + GLASS_GAP + half : x - GLASS_GAP - half, root.width),
+			y: clamp(y + seat.height / 2, root.height),
+		},
+	};
+}
 
 /**
  * The game table: opponents seated around it, deck / laid / burnt piles in the centre, your
@@ -73,6 +105,8 @@ export function GameTable({
 	onSendMessage,
 	canSendMessage,
 	cardSettings,
+	onStopGame,
+	winner,
 }: GameTableProps) {
 	const { paletteClass } = useTableTheme();
 	const window = useWindowDimensions();
@@ -94,6 +128,27 @@ export function GameTable({
 		setChatOpen(open);
 	};
 
+	// A big pick-up (more than six cards) calls the librarian, on every device.
+	const [bigPickUp, hideLibrarian] = useBigPickUp(game, username);
+
+	// The winner's shot glass: from the table's middle to beside the winner's seat (or your
+	// avatar and name), measured once a winner is known.
+	const rootRef = useRef<ViewRef | null>(null);
+	const avatarRef = useRef<ViewRef | null>(null);
+	const seatRefs = useRef(new Map<string, ViewRef>());
+	const [glass, setGlass] = useState<{ winner: string; from: Point; to: Point } | null>(null);
+	useEffect(() => {
+		if (!winner) return;
+		let cancelled = false;
+		const target = winner === username ? avatarRef.current : (seatRefs.current.get(winner) ?? null);
+		Promise.all([measure(rootRef.current), measure(target)]).then(([root, seat]) => {
+			if (!cancelled && root && seat) setGlass({ winner, ...glassPath(root, seat) });
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [winner, username]);
+
 	const activeOpponent = Object.entries(game.opponents).find(([, opponent]) => opponent.active)?.[0];
 	const turnOf = active ? null : activeOpponent;
 
@@ -106,16 +161,26 @@ export function GameTable({
 		seats
 			.filter((seat) => seat.position === position)
 			.map((seat) => (
-				<Seat
+				// Measured for the winner's shot glass.
+				<View
 					key={seat.name}
-					name={seat.name}
-					opponent={game.opponents[seat.name]}
-					position={position}
-					layout={layout}
-					avatarId={avatars?.[seat.name]}
-					// A phone turned sideways: the top seat in one row, close to the table's edge.
-					compact={layout === 'wide' && short}
-				/>
+					pointerEvents="box-none"
+					collapsable={false}
+					ref={(view) => {
+						if (view) seatRefs.current.set(seat.name, view);
+						else seatRefs.current.delete(seat.name);
+					}}
+				>
+					<Seat
+						name={seat.name}
+						opponent={game.opponents[seat.name]}
+						position={position}
+						layout={layout}
+						avatarId={avatars?.[seat.name]}
+						// A phone turned sideways: the top seat in one row, close to the table's edge.
+						compact={layout === 'wide' && short}
+					/>
+				</View>
 			));
 	const hasSides = seats.some((seat) => seat.position === 'left' || seat.position === 'right');
 	// Portrait with seats beside the piles (4 players): the piles stand in a column between the
@@ -144,7 +209,7 @@ export function GameTable({
 
 	return (
 		// The table's own palette (light on the white table, also in dark mode).
-		<View className={`${paletteClass} flex-1`}>
+		<View ref={rootRef} collapsable={false} className={`${paletteClass} flex-1`}>
 			<TableBackground layout={layout} />
 			<TableLighting layer="table" />
 			{/* Night only: an ashtray with a burning cigarette near the table's bottom-left corner, a bit
@@ -189,8 +254,14 @@ export function GameTable({
 							onLayCard={onLayCard}
 							handSize={layout === 'wide' ? 'lg' : 'md'}
 							overlapStacks={window.height < SHORT_HEIGHT}
-							corner={<ChatButton unread={unread} onPress={() => toggleChat(true)} />}
+							corner={
+								<View className="items-center gap-3">
+									{onStopGame ? <StopGameButton onStop={onStopGame} /> : null}
+									<ChatButton unread={unread} onPress={() => toggleChat(true)} />
+								</View>
+							}
 							cornerRight={<LampButton />}
+							avatarRef={avatarRef}
 						/>
 
 						{layout === 'wide' && hasSides ? (
@@ -217,6 +288,8 @@ export function GameTable({
 					canSend={canSendMessage}
 				/>
 			</Screen>
+			{/* The winner's shot, sliding over the table (lit by the lamp at night, like the cards). */}
+			{glass && glass.winner === winner ? <ShotGlass from={glass.from} to={glass.to} size={GLASS_SIZE} /> : null}
 			{/* Last: the lamp lights every card the same, the dragged one included (night only). */}
 			<TableLighting layer="cards" />
 			{/* The lamp itself, hanging above the table at the top edge (it flickers now and then), and a
@@ -225,6 +298,8 @@ export function GameTable({
 			<Moth insetTop={insets.top} />
 			{/* By day: a bee, a butterfly or (rarely) a frisbee passing over now and then. */}
 			<DayVisitors />
+			{/* A big pick-up: the librarian comes up and shelves a book, with the player's name. */}
+			{bigPickUp ? <Librarian key={bigPickUp.key} name={bigPickUp.name} count={bigPickUp.count} onDone={hideLibrarian} /> : null}
 		</View>
 	);
 }

@@ -13,6 +13,12 @@ export type TToast = {
     position?: 'top' | 'bottom';
 };
 
+/** How a game ended: someone won, or the room owner stopped it. */
+export type GameEnd = 'won' | 'stopped';
+
 export type GeneralState = {
     toast: TToast | null;
+    lastGameEnd: GameEnd | null;
+    /** Who won the game that just ended (while the table still shows), else null. */
+    winner: string | null;
 };

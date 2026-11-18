@@ -41,6 +41,9 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] "Clear all" (10) and four of a kind burn the pile.
 - [ ] Chat (button bottom left): unread badge, 3 s cooldown, works with the keyboard open in both layouts.
 - [ ] Winning: every player sees the winner, everyone lands on the leaderboard, the new win is listed.
+- [ ] Winner's shot: when someone wins, on every device a flaming shot glass of clear liquor slides from the table's middle (its tongue of fire streaming out behind it) and stops beside the winner (an opponent's seat, on the side facing the middle; or right of your own avatar and name), the liquor sloshing as it stops; then the flame stands up and flickers, with an orange glow on the table. It stays until the game closes (~4.5 s). With "reduce motion" it just fades in. Dev table: "Win: you" / "Win: Julcsi".
+- [ ] Big pick-up: when anyone picks up more than 6 cards (also a failed blind card plus the pile), every device shows an old librarian with glasses coming up from the bottom, putting a book on the shelf and going down again (~4 s), with "<name> is the librarian now" (and "picked up N cards") above her. No touches blocked; with "reduce motion" she just fades in and out. Dev table: "Librarian: you" / "Librarian: Julcsi".
+- [ ] Stop game (room owner only): a red stop button above the chat button, only on the owner's device. It asks first ("Stop the game?"; "Keep playing" or the backdrop closes it). Confirmed: every player sees "<owner> stopped the game." ("You stopped the game." for the owner) and lands on Play at once; the room is gone from the list, the leaderboard is unchanged. A player whose app was in the background leaves the game when they come back (without the message; they land on the leaderboard).
 
 ### Interruptions
 

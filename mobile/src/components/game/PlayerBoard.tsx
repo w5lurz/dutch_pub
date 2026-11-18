@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import { canLayCard, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
 
+import type { ViewRef } from './CardDrag';
 import { useCardSize, type CardSize } from './cardSize';
 import { DraggableCard } from './DraggableCard';
 import { useDrawnCards } from './drawnCards';
@@ -44,6 +45,8 @@ type PlayerBoardProps = {
 	corner?: ReactNode;
 	/** Shown in the bottom-right corner (the lamp switch). */
 	cornerRight?: ReactNode;
+	/** Set to your avatar and name (the winner's shot glass stops beside them). */
+	avatarRef?: Ref<ViewRef | null>;
 };
 
 /**
@@ -70,6 +73,7 @@ export function PlayerBoard({
 	overlapStacks = false,
 	corner,
 	cornerRight,
+	avatarRef,
 }: PlayerBoardProps) {
 	const { labelStyle } = useTableTheme();
 	const { hand, tableFlipped, table } = userCards;
@@ -179,21 +183,24 @@ export function PlayerBoard({
 		<View
 			accessible
 			accessibilityLabel={`You, ${username ?? ''}${active ? ', on turn' : ''}`}
-			className="flex-row items-center justify-center gap-1.5"
+			className="flex-row items-center justify-center"
 		>
-			<SeatAvatar
-				name={username ?? '?'}
-				active={active}
-				size={Math.max(24, Math.round(avatarCard * 0.8))}
-				avatarId={avatar}
-			/>
-			<Text
-				numberOfLines={1}
-				className={`max-w-32 text-xs font-semibold ${active ? 'text-green-800' : 'text-gray-900'}`}
-				style={labelStyle}
-			>
-				{username ?? ''}
-			</Text>
+			{/* Just the avatar and the name (measured for the winner's shot glass). */}
+			<View ref={avatarRef} collapsable={false} className="flex-row items-center gap-1.5">
+				<SeatAvatar
+					name={username ?? '?'}
+					active={active}
+					size={Math.max(24, Math.round(avatarCard * 0.8))}
+					avatarId={avatar}
+				/>
+				<Text
+					numberOfLines={1}
+					className={`max-w-32 text-xs font-semibold ${active ? 'text-green-800' : 'text-gray-900'}`}
+					style={labelStyle}
+				>
+					{username ?? ''}
+				</Text>
+			</View>
 		</View>
 	);
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { Opponent } from '@dutch-pub/shared';
 
 import { Avatar } from '@/components/ui';
@@ -24,15 +24,28 @@ type SeatAvatarProps = {
 
 /**
  * A player's avatar (chosen, or generated from the name: `Avatar`), with a green glow
- * around it while the player is on turn. (Only colours toggle: NativeWind must not get
- * `shadow-*` / `ring-*` classes added later, see AGENTS.md.)
+ * around it while the player is on turn. The glow is its own round view, mounted only while
+ * on turn: on Android, changing a mounted view's background colour on the turn change drew
+ * the new background without its border radius (a green square behind the avatar).
  */
 export function SeatAvatar({ name, active, size, avatarId, avatar }: SeatAvatarProps) {
     return (
-        <View style={{ padding: 3 }} className={`rounded-full ${active ? 'bg-green-400/70' : 'bg-transparent'}`}>
+        <View style={{ padding: 3 }}>
+            {active ? (
+                <View
+                    testID="turn-glow"
+                    style={[StyleSheet.absoluteFill, { borderRadius: (size + 6) / 2, backgroundColor: 'rgba(74, 222, 128, 0.7)' }]} // green-400 / 70%
+                />
+            ) : null}
             <View
-                style={{ width: size, height: size }}
-                className={`items-center justify-center overflow-hidden rounded-full border-2 ${active ? 'border-green-600' : 'border-white'}`}
+                style={{
+                    width: size,
+                    height: size,
+                    borderRadius: size / 2,
+                    borderWidth: 2,
+                    borderColor: active ? '#16a34a' : '#ffffff', // green-600 / white
+                }}
+                className="items-center justify-center overflow-hidden"
             >
                 {avatar ?? <Avatar username={name} avatar={avatarId} size={size - 4} />}
             </View>

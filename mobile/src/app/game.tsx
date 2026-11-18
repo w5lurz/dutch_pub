@@ -24,7 +24,9 @@ export default function GameScreen() {
     // Turn order for the seats: the room's player list (the server takes turns in that order).
     const roomPlayers = useAppSelector(state => (inGame !== undefined ? state.rooms[inGame]?.players : undefined));
     const playerOrder = useMemo(() => roomPlayers?.map(player => player.username), [roomPlayers]);
-    const { layCard, sendMessage, canSend, active, username } = useGameActions();
+    const { layCard, sendMessage, canSend, active, username, canStop, stopGame } = useGameActions();
+    const lastGameEnd = useAppSelector(state => state.general.lastGameEnd);
+    const winner = useAppSelector(state => state.general.winner);
     // Chosen avatars from the room (kept current by the server); yours from your account, so a
     // change shows at once.
     const ownAvatar = useAppSelector(state => state.user?.avatar);
@@ -39,15 +41,16 @@ export default function GameScreen() {
 
     useAnyOrientationWhileFocused();
 
-    // Leave when the game is over; straight to Play if we never were in a game (deep link).
+    // Leave when the game is over: to the leaderboard after a win, to Play when the owner
+    // stopped it (or we never were in a game: deep link).
     const wasInGame = useRef(false);
     useEffect(() => {
         if (running) {
             wasInGame.current = true;
             return;
         }
-        router.replace(wasInGame.current ? '/leaderboard' : '/play');
-    }, [running, router]);
+        router.replace(wasInGame.current && lastGameEnd !== 'stopped' ? '/leaderboard' : '/play');
+    }, [running, router, lastGameEnd]);
 
     // No leaving a running game with the hardware back button (Android).
     useFocusEffect(
@@ -76,6 +79,8 @@ export default function GameScreen() {
                 messages={messages}
                 onSendMessage={sendMessage}
                 canSendMessage={canSend}
+                onStopGame={canStop ? stopGame : undefined}
+                winner={winner}
             />
             {__DEV__ ? (
                 // Dev builds only: the card preview, also during a game (back returns here).

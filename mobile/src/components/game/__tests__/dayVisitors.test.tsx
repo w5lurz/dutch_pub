@@ -22,9 +22,15 @@ describe('pickVisitor', () => {
 
 describe('DayVisitors', () => {
     beforeEach(() => jest.useFakeTimers());
-    afterEach(() => jest.useRealTimers());
+    afterEach(() => {
+        jest.useRealTimers();
+        jest.restoreAllMocks();
+    });
 
     it('comes now and then by day and flies across', async () => {
+        // Fixed randomness: a butterfly arriving after 11.4 s, crossing in 9.7 s (a random bee or
+        // frisbee arriving early could already be gone at the first check).
+        jest.spyOn(Math, 'random').mockReturnValue(0.9);
         await render(
             <TableThemeProvider mode="day">
                 <DayVisitors />

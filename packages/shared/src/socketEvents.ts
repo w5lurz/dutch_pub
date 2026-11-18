@@ -26,6 +26,8 @@ export interface ServerToClientEvents {
     'card-laid': (game: Game, rooms: TRooms, roomId?: number) => void;
     'cards-drawn': (game: Game, rooms: TRooms, roomId?: number) => void;
     'game-won': (winnerUsername: string, rooms: TRooms) => void;
+    /** The room owner stopped the game (nobody won); the room is gone from `rooms`. */
+    'game-stopped': (ownerUsername: string, rooms: TRooms) => void;
     'message-sent': (messages: Array<ChatMessage>) => void;
     /** Sent only to the player whose `lay-card` was refused by the server (not their turn, invalid card, ...). */
     'lay-card-rejected': (reason: string) => void;
@@ -48,6 +50,12 @@ export interface ClientToServerEvents {
     'join-room': (payload: { username: string; roomId: number }) => void;
     'leave-room': (payload: { username: string; roomId: number }) => void;
     'start-game': (roomId: number, socketId?: string) => void;
+    /**
+     * Owner only, while the game runs: ends it for everyone without a winner (not recorded on
+     * the leaderboard) and removes the room. Everyone in it gets `game-stopped`; otherwise the
+     * sender gets `action-rejected`.
+     */
+    'stop-game': (roomId: number) => void;
     /** `card` is a card from hand / face-up table, or the index of a face-down table card. */
     'lay-card': (payload: { card: TCard | number; cardIndex: number; roomId: number; username?: string }) => void;
     'draw-cards': (payload: { roomId: number; username?: string }) => void;

@@ -1,5 +1,6 @@
 import { normalizeRoomSettings } from '@dutch-pub/shared';
 
+import { modifyRoomMessages, roomMessages } from './chat.js';
 import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
 import { identityError } from './socketAuth.js';
 
@@ -30,6 +31,31 @@ export const validateRoomSettingsUpdate = (socket, payload) => {
     const room = roomsList[roomId];
     if (room.inGame) return { error: 'Settings cannot be changed after the game has started.' };
     return { settings: normalizeRoomSettings(settings, normalizeRoomSettings(room.settings)) };
+};
+
+/**
+ * Checks a `stop-game` request: the socket's user must own room `roomId` and its game must
+ * be running. Returns the error message, or null.
+ */
+export const stopGameError = (socket, roomId) => {
+    const error = identityError(socket) ?? roomError(socket, roomId, { ownerOnly: true });
+    if (error) return error;
+    if (!roomsList[roomId].inGame || !games[roomId]) return 'The game has not started.';
+    return null;
+};
+
+/**
+ * Ends the game of room `roomId` without a winner (the owner stopped it): the game, the room
+ * and its chat are removed, as after a win, but nothing is recorded for the leaderboard.
+ * Returns the room list without the room.
+ */
+export const stopGame = roomId => {
+    delete games[roomId];
+    const { [roomId]: _stopped, ...rest } = roomsList;
+    roomsList = rest;
+    const { [`game-${roomId}`]: _messages, ...restMessages } = roomMessages;
+    modifyRoomMessages(restMessages);
+    return roomsList;
 };
 
 export let games = {};
@@ -204,6 +230,17 @@ export const rooms = io => {
             socket.data.roomId = '';
             socket.leave(`game-${roomId}`);
             io.emit('left-room', roomsList);
+        });
+
+        // The owner ends the running game for everyone (nobody wins); the players go back to the lobby.
+        socket.on('stop-game', roomId => {
+            if (rejected(socket, stopGameError(socket, roomId))) return;
+            const owner = roomsList[roomId].owner;
+            const gameId = `game-${roomId}`;
+            const rooms = stopGame(roomId);
+            io.to(gameId).emit('game-stopped', owner, rooms);
+            io.in(gameId).socketsLeave(gameId);
+            io.emit('rooms-listed', rooms);
         });
 
         socket.on('start-game', async (roomId, socketId) => {

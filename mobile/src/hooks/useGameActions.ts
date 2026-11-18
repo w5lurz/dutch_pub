@@ -18,6 +18,7 @@ export const CHAT_COOLDOWN_MS = 3000;
  *   the card was sent (false: refused locally, with a toast).
  * - Auto pick-up: on your turn with no playable card it emits `draw-cards` once per state.
  * - `sendMessage(text)` with a 3 s cooldown (`canSend`).
+ * - `stopGame()`: the room owner ends the game for everyone (`canStop`: you own the room).
  *
  * Call it once, in the game screen (it owns the auto pick-up effect), and pass the
  * callbacks down.
@@ -96,7 +97,15 @@ export function useGameActions() {
         [canSend, roomId, username, socket],
     );
 
-    return { layCard, sendMessage, canSend, active, username, roomId };
+    // Stopping the game: only the room's owner (the server checks again). Everyone then gets
+    // `game-stopped` (GameSync), which ends the game on every device.
+    const owner = useAppSelector(state => (roomId !== undefined ? state.rooms[roomId]?.owner : undefined));
+    const canStop = roomId !== undefined && !!username && owner === username;
+    const stopGame = useCallback(() => {
+        if (canStop && roomId !== undefined) socket.emit('stop-game', roomId);
+    }, [canStop, roomId, socket]);
+
+    return { layCard, sendMessage, canSend, active, username, roomId, canStop, stopGame };
 }
 
 export default useGameActions;

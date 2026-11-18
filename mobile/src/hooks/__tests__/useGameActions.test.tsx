@@ -8,7 +8,7 @@ import { useGameActions } from '../useGameActions';
 import chatReducer from '@/store/chatSlice';
 import gameReducer, { updateGame } from '@/store/gameSlice';
 import generalReducer from '@/store/generalSlice';
-import roomsReducer from '@/store/roomsSlice';
+import roomsReducer, { setRooms } from '@/store/roomsSlice';
 import userReducer, { setUser } from '@/store/userSlice';
 
 const mockSocket = { emit: jest.fn() };
@@ -108,5 +108,31 @@ describe('useGameActions auto pick-up', () => {
             );
         });
         expect(mockSocket.emit.mock.calls.filter(([event]) => event === 'draw-cards')).toHaveLength(2);
+    });
+});
+
+describe('useGameActions.stopGame', () => {
+    const room = (owner: string) => ({
+        [ROOM]: { name: 'r', owner, players: [{ username: 'me' }, { username: 'other' }], slots: 2, socketRoomId: `game-${ROOM}`, visibility: 'public' },
+    });
+
+    it('lets the room owner stop the game', async () => {
+        const { store, hook } = await setup({});
+        await act(async () => {
+            store.dispatch(setRooms(room('me') as never));
+        });
+        expect(hook.result.current.canStop).toBe(true);
+        await act(async () => hook.result.current.stopGame());
+        expect(mockSocket.emit).toHaveBeenCalledWith('stop-game', ROOM);
+    });
+
+    it('does nothing for the other players', async () => {
+        const { store, hook } = await setup({});
+        await act(async () => {
+            store.dispatch(setRooms(room('other') as never));
+        });
+        expect(hook.result.current.canStop).toBe(false);
+        await act(async () => hook.result.current.stopGame());
+        expect(mockSocket.emit).not.toHaveBeenCalledWith('stop-game', expect.anything());
     });
 });

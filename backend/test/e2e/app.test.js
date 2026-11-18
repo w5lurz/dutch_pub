@@ -501,6 +501,63 @@ describe('socket game flow', () => {
     });
 });
 
+describe('stopping a game', () => {
+    let a; // the registered user, room owner
+    let b; // the guest
+    let roomId;
+
+    before(async () => {
+        a = await connectSocket({ auth: { token: userToken } });
+        b = await connectSocket({ auth: { token: guestToken } });
+        const created = waitFor(a, 'rooms-listed');
+        a.emit('create-room', { name: `stop_${stamp}`, owner: user.username, slots: 2, visibility: 'public' });
+        const [rooms] = await created;
+        roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `stop_${stamp}`));
+        const joined = waitFor(a, 'joined-room');
+        b.emit('join-room', { username: guestName, roomId });
+        await joined;
+    });
+
+    after(() => {
+        a?.close();
+        b?.close();
+    });
+
+    test('cannot be done before the game has started', async () => {
+        a.emit('stop-game', roomId);
+        const [reason] = await waitFor(a, 'action-rejected');
+        assert.equal(reason, 'The game has not started.');
+    });
+
+    test('only the owner can stop the game', async () => {
+        const started = Promise.all([waitFor(a, 'game-started'), waitFor(b, 'game-started')]);
+        a.emit('start-game', roomId);
+        await started;
+        b.emit('stop-game', roomId);
+        const [reason] = await waitFor(b, 'action-rejected');
+        assert.equal(reason, 'Only the room owner can do that.');
+    });
+
+    test('the owner stops it for everyone: no winner, no room, no game left', async () => {
+        const winsBefore = await db.played_game.count({ where: { players: `${user.username},${guestName}` } });
+        const stopped = Promise.all([waitFor(a, 'game-stopped'), waitFor(b, 'game-stopped')]);
+        a.emit('stop-game', roomId);
+        const [[ownerA, roomsA], [ownerB, roomsB]] = await stopped;
+        assert.equal(ownerA, user.username);
+        assert.equal(ownerB, user.username);
+        assert.equal(roomsA[roomId], undefined, 'the room is removed');
+        assert.equal(roomsB[roomId], undefined, 'the room is removed');
+
+        b.emit('get-game-state');
+        const [state] = await waitFor(b, 'game-state');
+        assert.deepEqual({ roomId: state.roomId, game: state.game }, { roomId: null, game: null });
+
+        // Nothing for the leaderboard (a win writes the row right after its broadcast).
+        await new Promise(resolve => setTimeout(resolve, 300));
+        assert.equal(await db.played_game.count({ where: { players: `${user.username},${guestName}` } }), winsBefore);
+    });
+});
+
 /** "value-color", to compare cards regardless of other fields. */
 const cardKey = card => `${card.value}-${card.color}`;
 

@@ -95,6 +95,7 @@ export default function TablePreview() {
     const [cardBack, setCardBack] = useState<'red' | 'blue'>('red');
     const [panelOpen, setPanelOpen] = useState(params.panel !== '0');
     const [game, setGame] = useState(() => mockGame(opponents, HAND_SIZES[handIndex], piles, yourTurn, many));
+    const [winner, setWinner] = useState<string | null>(null);
 
     if (!__DEV__) return <Redirect href="/" />;
 
@@ -110,6 +111,7 @@ export default function TablePreview() {
         setYourTurn(t);
         setMany(m);
         setGame(mockGame(o, HAND_SIZES[h], p, t, m));
+        setWinner(null);
     };
 
     // Plays on the mock pile: hand, then face-up, then face-down (by index), like the server.
@@ -154,6 +156,17 @@ export default function TablePreview() {
             laidCards: null,
         });
 
+    // A big pick-up (8 cards, as if the pile had them): the librarian comes, for you or for Julcsi.
+    const bigPickUp = (who: 'you' | 'Julcsi') => {
+        const cards = deal(8, 3);
+        if (who === 'you') {
+            setGame({ ...game, userCards: { ...game.userCards, hand: [...game.userCards.hand, ...cards].sort((a, b) => a.value - b.value) }, laidCards: null });
+        } else {
+            const julcsi = game.opponents.Julcsi;
+            setGame({ ...game, opponents: { ...game.opponents, Julcsi: { ...julcsi, hand: julcsi.hand + cards.length } }, laidCards: null });
+        }
+    };
+
     return (
         <TableThemeProvider>
             <GameTable
@@ -167,6 +180,8 @@ export default function TablePreview() {
                 onSendMessage={() => true}
                 canSendMessage
                 cardSettings={{ showCardPowers, cardBack }}
+                onStopGame={() => router.back()}
+                winner={winner}
             />
             <View className="absolute right-2 top-2 items-end gap-1" pointerEvents="box-none">
                 <Chip
@@ -186,6 +201,10 @@ export default function TablePreview() {
                         <Chip label={showCardPowers ? 'Powers: shown' : 'Powers: hidden'} onPress={() => setShowCardPowers(!showCardPowers)} />
                         <Chip label={`Backs: ${cardBack}`} onPress={() => setCardBack(cardBack === 'red' ? 'blue' : 'red')} />
                         <Chip label="Pick up pile" onPress={pickUp} />
+                        <Chip label="Librarian: you" onPress={() => bigPickUp('you')} />
+                        <Chip label="Librarian: Julcsi" onPress={() => bigPickUp('Julcsi')} />
+                        <Chip label="Win: you" onPress={() => setWinner('test')} />
+                        <Chip label="Win: Julcsi" onPress={() => setWinner('Julcsi')} />
                         <Chip label="Bee" onPress={() => summonVisitor('bee')} />
                         <Chip label="Butterfly" onPress={() => summonVisitor('butterfly')} />
                         <Chip label="Frisbee" onPress={() => summonVisitor('frisbee')} />
