@@ -93,6 +93,15 @@ describe('canLayCard', () => {
         expect(canLayCard(byName('Mirror'), [byName('Call Next')])).toBe(true);
     });
 
+    it('a "Mirror" on a "Call Next" passes it on: the next player still needs a magic card', () => {
+        const pile = [byName('Mirror'), byName('Call Next')];
+        expect(canLayCard(byName('K'), pile)).toBe(false);
+        expect(canLayCard(byName('3'), pile)).toBe(false);
+        expect(canLayCard(byName('Start Over'), pile)).toBe(true);
+        expect(canLayCard(byName('Call Next'), pile)).toBe(true);
+        expect(canLayCard(byName('Mirror'), [byName('Mirror'), ...pile])).toBe(true);
+    });
+
     it('"Mirror" (0) compares against the card below it', () => {
         expect(canLayCard(byName('3'), [byName('Mirror')])).toBe(true);
         expect(canLayCard(byName('Q'), [byName('Mirror'), byName('J')])).toBe(true);

@@ -16,6 +16,8 @@ const guestName = `e2e_guest_${stamp}`;
 let server;
 let userToken = ''; // from the login response
 let guestToken = '';
+let userRefresh = ''; // refresh tokens from the login / add-guest responses
+let guestRefresh = '';
 
 const request = (path, { method = 'GET', body, token } = {}) =>
     fetch(server.baseUrl + path, {
@@ -45,6 +47,7 @@ after(async () => {
     await server?.stop();
     const created = await db.user.findOne({ where: { username: user.username }, attributes: ['id'], raw: true });
     if (created) await db.user_profile.destroy({ where: { user_id: created.id } });
+    if (created) await db.refresh_token.destroy({ where: { user_id: created.id } });
     await db.user.destroy({ where: { username: user.username } });
     await db.played_game.destroy({ where: { winner: [user.username, guestName] } });
     await db.sequelize.close();
@@ -80,6 +83,8 @@ describe('auth API', () => {
         assert.equal(typeof body.token, 'string');
         assert.equal(body.avatar, null, 'no avatar chosen yet');
         userToken = body.token;
+        assert.equal(typeof body.refreshToken, 'string');
+        userRefresh = body.refreshToken;
         assert.equal(res.headers.get('set-cookie'), null, 'no cookies: the app uses bearer tokens only');
     });
 
@@ -90,12 +95,67 @@ describe('auth API', () => {
         assert.equal(body.isGuest, true);
         assert.equal(typeof body.token, 'string');
         guestToken = body.token;
+        assert.equal(typeof body.refreshToken, 'string');
+        guestRefresh = body.refreshToken;
     });
 
     test('rejects a duplicate or empty guest name', async () => {
         assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: guestName } })).status, 403);
         assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: user.username } })).status, 403);
         assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: '  ' } })).status, 400);
+    });
+});
+
+describe('refresh tokens', () => {
+    const refresh = refreshToken => request('/api/auth/refresh', { method: 'POST', body: { refreshToken } });
+
+    test('a refresh token gives a new access token and a new refresh token; the old one stops working', async () => {
+        const res = await refresh(userRefresh);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.username, user.username);
+        assert.notEqual(body.refreshToken, userRefresh);
+        assert.equal((await request('/api/users/user', { token: body.token })).status, 200);
+
+        assert.equal((await refresh(userRefresh)).status, 401, 'used once only');
+        userRefresh = body.refreshToken;
+    });
+
+    test('logging out revokes the refresh token', async () => {
+        const login = await (
+            await request('/api/auth/login', { method: 'POST', body: { username: user.username, password: user.password } })
+        ).json();
+        assert.equal((await request('/api/auth/logout', { method: 'POST', body: { refreshToken: login.refreshToken } })).status, 204);
+        assert.equal((await refresh(login.refreshToken)).status, 401);
+        assert.equal((await refresh(userRefresh)).status !== 401, true, 'other sessions keep theirs');
+        userRefresh = '';
+    });
+
+    test('a guest refreshes too, keeping their name', async () => {
+        const res = await refresh(guestRefresh);
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.username, guestName);
+        assert.equal(body.isGuest, true);
+        assert.equal((await request('/api/users/user', { token: body.token })).status, 200);
+    });
+
+    test('a refresh token is never accepted as an access token', async () => {
+        assert.equal((await request('/api/users/user', { token: guestRefresh })).status, 401);
+        assert.equal((await request('/api/users/user', { token: userRefresh || 'x' })).status, 401);
+        await assert.rejects(
+            new Promise((resolve, reject) => {
+                const socket = io(server.baseUrl, { transports: ['websocket'], reconnection: false, auth: { token: guestRefresh } });
+                socket.once('connect', () => (socket.close(), resolve()));
+                socket.once('connect_error', error => (socket.close(), reject(error)));
+            }),
+            /unauthorized/,
+        );
+    });
+
+    test('unknown or missing refresh tokens are refused', async () => {
+        assert.equal((await refresh('nope')).status, 401);
+        assert.equal((await request('/api/auth/refresh', { method: 'POST', body: {} })).status, 400);
     });
 });
 
@@ -613,8 +673,9 @@ describe('stopping a game', () => {
     });
 });
 
-describe('turn timer', () => {
-    // A second server whose clock runs 50x faster: the 15 s timer runs out after 300 ms.
+describe('turn timer, private rooms and an owner who is gone', () => {
+    // A second server whose clocks run fast: the 15 s turn timer runs out after 300 ms, and a
+    // game waits 400 ms (not 2 minutes) for its disconnected owner.
     let fast;
     let a; // the registered user, room owner
     let b; // the guest
@@ -629,23 +690,33 @@ describe('turn timer', () => {
     };
 
     before(async () => {
-        fast = await startServer({ TURN_SECOND_MS: '20' });
+        fast = await startServer({ TURN_SECOND_MS: '20', OWNER_GONE_MS: '400' });
         a = await connectFast(userToken);
         b = await connectFast(guestToken);
         const created = waitFor(a, 'rooms-listed');
-        a.emit('create-room', { name: `timer_${stamp}`, owner: user.username, slots: 2, visibility: 'public', settings: { turnTimer: 15 } });
+        a.emit('create-room', { name: `timer_${stamp}`, owner: user.username, slots: 2, visibility: 'private', settings: { turnTimer: 15 } });
         const [rooms] = await created;
         roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `timer_${stamp}`));
         assert.equal(rooms[roomId].settings.turnTimer, 15);
-        const joined = waitFor(a, 'joined-room');
-        b.emit('join-room', { username: guestName, roomId });
-        await joined;
     });
 
     after(async () => {
         a?.close();
         b?.close();
         await fast?.stop();
+    });
+
+    test('the server refuses a guest in a private room; once public, the guest joins', async () => {
+        b.emit('join-room', { username: guestName, roomId });
+        assert.equal((await waitFor(b, 'action-rejected'))[0], 'Guests cannot join private rooms.');
+
+        const opened = waitFor(b, 'rooms-listed');
+        a.emit('update-room-settings', { roomId, visibility: 'public' });
+        await opened;
+        const joined = waitFor(a, 'joined-room');
+        b.emit('join-room', { username: guestName, roomId });
+        const [rooms] = await joined;
+        assert.equal(rooms[roomId].players.length, 2);
     });
 
     test('no clock during the swap phase; it starts with the first turn', async () => {
@@ -678,6 +749,23 @@ describe('turn timer', () => {
         assert.equal(after.active, !before.active, 'the turn passed');
         assert.deepEqual(after.userCards, before.userCards, 'nothing was laid or picked up');
         assert.ok(after.turnTimeLeft > 200, 'the next turn has (nearly) its full time');
+    });
+
+    test('the owner may come back in time; gone for good, the game is stopped for everyone', async () => {
+        a.close();
+        await new Promise(resolve => setTimeout(resolve, 200));
+        a = await connectFast(userToken); // back within the 400 ms
+        await new Promise(resolve => setTimeout(resolve, 400));
+        a.emit('get-game-state');
+        const [state] = await waitFor(a, 'game-state');
+        assert.ok(state.game, 'the game still runs');
+
+        const stopped = waitFor(b, 'game-stopped', 3000);
+        a.close();
+        const [owner, rooms, reason] = await stopped;
+        assert.equal(owner, user.username);
+        assert.equal(reason, 'owner-left');
+        assert.equal(rooms[roomId], undefined, 'the room is gone');
     });
 });
 

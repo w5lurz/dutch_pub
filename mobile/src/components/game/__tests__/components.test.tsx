@@ -158,4 +158,25 @@ describe('PlayerBoard', () => {
         await action(screen.getAllByRole('button', { name: 'Face-down card' })[0], 'play');
         expect(onLayCard).toHaveBeenCalledWith(0, 0, true);
     });
+
+    it('keeps the cards on the spots the server sends; a face-down card is played by its place among those left', async () => {
+        // Spot 0 is empty (both played), the 9 lies on spot 1, spot 2 has only its face-down card.
+        const onLayCard = await renderBoard({
+            hand: [],
+            tableFlipped: [card(9, 'clubs')],
+            table: 2,
+            spots: [
+                { faceUp: null, faceDown: false },
+                { faceUp: card(9, 'clubs'), faceDown: true },
+                { faceUp: null, faceDown: true },
+            ],
+        });
+        await action(button('9 of clubs'), 'play');
+        expect(onLayCard).toHaveBeenLastCalledWith(card(9, 'clubs'), 1, true);
+        // Only spot 2's face-down card is free: the second face-down card left (index 1), at spot 2.
+        const free = screen.getAllByRole('button', { name: 'Face-down card' });
+        expect(free).toHaveLength(1);
+        await action(free[0], 'play');
+        expect(onLayCard).toHaveBeenLastCalledWith(1, 2, false);
+    });
 });

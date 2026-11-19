@@ -1,10 +1,33 @@
 import bcrypt from 'bcryptjs';
 
-import { signGuestToken, signUserToken, TOKEN_TTL_SECONDS } from '../middleware/authJwt.js';
+import { Op } from 'sequelize';
+
+import {
+    hashToken,
+    newRefreshToken,
+    REFRESH_TTL_SECONDS,
+    signGuestRefreshToken,
+    signGuestToken,
+    signUserToken,
+    TOKEN_TTL_SECONDS,
+    verifyGuestRefreshToken,
+} from '../middleware/authJwt.js';
 
 import { getAvatarSafe } from '../avatars.js';
 import db from '../models/index.js';
 const User = db.user;
+const RefreshToken = db.refresh_token;
+
+/** Stores a new refresh token for registered user `userId` (its hash) and returns it. */
+const issueRefreshToken = async userId => {
+    const refreshToken = newRefreshToken();
+    await RefreshToken.create({
+        user_id: userId,
+        token_hash: hashToken(refreshToken),
+        expires_at: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
+    });
+    return refreshToken;
+};
 
 export let guestsList = [];
 
@@ -45,8 +68,12 @@ export const loginUser = async (req, res, next) => {
             });
         }
 
-        // The app sends it back as `Authorization: Bearer <token>` and in the socket handshake.
+        // The app sends it back as `Authorization: Bearer <token>` and in the socket handshake;
+        // before it expires, the app trades `refreshToken` for new ones (`refreshSession`).
         const token = signUserToken(user);
+        // Expired refresh tokens of anyone are dropped now and then (here: on each login).
+        await RefreshToken.destroy({ where: { expires_at: { [Op.lt]: new Date() } } });
+        const refreshToken = await issueRefreshToken(user.id);
 
         return res.status(200).send({
             id: user.id,
@@ -54,6 +81,7 @@ export const loginUser = async (req, res, next) => {
             email: user.email,
             avatar: await getAvatarSafe(user.id),
             token,
+            refreshToken,
         });
     } catch (error) {
         return res.status(500).send({ message: error.message });
@@ -100,7 +128,74 @@ export const addGuest = async (req, res, next) => {
         const newGuest = { id: nextGuestId++, username: guestUsername, isGuest: true };
         const token = signGuestToken(newGuest);
         guestsList = [...guestsList, { ...newGuest, expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000 }];
-        return res.status(200).send({ ...newGuest, token });
+        return res.status(200).send({ ...newGuest, token, refreshToken: signGuestRefreshToken(newGuest) });
+    } catch (error) {
+        return res.status(500).send({ message: error.message });
+    }
+};
+
+/**
+ * `POST /refresh` with `{ refreshToken }`: trades a refresh token for a new access token and a
+ * new refresh token (the old one stops working: rotation), so a session lasts as long as the
+ * app is used now and then. 200 + `AuthResponse`; 401 when the refresh token is unknown, used,
+ * expired or revoked (log in again); 403 when a guest's name was taken meanwhile.
+ */
+export const refreshSession = async (req, res) => {
+    const refreshToken = req.body?.refreshToken;
+    if (typeof refreshToken !== 'string' || !refreshToken) {
+        return res.status(400).send({ message: 'No refresh token provided!' });
+    }
+    try {
+        const guest = verifyGuestRefreshToken(refreshToken);
+        if (guest) {
+            // The name is reserved only while the guest's access token is valid; it may be taken by now.
+            if (!(await isUsernameAvailable(guest.username, guest.id))) {
+                return res.status(403).send({ message: 'This username is already taken!' });
+            }
+            const renewed = { id: guest.id, username: guest.username, isGuest: true };
+            dropExpiredGuests();
+            guestsList = [
+                ...guestsList.filter(other => other.id !== guest.id),
+                { ...guestsList.find(other => other.id === guest.id), ...renewed, expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000 },
+            ];
+            return res.status(200).send({ ...renewed, token: signGuestToken(renewed), refreshToken: signGuestRefreshToken(renewed) });
+        }
+
+        const stored = await RefreshToken.findOne({ where: { token_hash: hashToken(refreshToken) } });
+        // Deleted first: of two refreshes with the same token, only one gets new tokens.
+        const deleted = stored ? await RefreshToken.destroy({ where: { id: stored.id } }) : 0;
+        if (!stored || !deleted || stored.expires_at <= new Date()) {
+            return res.status(401).send({ message: 'Your session has expired. Please log in again.' });
+        }
+        const user = await User.findByPk(stored.user_id);
+        if (!user) {
+            return res.status(401).send({ message: 'Your session has expired. Please log in again.' });
+        }
+        return res.status(200).send({
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            avatar: await getAvatarSafe(user.id),
+            token: signUserToken(user),
+            refreshToken: await issueRefreshToken(user.id),
+        });
+    } catch (error) {
+        return res.status(500).send({ message: error.message });
+    }
+};
+
+/**
+ * `POST /logout` with `{ refreshToken }`: revokes it (a registered user's), so it can't be used
+ * again. Always 204: logging out works even if the token is already gone. (A guest's refresh
+ * token can't be revoked; it simply runs out.)
+ */
+export const logOut = async (req, res) => {
+    const refreshToken = req.body?.refreshToken;
+    try {
+        if (typeof refreshToken === 'string' && refreshToken) {
+            await RefreshToken.destroy({ where: { token_hash: hashToken(refreshToken) } });
+        }
+        return res.status(204).end();
     } catch (error) {
         return res.status(500).send({ message: error.message });
     }

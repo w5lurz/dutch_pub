@@ -1,19 +1,9 @@
-import jwt from 'jsonwebtoken';
-
-import { secret } from './config/auth.config.js';
 import { guestsList, isUsernameAvailable, modifyGuestsList } from './controllers/auth.controller.js';
 import { getAvatarSafe } from './avatars.js';
+import { verifyAccessToken } from './middleware/authJwt.js';
 import db from './models/index.js';
 
 const User = db.user;
-
-const verify = token => {
-    try {
-        return jwt.verify(token, secret);
-    } catch {
-        return null;
-    }
-};
 
 /**
  * Socket.io middleware that sets `socket.data.user = { id, username, isGuest, avatar }` from the
@@ -26,7 +16,7 @@ export const socketAuth = io => {
         const token = socket.handshake.auth?.token;
         if (!token) return next();
 
-        const decoded = verify(token);
+        const decoded = verifyAccessToken(token);
         if (!decoded) return next(new Error('unauthorized'));
 
         try {

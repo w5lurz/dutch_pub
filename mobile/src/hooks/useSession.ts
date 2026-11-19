@@ -3,6 +3,7 @@ import type { AuthResponse } from '@dutch-pub/shared';
 
 import { api } from '@/lib/api';
 import { clearToken, getToken, setToken } from '@/lib/authToken';
+import { endSession } from '@/lib/session';
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch } from '@/store';
 import { setUser } from '@/store/userSlice';
@@ -27,7 +28,7 @@ export function useSession() {
 
     const startSession = useCallback(
         async (auth: AuthResponse) => {
-            await setToken(auth.token);
+            await setToken(auth.token, auth.refreshToken);
             dispatch(setUser({ id: auth.id, username: auth.username, email: auth.email, isGuest: auth.isGuest, avatar: auth.avatar ?? null }));
             reconnect();
         },
@@ -74,13 +75,13 @@ export function useSession() {
     );
 
     const logOut = useCallback(async () => {
-        await clearToken();
+        // Revokes the refresh token on the server and forgets both tokens.
+        await endSession();
         dispatch(setUser(null));
         reconnect();
-        // Bearer tokens are stateless: forgetting the token is the logout.
     }, [dispatch, reconnect]);
 
-    /** On app start: if a token is stored, load the user it belongs to (or drop the token). */
+    /** On app start: if a token is stored, load the user it belongs to (refreshing an expired token first; or drop it). */
     const restoreSession = useCallback(async () => {
         if (!(await getToken())) return;
         try {

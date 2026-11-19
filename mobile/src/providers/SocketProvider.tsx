@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { io } from 'socket.io-client';
 
-import { clearToken, getToken } from '@/lib/authToken';
+import { clearToken } from '@/lib/authToken';
 import { API_URL } from '@/lib/config';
+import { getValidToken, refreshSession } from '@/lib/session';
 import type { AppSocket } from '@/lib/types';
 import { setToast } from '@/store/generalSlice';
 import { setUser } from '@/store/userSlice';
@@ -21,8 +22,8 @@ const SocketContext = createContext<SocketContextValue | null>(null);
 
 /**
  * Owns the app's single Socket.io connection. The server identifies the socket once, at
- * connect time, from `auth.token`; the `auth` callback reads the stored token on every
- * (re)connect. Re-syncing after reconnects / foregrounding lives in <GameSync>.
+ * connect time, from `auth.token`; the `auth` callback reads the access token on every
+ * (re)connect (refreshed first when it is about to expire). Re-syncing after reconnects / foregrounding lives in <GameSync>.
  */
 export function SocketProvider({ children }: { children: ReactNode }) {
     const dispatch = useAppDispatch();
@@ -34,7 +35,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             transports: ['websocket'],
             autoConnect: false,
             auth: callback => {
-                getToken()
+                getValidToken()
                     .then(token => callback(token ? { token } : {}))
                     .catch(() => callback({}));
             },
@@ -44,15 +45,27 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     const [everConnected, setEverConnected] = useState(false);
 
     useEffect(() => {
+        // One refresh attempt per refused handshake (reset once connected).
+        let retriedRefresh = false;
         const onConnect = () => {
+            retriedRefresh = false;
             setConnected(true);
             setEverConnected(true);
         };
         const onDisconnect = () => setConnected(false);
         const onConnectError = async (error: Error) => {
             if (error.message === 'unauthorized' || error.message === 'username taken') {
-                // Stored token is expired/invalid (or a guest name got taken): drop it and
-                // continue anonymously.
+                // The access token was refused: try new tokens once (e.g. the phone slept past
+                // its expiry); without the server, try again in a moment.
+                if (error.message === 'unauthorized' && !retriedRefresh) {
+                    retriedRefresh = true;
+                    const result = await refreshSession();
+                    if (result.status !== 'expired') {
+                        setTimeout(() => socket.connect(), result.status === 'ok' ? 0 : 3000);
+                        return;
+                    }
+                }
+                // The session is over (or a guest name got taken): drop it and continue anonymously.
                 await clearToken();
                 dispatch(setUser(null));
                 dispatch(setToast({ id: `session-${Date.now()}`, type: 'info', message: 'Please log in again.', duration: 3000 }));

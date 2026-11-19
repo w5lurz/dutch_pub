@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import type { Cards, TCard } from '@dutch-pub/shared';
+import type { Cards, TCard, TableSpot } from '@dutch-pub/shared';
 
 import { CARD_GAP, useCardSize, type CardSize } from './cardSize';
 import type { Companion } from './CardDrag';
@@ -7,16 +7,16 @@ import { DraggableCard } from './DraggableCard';
 import { cardJitter } from './jitter';
 import { PlayingCard } from './PlayingCard';
 
-/** One table spot: the face-up card on top (if any), whether a face-down card lies below. */
-export type TableSpot = { faceUp: TCard | null; faceDown: boolean };
+export type { TableSpot };
 
 /**
- * The table cards as spots, as dealt in real life (3 face-down, 3 face-up on top of them).
- * The server only sends the face-up cards and the *number* of face-down cards, not which
- * face-down card lies under which face-up one, so: spots = max(face-up, face-down), the
- * face-up cards on the first spots. (PLAN.md, risk 9: keep the dealt pairs on the server.)
+ * The table cards as spots, as dealt in real life (3 face-down, 3 face-up on top of them):
+ * the server's `spots` when it sends them (each card stays on its spot until played). Older
+ * servers send only the face-up cards and the *number* of face-down cards: then spots =
+ * max(face-up, face-down), the face-up cards on the first spots.
  */
-export function tableSpots(faceUp: Cards, faceDownCount: number): TableSpot[] {
+export function tableSpots(faceUp: Cards, faceDownCount: number, dealt?: readonly TableSpot[]): TableSpot[] {
+	if (dealt) return [...dealt];
 	const spots: TableSpot[] = [];
 	for (let i = 0; i < Math.max(faceUp.length, faceDownCount); i++) {
 		spots.push({ faceUp: faceUp[i] ?? null, faceDown: i < faceDownCount });
@@ -45,6 +45,8 @@ export function useTableStacksWidth(size: CardSize, count = 3): number {
 type TableStacksProps = {
 	faceUp: Cards;
 	faceDownCount: number;
+	/** Where the cards lie, from the server (`tableSpots`); older servers: missing. */
+	spots?: readonly TableSpot[];
 	size: CardSize;
 	/** Lightly fade all cards (your table while you still hold cards). */
 	faded?: boolean;
@@ -72,10 +74,12 @@ type TableStacksProps = {
  * spot / card, see `cardJitter`). A spot without a face-up card shows only its face-down
  * card (in the same place, so nothing jumps).
  */
-export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }: TableStacksProps) {
+export function TableStacks({ faceUp, faceDownCount, spots: dealt, size, faded = false, play }: TableStacksProps) {
 	const { width, height } = useCardSize(size);
 	const offset = stackOffset(width);
-	const spots = tableSpots(faceUp, faceDownCount);
+	const spots = tableSpots(faceUp, faceDownCount, dealt);
+	// A face-down card is played by its place among the face-down cards still there (as the server expects).
+	const downOrdinal = (spot: number) => spots.slice(0, spot).filter((other) => other.faceDown).length;
 	if (spots.length === 0) return null;
 
 	return (
@@ -95,7 +99,7 @@ export function TableStacks({ faceUp, faceDownCount, size, faded = false, play }
 								selected={play.selectedIds.includes(`down-${i}`)}
 								accessibilityHint={play.faceDownPlayable ? undefined : 'Play your other cards first'}
 								onSelect={() => play.onSelect(`down-${i}`)}
-								onPlay={() => play.onLayCard(i, i, play.faceDownPlayable, `down-${i}`)}
+								onPlay={() => play.onLayCard(downOrdinal(i), i, play.faceDownPlayable, `down-${i}`)}
 							/>
 						) : (
 							<PlayingCard

@@ -1,5 +1,5 @@
 import { canLayCard, normalizeRoomSettings } from '@dutch-pub/shared';
-import { games, modifyRooms, roomsList } from './rooms.js';
+import { emptySocketRoom, games, modifyRooms, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
 import { identityError } from './socketAuth.js';
 
@@ -112,7 +112,7 @@ export const swapCards = (game, username, hand, faceUp) => {
     const player = game.players[username];
     if (game.phase !== 'swap') return 'Cards can only be swapped before the game starts.';
     if (player.ready) return 'You are ready already.';
-    const same = wanted => own => wanted && own.value === wanted.value && own.color === wanted.color;
+    const same = wanted => own => wanted && own && own.value === wanted.value && own.color === wanted.color;
     const handIndex = player.userCards.hand.findIndex(same(hand));
     const faceUpIndex = player.userCards.tableFlipped.findIndex(same(faceUp));
     if (handIndex < 0 || faceUpIndex < 0) return "You don't have that card.";
@@ -148,11 +148,14 @@ export const validateLayCard = (socket, { card, cards, roomId, username }) => {
     }
     const currentGame = games[roomId];
 
-    const { hand, tableFlipped, table } = player.userCards;
+    const { hand } = player.userCards;
+    const tableFlipped = present(player.userCards.tableFlipped);
+    const table = present(player.userCards.table);
     if (typeof card === 'number') {
         if (hand.length !== 0 || tableFlipped.length !== 0) {
             return { error: 'You have to play your other cards first.' };
         }
+        // The how-manieth face-down card still there (left to right), not the spot.
         if (!Number.isInteger(card) || card < 0 || card >= table.length) {
             return { error: 'That card does not exist.' };
         }
@@ -206,8 +209,10 @@ export const game = io => {
             if (typeof validation.card === 'number') {
                 // A face-down card, played blind: revealed now, it either fits the pile or the
                 // player picks up the pile together with it.
-                const blindCard = userCards.table[validation.card];
-                userCards.table = userCards.table.filter((_, i) => i !== validation.card);
+                // The n-th face-down card still there; its spot stays (empty) so the others keep theirs.
+                const spot = nthCardSpot(userCards.table, validation.card);
+                const blindCard = userCards.table[spot];
+                userCards.table = userCards.table.map((own, i) => (i === spot ? null : own));
                 if (!canLayCard(blindCard, currentGame.laidCards)) {
                     // It doesn't fit: first everyone sees it on top of the pile for a moment (no
                     // moves meanwhile), then its player picks up the pile with it.
@@ -232,7 +237,7 @@ export const game = io => {
                 applyLay(currentGame, username, validation.cards ?? [validation.card], cardIndex);
             }
 
-            const won = userCards.hand.length === 0 && userCards.tableFlipped.length === 0 && userCards.table.length === 0;
+            const won = userCards.hand.length === 0 && present(userCards.tableFlipped).length === 0 && present(userCards.table).length === 0;
             if (won) {
                 const gameId = `game-${roomId}`;
                 const { [roomId]: _won, ...rest } = roomsList;
@@ -240,7 +245,7 @@ export const game = io => {
                 // The game is over: free it (the players' last view is sent below from `currentGame`).
                 delete games[roomId];
                 io.to(gameId).emit('game-won', username, roomsList);
-                io.in(gameId).socketsLeave(gameId);
+                emptySocketRoom(io, gameId);
                 const { [gameId]: _messages, ...restRoomMessages } = roomMessages;
                 modifyRoomMessages(restRoomMessages);
             }
@@ -330,6 +335,41 @@ export const withoutCards = (from, cards) => {
     return rest;
 };
 
+// Table cards are kept per spot, as dealt: `table[i]` (face-down) lies under `tableFlipped[i]`
+// (face-up). A played card leaves its spot empty (null), so the other cards keep their spots.
+
+/** The cards of a spot list (`table` or `tableFlipped`), without the empty spots. */
+export const present = spots => (spots ?? []).filter(Boolean);
+
+/** The spot of the `n`-th card still in `spots` (left to right), or -1. */
+export const nthCardSpot = (spots, n) => {
+    let seen = -1;
+    return spots.findIndex(own => own && ++seen === n);
+};
+
+/** `spots` with one copy of each of `cards` taken out (its spot left empty). */
+export const clearSpots = (spots, cards) => {
+    const rest = [...spots];
+    for (const card of cards) {
+        const i = rest.findIndex(own => own && own.value === card.value && own.color === card.color);
+        if (i >= 0) rest[i] = null;
+    }
+    return rest;
+};
+
+/**
+ * What anyone may see of a player's table spots: each spot's face-up card and whether a
+ * face-down card lies there. Empty spots at the end are left out.
+ */
+export const spotsView = userCards => {
+    const spots = Array.from({ length: Math.max(userCards.table.length, userCards.tableFlipped.length) }, (_, i) => ({
+        faceUp: userCards.tableFlipped[i] ?? null,
+        faceDown: !!userCards.table[i],
+    }));
+    while (spots.length > 0 && !spots[spots.length - 1].faceUp && !spots[spots.length - 1].faceDown) spots.pop();
+    return spots;
+};
+
 /** How many cards on top of `pile` (top first) have the top card's value. */
 const topRun = pile => {
     let count = 0;
@@ -349,7 +389,7 @@ export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = fal
     const userCards = game.players[username].userCards;
     if (!fromTable) {
         if (userCards.hand.length !== 0) userCards.hand = withoutCards(userCards.hand, cards);
-        else userCards.tableFlipped = withoutCards(userCards.tableFlipped, cards);
+        else userCards.tableFlipped = clearSpots(userCards.tableFlipped, cards);
     }
     // New cards go where the laid one was (the client keeps the hand in its order).
     let at = Math.max(0, Math.min(Number.isInteger(cardIndex) ? cardIndex : 0, userCards.hand.length));
@@ -377,9 +417,10 @@ export const buildPlayerView = (room, game, username) => {
         if (otherPlayer.username !== username) {
             const { userCards, active, ready } = game.players[otherPlayer.username];
             opponents[otherPlayer.username] = {
-                table: userCards.table.length,
+                table: present(userCards.table).length,
                 hand: userCards.hand.length,
-                tableFlipped: [...userCards.tableFlipped],
+                tableFlipped: present(userCards.tableFlipped),
+                spots: spotsView(userCards),
                 active,
                 ready: !!ready,
             };
@@ -387,7 +428,12 @@ export const buildPlayerView = (room, game, username) => {
     });
     const own = game.players[username];
     return {
-        userCards: { ...own.userCards, table: own.userCards.table.length },
+        userCards: {
+            hand: own.userCards.hand,
+            tableFlipped: present(own.userCards.tableFlipped),
+            table: present(own.userCards.table).length,
+            spots: spotsView(own.userCards),
+        },
         opponents,
         laidCards: game.laidCards ? game.laidCards : null,
         burntCards: game.burntCards ? game.burntCards : null,

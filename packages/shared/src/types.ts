@@ -63,12 +63,24 @@ export type Opponent = {
     active?: boolean;
     /** Swap phase: done swapping. */
     ready?: boolean;
+    /** Their table spots as dealt (missing from older servers: `tableFlipped` / `table` only). */
+    spots?: TableSpot[];
 };
 
 export type Opponents = { [key: string]: Opponent };
 
-/** The current player's own cards. `table` is the number of face-down cards left. */
-export type UserCards = { hand: Cards; table: number; tableFlipped: Cards };
+/**
+ * One of a player's table spots, as dealt: a face-down card with a face-up card on top. A played
+ * card leaves its spot (the others keep theirs).
+ */
+export type TableSpot = { faceUp: TCard | null; faceDown: boolean };
+
+/**
+ * The current player's own cards. `table` is the number of face-down cards left; `spots` where
+ * they lie (missing from older servers). A face-down card is played by its place among the
+ * face-down cards still there (left to right), not by its spot.
+ */
+export type UserCards = { hand: Cards; table: number; tableFlipped: Cards; spots?: TableSpot[] };
 
 /**
  * Phase of a game: right after the deal everyone may swap hand cards with their face-up

@@ -10,7 +10,7 @@ import { handArcLayout } from './handArc';
 import { HandSilhouette } from './HandSilhouette';
 import { SeatAvatar } from './Seat';
 import { nextSelection } from './selection';
-import { TableStacks, upId } from './TableStacks';
+import { TableStacks, tableSpots, upId } from './TableStacks';
 import { useTableTheme } from './tableTheme';
 import { TurnCountdown } from './TurnCountdown';
 
@@ -98,6 +98,7 @@ export function PlayerBoard({
 	const faceDownPlayable = hand.length === 0 && tableFlipped.length === 0;
 	const dim = (card: TCard) => active && !canLayCard(card, laidCards);
 	const hasTableCards = tableFlipped.length > 0 || table > 0;
+	const spots = tableSpots(tableFlipped, table, userCards.spots);
 
 	// The fan is laid out in the width the hand has (measured), minus room at the sides.
 	const handPadding = corner || cornerRight ? CORNER_SPACE : HAND_PADDING;
@@ -122,7 +123,7 @@ export function PlayerBoard({
 	// the cards change; ids of cards no longer there are ignored).
 	const cardsById = new Map<string, TCard>([
 		...hand.map((card, i): [string, TCard] => [handIds[i], card]),
-		...tableFlipped.map((card, i): [string, TCard] => [upId(card, i), card]),
+		...spots.flatMap((spot, i): [string, TCard][] => (spot.faceUp ? [[upId(spot.faceUp, i), spot.faceUp]] : [])),
 	]);
 	const [selection, setSelection] = useState<readonly string[]>([]);
 	const selectedIds = selection.filter((id) => cardsById.has(id) || id.startsWith('down-'));
@@ -218,6 +219,7 @@ export function PlayerBoard({
 			<TableStacks
 				faceUp={tableFlipped}
 				faceDownCount={table}
+				spots={spots}
 				size={stacksSmall ? 'sm' : 'md'}
 				faded={stacksSmall}
 				play={{ faceUpPlayable, faceDownPlayable, dim, onLayCard: play, selectedIds, onSelect: toggleSelected, companionsOf }}

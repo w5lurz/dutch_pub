@@ -18,6 +18,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 ### Accounts
 
 - [ ] Register, log in, log out, log in again; the session survives an app restart.
+- [ ] Staying logged in: leave the app logged in (as a user and as a guest) for more than 2 hours, also with the phone asleep, then use it: still logged in, no "Please log in again". After logging out, the old session is gone for good.
 - [ ] Join as a guest; the guest name stays taken while that guest is away.
 - [ ] Wrong password / unknown user / taken name show a message.
 - [ ] Password fields (log in, registration: both): the eye button on the right shows the password, tapping again hides it; it is disabled while signing in.
@@ -27,6 +28,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 
 - [ ] Create a public and a private room (2, 3, 4 slots); guests can't join private rooms.
 - [ ] Join, leave, delete (owner only), start (owner, 2+ players): every device updates without a refresh.
+- [ ] The server refuses what the app hides (e.g. two phones racing for the last seat): a full room, a started game, a second room, a guest in a private room each show a message.
 - [ ] Room settings: set "Show card powers" off when creating a room; the owner changes it in the room's Settings sheet and every player's room card shows it right away; other players see it read-only; after the start it can't be changed.
 - [ ] Visibility in the room's Settings sheet: the owner switches Private / Public; every device's room list updates at once (guests can no longer join a room made private; guests already in it stay); other players see it read-only; after the start it can't be changed.
 
@@ -44,6 +46,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] 4 players (two decks): holding two identical cards (e.g. two 7♥), playing one leaves the other in your hand.
 - [ ] Drag a card onto the laid pile to play it; anywhere else it flies back; an illegal card flies back with a message. In both layouts, and from your table stacks too.
 - [ ] Turn the phone while dragging a card: the drag is dropped, the card is back in your hand, nothing is played.
+- [ ] Table spots: play a face-up card from the middle spot: the other cards stay where they are (its face-down card shows alone in the middle); the opponents see the same. Face-down cards are played from the spot you drag.
 - [ ] Face-up cards only after the hand is empty; face-down only after the face-up ones; a failed blind card picks up the pile.
 - [ ] No playable card: the pile is picked up automatically, once.
 - [ ] "Clear all" (10) and four of a kind burn the pile.
@@ -52,6 +55,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Winner's shot: when someone wins, on every device a flaming shot glass of clear liquor slides from the table's middle (its tongue of fire streaming out behind it) and stops beside the winner (an opponent's seat, on the side facing the middle; or right of your own avatar and name), the liquor sloshing as it stops; then the flame stands up and flickers, with an orange glow on the table. It stays until the game closes (~4.5 s). With "reduce motion" it just fades in. Dev table: "Win: you" / "Win: Julcsi".
 - [ ] Big pick-up: when anyone picks up more than 6 cards (also a failed blind card plus the pile), every device shows an old librarian with glasses coming up from the bottom, putting a book on the shelf and going down again (~4 s), with "<name> is the librarian now" (and "picked up N cards") above her. No touches blocked; with "reduce motion" she just fades in and out. Dev table: "Librarian: you" / "Librarian: Julcsi".
 - [ ] Stop game (room owner only): a red stop button above the chat button, only on the owner's device. It asks first ("Stop the game?"; "Keep playing" or the backdrop closes it). Confirmed: every player sees "<owner> stopped the game." ("You stopped the game." for the owner) and lands on Play at once; the room is gone from the list, the leaderboard is unchanged. A player whose app was in the background leaves the game when they come back (without the message; they land on the leaderboard).
+- [ ] Owner gone: the owner kills the app (or loses the connection) mid-game. Coming back within 2 minutes, the game goes on. Gone for 2 minutes: everyone sees "The game was stopped: <owner> (the room owner) was gone for 2 minutes." and lands on Play; the room is gone.
 
 ### Interruptions
 

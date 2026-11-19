@@ -10,8 +10,10 @@ export type AuthResponse = {
     isGuest?: boolean;
     /** The chosen avatar (registered users); null = generated from the name. Missing for guests. */
     avatar?: AvatarId | null;
-    /** JWT; send back as `Authorization: Bearer <token>` and in the socket handshake (`auth.token`). */
+    /** JWT (2 h); send back as `Authorization: Bearer <token>` and in the socket handshake (`auth.token`). */
     token: string;
+    /** Trade it for new tokens before `token` expires (`refreshSession`). Missing from older servers. */
+    refreshToken?: string;
 };
 
 export type ApiOptions = {
@@ -45,6 +47,19 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
     /** 200 + `AuthResponse` (guest token); 403 name taken, 400 empty name. */
     const addGuest = (username: string) => post('/api/auth/add-guest', { username });
 
+    // Sent without the access token: it may be expired, and getting one may be what calls these.
+    const postAnonymous = (path: string, body: unknown) =>
+        fetch(`${baseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+    /**
+     * Trades a refresh token for new tokens (the old refresh token stops working). 200 + `AuthResponse`;
+     * 401 expired / used / revoked (log in again); 403 a guest's name was taken meanwhile.
+     */
+    const refreshSession = (refreshToken: string) => postAnonymous('/api/auth/refresh', { refreshToken });
+
+    /** Revokes a refresh token (logging out). Always 204. */
+    const logOut = (refreshToken: string) => postAnonymous('/api/auth/logout', { refreshToken });
+
     const getLeaderBoard = () => get('/api/games/leaderboard');
 
     /**
@@ -53,7 +68,7 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
      */
     const setAvatar = (avatar: AvatarId | null) => send('PUT', '/api/auth/me/avatar', { avatar });
 
-    return { registration, loginUser, getUser, addGuest, getLeaderBoard, setAvatar };
+    return { registration, loginUser, getUser, addGuest, refreshSession, logOut, getLeaderBoard, setAvatar };
 }
 
 export type Api = ReturnType<typeof createApi>;

@@ -85,15 +85,21 @@ export function GameSync() {
                 dispatch(setWinner(null));
             }, GAME_WON_DELAY_MS);
         };
-        // The room owner stopped the game: leave it at once (nobody won, so nothing to wait for).
-        const onGameStopped = (owner: string, rooms: TRooms) => {
+        // The room owner stopped the game, or the server did because the owner was gone for 2
+        // minutes: leave it at once (nobody won, so nothing to wait for).
+        const onGameStopped = (owner: string, rooms: TRooms, reason?: 'owner-left') => {
             clearTimeout(gameWonTimer);
             dispatch(
                 setToast({
                     id: `game-stopped-${Date.now()}`,
                     type: 'info',
-                    message: owner === usernameRef.current ? 'You stopped the game.' : `${owner} stopped the game.`,
-                    duration: 3000,
+                    message:
+                        reason === 'owner-left'
+                            ? `The game was stopped: ${owner} (the room owner) was gone for 2 minutes.`
+                            : owner === usernameRef.current
+                              ? 'You stopped the game.'
+                              : `${owner} stopped the game.`,
+                    duration: reason === 'owner-left' ? 5000 : 3000,
                 }),
             );
             haptic(Haptics.NotificationFeedbackType.Warning);

@@ -31,7 +31,8 @@ export interface ServerToClientEvents {
     'turn-timed-out': (username: string) => void;
     'game-won': (winnerUsername: string, rooms: TRooms) => void;
     /** The room owner stopped the game (nobody won); the room is gone from `rooms`. */
-    'game-stopped': (ownerUsername: string, rooms: TRooms) => void;
+    /** `reason` 'owner-left': the owner was disconnected for 2 minutes, so the server stopped it. */
+    'game-stopped': (ownerUsername: string, rooms: TRooms, reason?: 'owner-left') => void;
     'message-sent': (messages: Array<ChatMessage>) => void;
     /** Sent only to the player whose `lay-card` was refused by the server (not their turn, invalid card, ...). */
     'lay-card-rejected': (reason: string) => void;

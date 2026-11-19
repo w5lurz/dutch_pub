@@ -124,7 +124,7 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar, compa
     const { labelStyle } = useTableTheme();
     const side = position === 'left' || position === 'right';
     const sizes = SIZES[side ? (layout === 'portrait' ? 'sidePortrait' : 'side') : 'top'];
-    const spots = tableSpots(opponent.tableFlipped, opponent.table);
+    const spots = tableSpots(opponent.tableFlipped, opponent.table, opponent.spots);
     const { width: cardWidth, height: cardHeight } = useCardSize(sizes.stacks);
     const stacksWidth = useTableStacksWidth(sizes.stacks, spots.length);
     const stacksHeight = cardHeight + stackOffset(cardWidth);
@@ -154,7 +154,7 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar, compa
     const stacks =
         spots.length > 0 ? (
             <Rotated degrees={rotate} width={stacksWidth} height={stacksHeight}>
-                <TableStacks faceUp={opponent.tableFlipped} faceDownCount={opponent.table} size={sizes.stacks} />
+                <TableStacks faceUp={opponent.tableFlipped} faceDownCount={opponent.table} spots={spots} size={sizes.stacks} />
             </Rotated>
         ) : null;
 
