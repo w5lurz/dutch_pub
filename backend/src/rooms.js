@@ -1,7 +1,7 @@
 import { normalizeRoomSettings } from '@dutch-pub/shared';
 
 import { modifyRoomMessages, roomMessages } from './chat.js';
-import { deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
+import { clearTurnClock, deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
 import { identityError } from './socketAuth.js';
 
 /** Emits `action-rejected` and returns true when `error` is set. */
@@ -21,16 +21,22 @@ const roomError = (socket, roomId, { ownerOnly = false } = {}) => {
 
 /**
  * Checks an `update-room-settings` request: the socket's user must own room `roomId` and
- * the game must not have started. Returns `{ error }` or `{ settings }` (the room's
- * current settings with the valid values of `settings` applied; unknown keys are dropped).
+ * the game must not have started. Returns `{ error }` or `{ settings, visibility }` (the
+ * room's current settings with the valid values of `settings` applied, unknown keys dropped;
+ * `visibility` if it is 'public' or 'private', else the room's current one).
  */
+const ROOM_VISIBILITIES = ['public', 'private'];
+
 export const validateRoomSettingsUpdate = (socket, payload) => {
-    const { roomId, settings } = payload ?? {};
+    const { roomId, settings, visibility } = payload ?? {};
     const error = identityError(socket) ?? roomError(socket, roomId, { ownerOnly: true });
     if (error) return { error };
     const room = roomsList[roomId];
     if (room.inGame) return { error: 'Settings cannot be changed after the game has started.' };
-    return { settings: normalizeRoomSettings(settings, normalizeRoomSettings(room.settings)) };
+    return {
+        settings: normalizeRoomSettings(settings, normalizeRoomSettings(room.settings)),
+        visibility: ROOM_VISIBILITIES.includes(visibility) ? visibility : room.visibility,
+    };
 };
 
 /**
@@ -50,6 +56,7 @@ export const stopGameError = (socket, roomId) => {
  * Returns the room list without the room.
  */
 export const stopGame = roomId => {
+    if (games[roomId]) clearTurnClock(games[roomId]);
     delete games[roomId];
     const { [roomId]: _stopped, ...rest } = roomsList;
     roomsList = rest;
@@ -184,10 +191,10 @@ export const rooms = io => {
         });
 
         socket.on('update-room-settings', payload => {
-            const { error, settings } = validateRoomSettingsUpdate(socket, payload);
+            const { error, settings, visibility } = validateRoomSettingsUpdate(socket, payload);
             if (rejected(socket, error)) return;
             const { roomId } = payload;
-            roomsList = { ...roomsList, [roomId]: { ...roomsList[roomId], settings } };
+            roomsList = { ...roomsList, [roomId]: { ...roomsList[roomId], settings, visibility } };
             io.emit('rooms-listed', roomsList);
         });
 
@@ -279,6 +286,8 @@ export const rooms = io => {
                 newGame.players[player.username].active = rand.username === player.username;
             });
             newGame.deck = deck;
+            // First everyone may swap hand cards with their face-up cards, until all are ready.
+            newGame.phase = 'swap';
             games[roomId] = newGame;
 
             // Send new game data to sockets

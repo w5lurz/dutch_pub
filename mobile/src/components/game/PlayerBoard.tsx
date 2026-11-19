@@ -12,6 +12,7 @@ import { SeatAvatar } from './Seat';
 import { nextSelection } from './selection';
 import { TableStacks, upId } from './TableStacks';
 import { useTableTheme } from './tableTheme';
+import { TurnCountdown } from './TurnCountdown';
 
 /** Horizontal room kept free on each side of the hand. */
 const HAND_PADDING = 8;
@@ -49,6 +50,13 @@ type PlayerBoardProps = {
 	cornerRight?: ReactNode;
 	/** Set to your avatar and name (the winner's shot glass stops beside them). */
 	avatarRef?: Ref<ViewRef | null>;
+	/**
+	 * Swap phase, until you are ready: tapping a hand card and a face-up card (either first)
+	 * swaps them (`onSwap`); your face-up cards are shown full size meanwhile.
+	 */
+	onSwap?: (hand: TCard, faceUp: TCard) => void;
+	/** Turn timer: seconds left of your turn (a countdown by your name); null: not timed. */
+	secondsLeft?: number | null;
 };
 
 /**
@@ -77,6 +85,8 @@ export function PlayerBoard({
 	corner,
 	cornerRight,
 	avatarRef,
+	onSwap,
+	secondsLeft,
 }: PlayerBoardProps) {
 	const { labelStyle } = useTableTheme();
 	const { hand, tableFlipped, table } = userCards;
@@ -116,7 +126,21 @@ export function PlayerBoard({
 	]);
 	const [selection, setSelection] = useState<readonly string[]>([]);
 	const selectedIds = selection.filter((id) => cardsById.has(id) || id.startsWith('down-'));
-	const toggleSelected = (id: string) => setSelection(nextSelection(selectedIds, id, (other) => cardsById.get(other)));
+	const toggleSelected = (id: string) => {
+		if (!onSwap) return setSelection(nextSelection(selectedIds, id, (other) => cardsById.get(other)));
+		// Swap phase: one hand card and one face-up card make a swap; face-down cards can't be swapped.
+		if (id.startsWith('down-')) return;
+		const current = selectedIds.find((selected) => cardsById.has(selected));
+		const card = cardsById.get(id);
+		const other = current ? cardsById.get(current) : undefined;
+		if (current && other && card && current.startsWith('hand-') !== id.startsWith('hand-')) {
+			const [handCard, faceUp] = id.startsWith('hand-') ? [card, other] : [other, card];
+			onSwap(handCard, faceUp);
+			setSelection([]);
+			return;
+		}
+		setSelection(current === id ? [] : [id]);
+	};
 	// Dragging a selected card lays every selected card (all of the same value); any other card alone.
 	const play = (card: TCard | number, cardIndex: number, touchable: boolean, id: string) => {
 		const group = selectedIds.includes(id) ? selectedIds.flatMap((selected) => cardsById.get(selected) ?? []) : [];
@@ -186,14 +210,16 @@ export function PlayerBoard({
 	) : null;
 
 	// Under a hand the stacks are small, faded (not playable yet) and, on short windows, mostly covered (the top 40% shows).
-	const covered = overlapStacks && handPlayable;
+	// While swapping, the face-up cards are full size and never covered (you pick from them).
+	const stacksSmall = handPlayable && !onSwap;
+	const covered = overlapStacks && stacksSmall;
 	const stacks = hasTableCards ? (
 		<View className="items-center" style={{ marginBottom: covered ? -Math.round(stackCardHeight * 0.6) : 4 }}>
 			<TableStacks
 				faceUp={tableFlipped}
 				faceDownCount={table}
-				size={handPlayable ? 'sm' : 'md'}
-				faded={handPlayable}
+				size={stacksSmall ? 'sm' : 'md'}
+				faded={stacksSmall}
 				play={{ faceUpPlayable, faceDownPlayable, dim, onLayCard: play, selectedIds, onSelect: toggleSelected, companionsOf }}
 			/>
 		</View>
@@ -221,6 +247,7 @@ export function PlayerBoard({
 				>
 					{username ?? ''}
 				</Text>
+				{active && secondsLeft != null ? <TurnCountdown seconds={secondsLeft} mine /> : null}
 				{groupSize > 1 ? (
 					// Literal colours: the table's palette doesn't follow the app's colours.
 					<View style={{ backgroundColor: '#2563eb', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>

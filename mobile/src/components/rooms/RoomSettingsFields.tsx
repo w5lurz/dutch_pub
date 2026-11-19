@@ -2,10 +2,11 @@ import { View } from 'react-native';
 import type { RoomSettings } from '@dutch-pub/shared';
 
 import { ChoiceRow, SettingRow, type SegmentedOption } from '@/components/ui';
+import type { RoomVisibility } from '@/hooks/useRooms';
 
 type SettingKey = keyof RoomSettings;
 type BooleanSettingKey = { [K in SettingKey]: RoomSettings[K] extends boolean ? K : never }[SettingKey];
-type ChoiceSettingKey = { [K in SettingKey]: RoomSettings[K] extends string ? K : never }[SettingKey];
+type ChoiceSettingKey = { [K in SettingKey]: RoomSettings[K] extends string | number ? K : never }[SettingKey];
 
 type SwitchField = { kind: 'switch'; key: BooleanSettingKey; label: string; description: string };
 type ChoiceField<K extends ChoiceSettingKey = ChoiceSettingKey> = {
@@ -23,10 +24,31 @@ const CARD_BACK_OPTIONS: ChoiceField<'cardBack'>['options'] = [
     { value: 'blue', label: 'Blue', swatch: '#1d4ed8' },
 ];
 
+/** Who can join a room: guests can't join private rooms. */
+export const VISIBILITY_OPTIONS: readonly SegmentedOption<RoomVisibility>[] = [
+    { label: 'Private', value: 'private' },
+    { label: 'Public', value: 'public' },
+];
+
+/** Seconds per turn before it is skipped (0: no timer). */
+const TURN_TIMER_OPTIONS: ChoiceField<'turnTimer'>['options'] = [
+    { value: 0, label: 'Off' },
+    { value: 15, label: '15s' },
+    { value: 30, label: '30s' },
+    { value: 60, label: '1m' },
+];
+
 /** Every room setting with its copy. A new setting is one line here (a switch, or a choice of a few options). */
 export const ROOM_SETTING_FIELDS: readonly RoomSettingField[] = [
     { kind: 'switch', key: 'showCardPowers', label: 'Show card powers', description: 'Special cards show what they do (e.g. CLEAR ALL)' },
     { kind: 'choice', key: 'cardBack', label: 'Card backs', description: 'Colour of the backs of the cards', options: CARD_BACK_OPTIONS },
+    {
+        kind: 'choice',
+        key: 'turnTimer',
+        label: 'Turn timer',
+        description: 'Time to lay a card; when it runs out the turn is skipped',
+        options: TURN_TIMER_OPTIONS,
+    },
 ];
 
 export type RoomSettingsFieldsProps = {
@@ -67,13 +89,17 @@ export function RoomSettingsFields({ value, onChange, disabled = false }: RoomSe
     );
 }
 
-const optionLabel = (key: ChoiceSettingKey, value: string) => {
+const optionLabel = (key: ChoiceSettingKey, value: string | number) => {
     const field = ROOM_SETTING_FIELDS.find(candidate => candidate.key === key);
-    return (field?.kind === 'choice' && field.options.find(option => option.value === value)?.label) || value;
+    return (field?.kind === 'choice' && field.options.find(option => option.value === value)?.label) || String(value);
 };
 
-/** Short read-only summary, e.g. "Card powers shown · Red backs". */
+/** Short read-only summary, e.g. "Card powers shown · Red backs · 30s turns". */
 export const describeRoomSettings = (settings: RoomSettings) =>
-    [settings.showCardPowers ? 'Card powers shown' : 'Card powers hidden', `${optionLabel('cardBack', settings.cardBack)} backs`].join(' · ');
+    [
+        settings.showCardPowers ? 'Card powers shown' : 'Card powers hidden',
+        `${optionLabel('cardBack', settings.cardBack)} backs`,
+        settings.turnTimer > 0 ? `${optionLabel('turnTimer', settings.turnTimer)} turns` : 'No turn timer',
+    ].join(' · ');
 
 export default RoomSettingsFields;

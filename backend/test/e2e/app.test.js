@@ -264,7 +264,7 @@ describe('socket game flow', () => {
         const [rooms] = await broadcast;
         roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `room_${stamp}`));
         assert.ok(roomId, 'room not found in broadcast');
-        assert.deepEqual(rooms[roomId].settings, { showCardPowers: false, cardBack: 'red' }, 'settings are validated');
+        assert.deepEqual(rooms[roomId].settings, { showCardPowers: false, cardBack: 'red', turnTimer: 30 }, 'settings are validated');
         assert.equal(rooms[roomId].players[0].avatar, 'fox', "the owner's chosen avatar");
     });
 
@@ -305,14 +305,28 @@ describe('socket game flow', () => {
         const broadcast = waitFor(b, 'rooms-listed');
         a.emit('update-room-settings', { roomId, settings: { showCardPowers: true, cardBack: 'blue', unknownSetting: 1 } });
         const [rooms] = await broadcast;
-        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue' });
+        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue', turnTimer: 30 });
     });
 
     test('an unknown card back colour keeps the current one', async () => {
         const broadcast = waitFor(b, 'rooms-listed');
         a.emit('update-room-settings', { roomId, settings: { cardBack: 'green' } });
         const [rooms] = await broadcast;
-        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue' });
+        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue', turnTimer: 30 });
+    });
+
+    test('the owner switches the room to private and back; everyone sees it', async () => {
+        const visibilityBefore = (await new Promise(resolve => {
+            b.once('rooms-listed', resolve);
+            b.emit('list-rooms');
+        }))[roomId].visibility;
+        for (const visibility of ['private', 'public', visibilityBefore]) {
+            const broadcast = waitFor(b, 'rooms-listed');
+            a.emit('update-room-settings', { roomId, visibility });
+            const [rooms] = await broadcast;
+            assert.equal(rooms[roomId].visibility, visibility);
+            assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue', turnTimer: 30 }, 'settings unchanged');
+        }
     });
 
     test('only the owner can start the game', async () => {
@@ -367,6 +381,46 @@ describe('socket game flow', () => {
         games = { a: stateA.game, b: stateB.game };
         // The following tests act and listen on the new sockets, so they also prove the
         // server re-bound both seats (moves are only accepted from the seat's socket).
+    });
+
+    test('the game starts in the swap phase: no moves yet', async () => {
+        assert.equal(games.a.phase, 'swap');
+        const mover = games.a.active ? { socket: a, name: user.username, game: games.a } : { socket: b, name: guestName, game: games.b };
+        mover.socket.emit('lay-card', { card: mover.game.userCards.hand[0], cardIndex: 0, roomId, username: mover.name });
+        const [reason] = await waitFor(mover.socket, 'lay-card-rejected');
+        assert.equal(reason, 'Swap your cards first, then tap Ready.');
+    });
+
+    test('a player swaps a hand card with a face-up card; the other player sees it', async () => {
+        const hand = games.a.userCards.hand[0];
+        const faceUp = games.a.userCards.tableFlipped[0];
+        const updatedA = waitFor(a, 'game-updated');
+        const updatedB = waitFor(b, 'game-updated');
+        a.emit('swap-cards', { roomId, username: user.username, hand, faceUp });
+        const [[viewA], [viewB]] = await Promise.all([updatedA, updatedB]);
+        assert.deepEqual(viewA.userCards.hand[0], faceUp);
+        assert.deepEqual(viewA.userCards.tableFlipped[0], hand);
+        assert.deepEqual(viewB.opponents[user.username].tableFlipped[0], hand);
+        games = { a: viewA, b: viewB };
+    });
+
+    test('the play phase starts once both players are ready', async () => {
+        const first = waitFor(b, 'game-updated');
+        a.emit('player-ready', { roomId, username: user.username });
+        const [afterFirst] = await first;
+        assert.equal(afterFirst.phase, 'swap');
+        assert.equal(afterFirst.opponents[user.username].ready, true);
+
+        a.emit('swap-cards', { roomId, username: user.username, hand: games.a.userCards.hand[0], faceUp: games.a.userCards.tableFlipped[0] });
+        assert.equal((await waitFor(a, 'action-rejected'))[0], 'You are ready already.');
+
+        const startedA = waitFor(a, 'game-updated');
+        const startedB = waitFor(b, 'game-updated');
+        b.emit('player-ready', { roomId, username: guestName });
+        const [[viewA], [viewB]] = await Promise.all([startedA, startedB]);
+        assert.equal(viewA.phase, 'play');
+        assert.equal(viewB.phase, 'play');
+        games = { a: viewA, b: viewB };
     });
 
     const players = () =>
@@ -461,14 +515,15 @@ describe('socket game flow', () => {
         // Both players are simple bots (see `botMove`).
         const act = name => {
             const view = views[name];
-            if (!view.active) return;
+            // A missed blind card is being shown: no moves until the pile is picked up.
+            if (!view.active || view.blindMiss) return;
             if (++moves > 20000) return fail(new Error('game did not end within 20000 moves'));
             const move = botMove(view);
             sockets[name].emit(move.event, { ...move.payload, roomId, username: name });
         };
         let finished = false;
         for (const [name, socket] of Object.entries(sockets)) {
-            for (const event of ['card-laid', 'cards-drawn']) {
+            for (const event of ['card-laid', 'cards-drawn', 'game-updated']) {
                 socket.on(event, view => {
                     views[name] = view;
                     if (!finished) act(name);
@@ -555,6 +610,74 @@ describe('stopping a game', () => {
         // Nothing for the leaderboard (a win writes the row right after its broadcast).
         await new Promise(resolve => setTimeout(resolve, 300));
         assert.equal(await db.played_game.count({ where: { players: `${user.username},${guestName}` } }), winsBefore);
+    });
+});
+
+describe('turn timer', () => {
+    // A second server whose clock runs 50x faster: the 15 s timer runs out after 300 ms.
+    let fast;
+    let a; // the registered user, room owner
+    let b; // the guest
+    let roomId;
+    const connectFast = async token => {
+        const socket = io(fast.baseUrl, { transports: ['websocket'], reconnection: false, auth: { token } });
+        await new Promise((resolve, reject) => {
+            socket.once('connect', resolve);
+            socket.once('connect_error', reject);
+        });
+        return socket;
+    };
+
+    before(async () => {
+        fast = await startServer({ TURN_SECOND_MS: '20' });
+        a = await connectFast(userToken);
+        b = await connectFast(guestToken);
+        const created = waitFor(a, 'rooms-listed');
+        a.emit('create-room', { name: `timer_${stamp}`, owner: user.username, slots: 2, visibility: 'public', settings: { turnTimer: 15 } });
+        const [rooms] = await created;
+        roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `timer_${stamp}`));
+        assert.equal(rooms[roomId].settings.turnTimer, 15);
+        const joined = waitFor(a, 'joined-room');
+        b.emit('join-room', { username: guestName, roomId });
+        await joined;
+    });
+
+    after(async () => {
+        a?.close();
+        b?.close();
+        await fast?.stop();
+    });
+
+    test('no clock during the swap phase; it starts with the first turn', async () => {
+        const started = Promise.all([waitFor(a, 'game-started'), waitFor(b, 'game-started')]);
+        a.emit('start-game', roomId);
+        const [[viewA]] = await started;
+        assert.equal(viewA.turnTimeLeft, null);
+
+        const ready = waitFor(a, 'game-updated');
+        a.emit('player-ready', { roomId, username: user.username });
+        await ready;
+        const playing = waitFor(a, 'game-updated');
+        b.emit('player-ready', { roomId, username: guestName });
+        const [view] = await playing;
+        assert.equal(view.phase, 'play');
+        assert.equal(view.turnTime, 300);
+        assert.ok(view.turnTimeLeft > 0 && view.turnTimeLeft <= 300);
+    });
+
+    test('when the time runs out the turn is skipped, and the next one is timed', async () => {
+        const timedOut = Promise.all([waitFor(a, 'turn-timed-out', 2000), waitFor(b, 'turn-timed-out', 2000)]);
+        const updated = waitFor(a, 'game-updated', 2000);
+        a.emit('get-game-state');
+        const [{ game: before }] = await waitFor(a, 'game-state');
+        const [[skippedA], [skippedB]] = await timedOut;
+        const [after] = await updated;
+        const onTurn = before.active ? user.username : guestName;
+        assert.equal(skippedA, onTurn);
+        assert.equal(skippedB, onTurn);
+        assert.equal(after.active, !before.active, 'the turn passed');
+        assert.deepEqual(after.userCards, before.userCards, 'nothing was laid or picked up');
+        assert.ok(after.turnTimeLeft > 200, 'the next turn has (nearly) its full time');
     });
 });
 

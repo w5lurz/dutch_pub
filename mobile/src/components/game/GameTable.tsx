@@ -18,6 +18,7 @@ import { PlayerBoard } from './PlayerBoard';
 import { Seat } from './Seat';
 import { ShotGlass, type Point } from './ShotGlass';
 import { StopGameButton } from './StopGameButton';
+import { SwapPanel } from './SwapPanel';
 import { seatPositions, type SeatPosition } from './seats';
 import { LampButton } from './LampButton';
 import { Moth } from './Moth';
@@ -26,6 +27,7 @@ import { TableBackground } from './TableBackground';
 import { TableLamp } from './TableLamp';
 import { TableLighting } from './TableLighting';
 import { useTableTheme } from './tableTheme';
+import { useTurnSecondsLeft } from './TurnCountdown';
 
 export type GameTableProps = {
 	game: Game;
@@ -53,6 +55,10 @@ export type GameTableProps = {
 	onStopGame?: () => void;
 	/** Who won (set while the game-won message shows): a shot glass slides over to them. */
 	winner?: string | null;
+	/** Swap phase: your hand card and face-up card trade places. */
+	onSwapCards?: (hand: TCard, faceUp: TCard) => void;
+	/** Swap phase: you are done swapping. */
+	onReady?: () => void;
 };
 
 /** Below this window height your hand covers half of your table stacks (a phone turned sideways). */
@@ -107,6 +113,8 @@ export function GameTable({
 	cardSettings,
 	onStopGame,
 	winner,
+	onSwapCards,
+	onReady,
 }: GameTableProps) {
 	const { paletteClass } = useTableTheme();
 	const window = useWindowDimensions();
@@ -151,6 +159,12 @@ export function GameTable({
 
 	const activeOpponent = Object.entries(game.opponents).find(([, opponent]) => opponent.active)?.[0];
 	const turnOf = active ? null : activeOpponent;
+	// Swap phase (right after the deal): nobody is on turn yet; you can swap until you are ready.
+	const swapPhase = game.phase === 'swap';
+	// Turn timer: one countdown for whoever is on turn (shown by their name).
+	const secondsLeft = useTurnSecondsLeft(game);
+	const opponentList = Object.values(game.opponents);
+	const readyCount = opponentList.filter((opponent) => opponent.ready).length + (game.ready ? 1 : 0);
 
 	// Seats: the known turn order (only players still in the game), then anyone missing from it.
 	const opponentNames = Object.keys(game.opponents);
@@ -173,7 +187,9 @@ export function GameTable({
 				>
 					<Seat
 						name={seat.name}
-						opponent={game.opponents[seat.name]}
+						opponent={swapPhase ? { ...game.opponents[seat.name], active: false } : game.opponents[seat.name]}
+						ready={swapPhase ? !!game.opponents[seat.name].ready : undefined}
+						secondsLeft={secondsLeft}
 						position={position}
 						layout={layout}
 						avatarId={avatars?.[seat.name]}
@@ -195,7 +211,9 @@ export function GameTable({
 		: short
 			? 'md'
 			: 'lg';
-	const piles = (
+	const piles = swapPhase ? (
+		<SwapPanel ready={!!game.ready} readyCount={readyCount} playerCount={opponentList.length + 1} onReady={() => onReady?.()} />
+	) : (
 		<PileArea
 			deck={game.deck}
 			laidCards={game.laidCards}
@@ -204,6 +222,8 @@ export function GameTable({
 			size={pileSize}
 			tight={short}
 			column={pilesColumn}
+			blindMiss={game.blindMiss}
+			username={username}
 		/>
 	);
 
@@ -248,7 +268,7 @@ export function GameTable({
 						<PlayerBoard
 							userCards={game.userCards}
 							laidCards={game.laidCards}
-							active={active}
+							active={active && !swapPhase}
 							username={username}
 							avatar={username ? avatars?.[username] : undefined}
 							onLayCard={onLayCard}
@@ -262,6 +282,8 @@ export function GameTable({
 							}
 							cornerRight={<LampButton />}
 							avatarRef={avatarRef}
+							onSwap={swapPhase && !game.ready ? onSwapCards : undefined}
+							secondsLeft={secondsLeft}
 						/>
 
 						{layout === 'wide' && hasSides ? (

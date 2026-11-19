@@ -103,6 +103,19 @@ export function GameSync() {
             dispatch(updateGame(emptyGame));
             dispatch(setInGame(undefined));
         };
+        // A player ran out of time and their turn was skipped (the new turn arrives in `game-updated`).
+        const onTurnTimedOut = (skipped: string) => {
+            const mine = skipped === usernameRef.current;
+            dispatch(
+                setToast({
+                    id: `turn-timed-out-${Date.now()}`,
+                    type: mine ? 'sad' : 'info',
+                    message: mine ? "Time's up! Your turn was skipped." : `${skipped} ran out of time.`,
+                    duration: 3000,
+                }),
+            );
+            if (mine) haptic(Haptics.NotificationFeedbackType.Warning);
+        };
         const onLayCardRejected =(reason: string) => {
             dispatch(setToast({ id: `lay-card-rejected-${Date.now()}`, type: 'sad', message: reason, duration: 3000 }));
             haptic(Haptics.NotificationFeedbackType.Error);
@@ -116,8 +129,10 @@ export function GameSync() {
         socket.on('game-started', onGameStarted);
         socket.on('card-laid', onGameUpdated);
         socket.on('cards-drawn', onGameUpdated);
+        socket.on('game-updated', onGameUpdated);
         socket.on('game-won', onGameWon);
         socket.on('game-stopped', onGameStopped);
+        socket.on('turn-timed-out', onTurnTimedOut);
         socket.on('lay-card-rejected', onLayCardRejected);
         socket.on('game-state', onGameState);
         socket.on('message-sent', onMessageSent);
@@ -130,8 +145,10 @@ export function GameSync() {
             socket.off('game-started', onGameStarted);
             socket.off('card-laid', onGameUpdated);
             socket.off('cards-drawn', onGameUpdated);
+            socket.off('game-updated', onGameUpdated);
             socket.off('game-won', onGameWon);
             socket.off('game-stopped', onGameStopped);
+            socket.off('turn-timed-out', onTurnTimedOut);
             socket.off('lay-card-rejected', onLayCardRejected);
             socket.off('game-state', onGameState);
             socket.off('message-sent', onMessageSent);

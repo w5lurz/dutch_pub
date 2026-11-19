@@ -20,6 +20,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Register, log in, log out, log in again; the session survives an app restart.
 - [ ] Join as a guest; the guest name stays taken while that guest is away.
 - [ ] Wrong password / unknown user / taken name show a message.
+- [ ] Password fields (log in, registration: both): the eye button on the right shows the password, tapping again hides it; it is disabled while signing in.
 - [ ] Avatars: a new account shows the avatar generated from its name (the same on every device). Account → "Change avatar": pick one; it shows at once on the Account screen, in your room card, at your seat and at the other players' tables (also mid-game), and on the leaderboard; it survives log out / log in, an app restart and a second device. "Use my generated one" goes back. Guests see their generated avatar with a note and no picker. Saving offline shows an error and keeps the old one. (Dev: Account tab → Avatars, or /dev/avatars, shows all presets.)
 
 ### Rooms
@@ -27,12 +28,17 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Create a public and a private room (2, 3, 4 slots); guests can't join private rooms.
 - [ ] Join, leave, delete (owner only), start (owner, 2+ players): every device updates without a refresh.
 - [ ] Room settings: set "Show card powers" off when creating a room; the owner changes it in the room's Settings sheet and every player's room card shows it right away; other players see it read-only; after the start it can't be changed.
+- [ ] Visibility in the room's Settings sheet: the owner switches Private / Public; every device's room list updates at once (guests can no longer join a room made private; guests already in it stay); other players see it read-only; after the start it can't be changed.
 
 ### Game (2, 3 and 4 players)
 
 - [ ] The game opens in portrait; turning the phone switches to the wide layout and back (the other screens stay portrait); Android back is blocked in a game.
 - [ ] Seats follow the turn order clockwise from you (you at the bottom): portrait 2p top, 3p top-left / top-right, 4p left / top / right; wide 2p top, 3p left / right (upper half), 4p left / top / right. The same player sits in the same place on every device relative to its owner.
 - [ ] Opponents: avatar (chosen, or generated from the name) and name, hand as a fan of backs without a number ("×N" only when it is too long), face-up cards on their face-down stacks; side seats' cards turned toward the centre, text upright; a green glow around the avatar of whoever is on turn (yours too).
+- [ ] Swap phase (right after the deal): the middle of the table shows "Swap your cards" with a Ready button and "N / M ready"; your face-up cards are full size. Tap a hand card, then a face-up card (or the other way round): they trade places, and the others see your new face-up card. Laying a card is refused ("Swap your cards first…"). Opponents who are ready get a green ✓ before their name. After Ready you can't swap any more; when everyone is ready the piles appear and the first player's turn starts.
+- [ ] Missed blind card: when only face-down cards are left and the one you turn up doesn't fit, it lands on the pile and everyone sees "<name>'s blind <card> doesn't fit! Picking up…" in red for ~3 s; nobody can play meanwhile; then that player picks up the whole pile (the cards fly into their hand) and the turn passes.
+- [ ] Turn glow: the avatar of whoever is on turn (yours too) has a green halo with green rings rippling out of it again and again; with "reduce motion" only the halo.
+- [ ] Turn timer: the room's Settings has "Turn timer" (Off / 15s / 30s / 1m, new rooms 30s); room cards show it ("30s turns" / "No turn timer"). In a game, whoever is on turn (you too) has a countdown pill by their name, red for the last 5 s; none during the swap phase or a missed blind card, none with the timer Off. When it runs out, nothing is laid or picked up and the next player is on: the skipped player sees "Time's up! Your turn was skipped.", the others "<name> ran out of time.". Laying a card restarts the full time for the next turn. Dev table: "Timer" chip (15 s).
 - [ ] Tap selects a card (lifts, blue outline), tap again deselects.
 - [ ] Several cards at once: tap more cards of the same value (in your hand, or among your face-up cards once the hand is empty) and they are all selected, with "N selected · drag one to lay all" next to your name; tapping a card of another value starts a new selection. Drag any selected card onto the pile: all of them are laid (the last one on top), the hand refills to 3 from the deck, the turn passes. Laying them so that four of a kind are on top burns the pile and you play again; several 10s burn it too. Mixed values or a first card that doesn't fit are refused with a message. Face-down cards stay one at a time.
 - [ ] 4 players (two decks): holding two identical cards (e.g. two 7♥), playing one leaves the other in your hand.

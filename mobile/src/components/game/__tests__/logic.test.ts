@@ -227,6 +227,12 @@ describe('pileDrawSignature (auto pick-up)', () => {
         expect(pileDrawSignature(undefined, game(stuck))).toBeNull();
     });
 
+    it('is null in the swap phase and while a missed blind card is shown', () => {
+        const stuck = { laidCards: [card(13)] };
+        expect(pileDrawSignature(1, game({ ...stuck, phase: 'swap' }))).toBeNull();
+        expect(pileDrawSignature(1, game({ ...stuck, blindMiss: { username: 'me', card: card(4) } }))).toBeNull();
+    });
+
     it('is set when nothing can be laid, and the same for the same state', () => {
         const stuck = game({ laidCards: [card(13)] });
         const signature = pileDrawSignature(1, stuck);

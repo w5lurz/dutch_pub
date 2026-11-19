@@ -4,18 +4,13 @@ import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from '@dutch-pub/shared';
 
 import { BottomSheet, Button, SegmentedControl, TextField } from '@/components/ui';
 import type { NewRoom, RoomVisibility } from '@/hooks/useRooms';
-import { RoomSettingsFields } from './RoomSettingsFields';
+import { RoomSettingsFields, VISIBILITY_OPTIONS } from './RoomSettingsFields';
 
 const SLOT_OPTIONS = [
     { label: '2', value: 2 },
     { label: '3', value: 3 },
     { label: '4', value: 4 },
 ] as const;
-
-const VISIBILITY_OPTIONS = [
-    { label: 'Private', value: 'private' },
-    { label: 'Public', value: 'public' },
-] as const satisfies readonly { label: string; value: RoomVisibility }[];
 
 export type CreateRoomModalProps = {
     visible: boolean;

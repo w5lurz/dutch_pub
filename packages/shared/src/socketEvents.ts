@@ -25,6 +25,10 @@ export interface ServerToClientEvents {
     'game-started': (game: Game, rooms: TRooms, roomId: number) => void;
     'card-laid': (game: Game, rooms: TRooms, roomId?: number) => void;
     'cards-drawn': (game: Game, rooms: TRooms, roomId?: number) => void;
+    /** Any other change of the game: cards swapped, a player ready, the play phase starting, a missed blind card shown. */
+    'game-updated': (game: Game, rooms: TRooms, roomId?: number) => void;
+    /** `username` ran out of time: their turn was skipped (the new turn follows in `game-updated`). */
+    'turn-timed-out': (username: string) => void;
     'game-won': (winnerUsername: string, rooms: TRooms) => void;
     /** The room owner stopped the game (nobody won); the room is gone from `rooms`. */
     'game-stopped': (ownerUsername: string, rooms: TRooms) => void;
@@ -45,7 +49,7 @@ export interface ClientToServerEvents {
      * Owner only, before the game starts. Keys left out keep their current value. On success
      * the server broadcasts `rooms-listed`; otherwise the sender gets `action-rejected`.
      */
-    'update-room-settings': (payload: { roomId: number; settings: Partial<RoomSettings> }) => void;
+    'update-room-settings': (payload: { roomId: number; settings?: Partial<RoomSettings>; visibility?: 'public' | 'private' }) => void;
     'delete-room': (roomId: number) => void;
     'join-room': (payload: { username: string; roomId: number }) => void;
     'leave-room': (payload: { username: string; roomId: number }) => void;
@@ -63,6 +67,10 @@ export interface ClientToServerEvents {
      */
     'lay-card': (payload: { card: TCard | number; cards?: TCard[]; cardIndex: number; roomId: number; username?: string }) => void;
     'draw-cards': (payload: { roomId: number; username?: string }) => void;
+    /** Swap phase, before you are ready: your hand card `hand` and your face-up card `faceUp` trade places. */
+    'swap-cards': (payload: { roomId: number; username?: string; hand: TCard; faceUp: TCard }) => void;
+    /** Swap phase: you are done swapping. Once everyone is, the play phase starts. */
+    'player-ready': (payload: { roomId: number; username?: string }) => void;
     'send-message': (payload: { roomId: number; username?: string; message: string }) => void;
     /** Ask for a `game-state` re-sync (after reconnecting / returning to the foreground). */
     'get-game-state': () => void;

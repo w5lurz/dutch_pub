@@ -165,6 +165,45 @@ export default function TablePreview() {
             laidCards: null,
         });
 
+    // Swap phase: as right after the deal (opponents get ready one by one when you are).
+    const startSwap = () => setGame({ ...game, phase: 'swap', ready: false, laidCards: null, burntCards: null });
+    const swapCards = (hand: TCard, faceUp: TCard) => {
+        const { userCards } = game;
+        const i = userCards.hand.findIndex(c => c.value === hand.value && c.color === hand.color);
+        const j = userCards.tableFlipped.findIndex(c => c.value === faceUp.value && c.color === faceUp.color);
+        if (i < 0 || j < 0) return;
+        const newHand = [...userCards.hand];
+        const newFaceUp = [...userCards.tableFlipped];
+        newHand[i] = faceUp;
+        newFaceUp[j] = hand;
+        setGame({ ...game, userCards: { ...userCards, hand: newHand, tableFlipped: newFaceUp } });
+    };
+    const ready = () => {
+        const opponentsReady = Object.fromEntries(Object.entries(game.opponents).map(([name, o]) => [name, { ...o, ready: true }]));
+        setGame({ ...game, ready: true, opponents: opponentsReady });
+        setTimeout(() => setGame(current => ({ ...current, phase: 'play' })), 1500);
+    };
+    // A missed blind card (Julcsi's): on the pile for 3 s, then she picks the pile up.
+    const blindMiss = () => {
+        const missed = card(4, 'spades');
+        const pile = [missed, card(12, 'hearts'), ...(game.laidCards ?? [])];
+        setGame({ ...game, laidCards: pile, blindMiss: { username: 'Julcsi', card: missed } });
+        setTimeout(
+            () =>
+                setGame(current => ({
+                    ...current,
+                    blindMiss: null,
+                    laidCards: null,
+                    opponents: { ...current.opponents, Julcsi: { ...current.opponents.Julcsi, hand: current.opponents.Julcsi.hand + pile.length } },
+                })),
+            3000,
+        );
+    };
+
+    // Turn timer: 15 s for whoever is on turn (restarts with each change of the mock game); again: off.
+    const toggleTimer = () =>
+        setGame(game.turnTimeLeft != null ? { ...game, turnTimeLeft: null, turnTime: null } : { ...game, turnTimeLeft: 15000, turnTime: 15000 });
+
     // A big pick-up (8 cards, as if the pile had them): the librarian comes, for you or for Julcsi.
     const bigPickUp = (who: 'you' | 'Julcsi') => {
         const cards = deal(8, 3);
@@ -191,6 +230,8 @@ export default function TablePreview() {
                 cardSettings={{ showCardPowers, cardBack }}
                 onStopGame={() => router.back()}
                 winner={winner}
+                onSwapCards={swapCards}
+                onReady={ready}
             />
             <View className="absolute right-2 top-2 items-end gap-1" pointerEvents="box-none">
                 <Chip
@@ -210,6 +251,9 @@ export default function TablePreview() {
                         <Chip label={showCardPowers ? 'Powers: shown' : 'Powers: hidden'} onPress={() => setShowCardPowers(!showCardPowers)} />
                         <Chip label={`Backs: ${cardBack}`} onPress={() => setCardBack(cardBack === 'red' ? 'blue' : 'red')} />
                         <Chip label="Pick up pile" onPress={pickUp} />
+                        <Chip label="Swap phase" onPress={startSwap} />
+                        <Chip label="Blind miss" onPress={blindMiss} />
+                        <Chip label={game.turnTimeLeft != null ? 'Timer: on' : 'Timer: off'} onPress={toggleTimer} />
                         <Chip label="Librarian: you" onPress={() => bigPickUp('you')} />
                         <Chip label="Librarian: Julcsi" onPress={() => bigPickUp('Julcsi')} />
                         <Chip label="Win: you" onPress={() => setWinner('test')} />

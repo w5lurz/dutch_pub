@@ -20,7 +20,7 @@ const setUpRoom = (extra = {}) =>
             ],
             slots: 2,
             visibility: 'public',
-            settings: { showCardPowers: true, cardBack: 'red' },
+            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
             ...extra,
         },
     });
@@ -30,40 +30,73 @@ describe('validateRoomSettingsUpdate', () => {
 
     test('lets the owner change a setting', () => {
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { showCardPowers: false } }), {
-            settings: { showCardPowers: false, cardBack: 'red' },
+            settings: { showCardPowers: false, cardBack: 'red', turnTimer: 30 },
+            visibility: 'public',
         });
     });
 
     test('drops unknown keys and keeps current values for invalid ones', () => {
-        setUpRoom({ settings: { showCardPowers: false, cardBack: 'blue' } });
+        setUpRoom({ settings: { showCardPowers: false, cardBack: 'blue', turnTimer: 60 } });
         assert.deepEqual(
-            validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { showCardPowers: 'yes', cardBack: 'green', turnTimer: 30 } }),
-            { settings: { showCardPowers: false, cardBack: 'blue' } },
+            validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { showCardPowers: 'yes', cardBack: 'green', turnTimer: 45, mirror: true } }),
+            { settings: { showCardPowers: false, cardBack: 'blue', turnTimer: 60 }, visibility: 'public' },
         );
     });
 
     test('lets the owner change the card back colour', () => {
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { cardBack: 'blue' } }), {
-            settings: { showCardPowers: true, cardBack: 'blue' },
+            settings: { showCardPowers: true, cardBack: 'blue', turnTimer: 30 },
+            visibility: 'public',
         });
     });
 
     test('rejects an unknown card back colour', () => {
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { cardBack: 'green' } }), {
-            settings: { showCardPowers: true, cardBack: 'red' },
+            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
+            visibility: 'public',
         });
     });
 
     test('fills defaults for a room without settings', () => {
         setUpRoom({ settings: undefined });
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: {} }), {
-            settings: { showCardPowers: true, cardBack: 'red' },
+            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
+            visibility: 'public',
         });
     });
 
     test('does not change the room itself', () => {
         validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { showCardPowers: false } });
-        assert.deepEqual(roomsList[ROOM_ID].settings, { showCardPowers: true, cardBack: 'red' });
+        assert.deepEqual(roomsList[ROOM_ID].settings, { showCardPowers: true, cardBack: 'red', turnTimer: 30 });
+    });
+
+    test('lets the owner change the turn timer (off, 15, 30, 60 s)', () => {
+        for (const turnTimer of [0, 15, 60]) {
+            assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { turnTimer } }), {
+                settings: { showCardPowers: true, cardBack: 'red', turnTimer },
+                visibility: 'public',
+            });
+        }
+    });
+
+    test('lets the owner switch the room between public and private', () => {
+        assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, visibility: 'private' }), {
+            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
+            visibility: 'private',
+        });
+        setUpRoom({ visibility: 'private' });
+        assert.equal(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, visibility: 'public' }).visibility, 'public');
+    });
+
+    test('keeps the visibility when it is missing or invalid', () => {
+        assert.equal(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { turnTimer: 15 } }).visibility, 'public');
+        assert.equal(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, visibility: 'secret' }).visibility, 'public');
+    });
+
+    test('rejects a visibility change by anyone but the owner', () => {
+        assert.deepEqual(validateRoomSettingsUpdate(otherSocket, { roomId: ROOM_ID, visibility: 'private' }), {
+            error: 'Only the room owner can do that.',
+        });
     });
 
     test('rejects anyone but the owner', () => {

@@ -1,4 +1,4 @@
-import { canLayCard } from '@dutch-pub/shared';
+import { canLayCard, normalizeRoomSettings } from '@dutch-pub/shared';
 import { games, modifyRooms, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
 import { identityError } from './socketAuth.js';
@@ -6,11 +6,66 @@ import { identityError } from './socketAuth.js';
 import db from './models/index.js';
 const PlayedGame = db.played_game;
 
+/** How long a missed blind card stays on the pile before its player picks the pile up (env for tests). */
+const BLIND_REVEAL_MS = Number(process.env.BLIND_REVEAL_MS ?? 3000);
+/** One second of the room's turn timer, in ms (env for tests, which run the clock faster). */
+const TURN_SECOND_MS = Number(process.env.TURN_SECOND_MS ?? 1000);
+
+/** The running turn clock of each game (cleared when the turn changes, the game ends or is stopped). */
+const turnClocks = new WeakMap();
+
+/** Stops game `game`'s turn clock (no turn is timed meanwhile). */
+export const clearTurnClock = game => {
+    clearTimeout(turnClocks.get(game));
+    turnClocks.delete(game);
+    game.turnEndsAt = null;
+    game.turnTime = null;
+};
+
 /**
- * Checks that `socket` is authenticated as `username`, plays in game `roomId` and that it
- * is their turn. Returns `{ error }` or `{ player }` (the server-side player state).
+ * Time ran out for whoever is on turn in `game`: their turn is skipped (nothing laid, nothing
+ * picked up), the next player is on. Returns the skipped player's name, or undefined.
  */
-const validateTurn = (socket, { roomId, username }) => {
+export const timeOutTurn = game => {
+    const entry = Object.entries(game.players).find(([, player]) => player.active);
+    if (!entry) return undefined;
+    setActivePlayerNext(game.players, entry[0]);
+    return entry[0];
+};
+
+/**
+ * (Re)starts the turn clock of game `game` in room `roomId`: call it whenever a new turn
+ * starts, before the new view is sent (the view carries the time left). No clock while the
+ * room's timer is off, in the swap phase, during a missed blind card, or once the game is
+ * gone. When it runs out, the turn is skipped (`timeOutTurn`), everyone gets
+ * `turn-timed-out` and the new view, and the next turn's clock starts.
+ */
+export const startTurnClock = (io, roomId, game) => {
+    clearTurnClock(game);
+    const room = roomsList[roomId];
+    const limit = normalizeRoomSettings(room?.settings).turnTimer * TURN_SECOND_MS;
+    if (!room || games[roomId] !== game || game.phase === 'swap' || game.blindMiss || limit <= 0) return;
+    game.turnEndsAt = Date.now() + limit;
+    game.turnTime = limit;
+    turnClocks.set(
+        game,
+        setTimeout(() => {
+            turnClocks.delete(game);
+            if (games[roomId] !== game || game.blindMiss) return;
+            const skipped = timeOutTurn(game);
+            if (!skipped) return;
+            io.to(`game-${roomId}`).emit('turn-timed-out', skipped);
+            startTurnClock(io, roomId, game);
+            sendUiDataToSocket(io, roomsList[roomId] ?? room, game, 'game-updated');
+        }, limit),
+    );
+};
+
+/**
+ * Checks that `socket` is authenticated as `username` and plays in game `roomId`.
+ * Returns `{ error }` or `{ player, game }` (the server-side player and game state).
+ */
+const validatePlayer = (socket, { roomId, username }) => {
     const authError = identityError(socket, username);
     if (authError) {
         return { error: authError };
@@ -25,10 +80,56 @@ const validateTurn = (socket, { roomId, username }) => {
     if (!player || !roomPlayer || roomPlayer.socketId !== socket.id) {
         return { error: 'You are not a player in this game.' };
     }
+    return { player, game: currentGame };
+};
+
+/**
+ * Like `validatePlayer`, and that cards can be played now (the swap phase is over, no
+ * missed blind card is being shown) and it is their turn. Returns `{ error }` or `{ player }`.
+ */
+const validateTurn = (socket, { roomId, username }) => {
+    const { error, player, game } = validatePlayer(socket, { roomId, username });
+    if (error) {
+        return { error };
+    }
+    if (game.phase === 'swap') {
+        return { error: 'Swap your cards first, then tap Ready.' };
+    }
+    if (game.blindMiss) {
+        return { error: 'Wait a moment, the pile is being picked up.' };
+    }
     if (!player.active) {
         return { error: 'It is not your turn.' };
     }
     return { player };
+};
+
+/**
+ * Swap phase: hand card `hand` and face-up card `faceUp` of `username` trade places (one
+ * copy each; the face-up card keeps its spot). Returns an error message, or null.
+ */
+export const swapCards = (game, username, hand, faceUp) => {
+    const player = game.players[username];
+    if (game.phase !== 'swap') return 'Cards can only be swapped before the game starts.';
+    if (player.ready) return 'You are ready already.';
+    const same = wanted => own => wanted && own.value === wanted.value && own.color === wanted.color;
+    const handIndex = player.userCards.hand.findIndex(same(hand));
+    const faceUpIndex = player.userCards.tableFlipped.findIndex(same(faceUp));
+    if (handIndex < 0 || faceUpIndex < 0) return "You don't have that card.";
+    const fromHand = player.userCards.hand[handIndex];
+    player.userCards.hand[handIndex] = player.userCards.tableFlipped[faceUpIndex];
+    player.userCards.tableFlipped[faceUpIndex] = fromHand;
+    return null;
+};
+
+/** Swap phase: `username` is done swapping; once everyone is, the play phase starts. Returns whether it started. */
+export const markReady = (game, username) => {
+    game.players[username].ready = true;
+    if (game.phase === 'swap' && Object.values(game.players).every(player => player.ready)) {
+        game.phase = 'play';
+        return true;
+    }
+    return false;
 };
 
 /**
@@ -108,10 +209,22 @@ export const game = io => {
                 const blindCard = userCards.table[validation.card];
                 userCards.table = userCards.table.filter((_, i) => i !== validation.card);
                 if (!canLayCard(blindCard, currentGame.laidCards)) {
-                    userCards.hand = [blindCard, ...(currentGame.laidCards ?? [])].sort((a, b) => a.value - b.value);
-                    currentGame.laidCards = null;
-                    setActivePlayerNext(currentGame.players, username);
-                    sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
+                    // It doesn't fit: first everyone sees it on top of the pile for a moment (no
+                    // moves meanwhile), then its player picks up the pile with it.
+                    currentGame.laidCards = [blindCard, ...(currentGame.laidCards ?? [])];
+                    currentGame.blindMiss = { username, card: blindCard };
+                    clearTurnClock(currentGame);
+                    sendUiDataToSocket(io, currentRoom, currentGame, 'game-updated');
+                    setTimeout(() => {
+                        // Stopped or restarted meanwhile: nothing to pick up.
+                        if (games[roomId] !== currentGame || !currentGame.blindMiss) return;
+                        currentGame.blindMiss = null;
+                        userCards.hand = [...currentGame.laidCards].sort((a, b) => a.value - b.value);
+                        currentGame.laidCards = null;
+                        setActivePlayerNext(currentGame.players, username);
+                        startTurnClock(io, roomId, currentGame);
+                        sendUiDataToSocket(io, roomsList[roomId] ?? currentRoom, currentGame, 'cards-drawn');
+                    }, BLIND_REVEAL_MS);
                     return;
                 }
                 applyLay(currentGame, username, [blindCard], cardIndex, { fromTable: true });
@@ -132,6 +245,9 @@ export const game = io => {
                 modifyRoomMessages(restRoomMessages);
             }
 
+            // A new turn (the next player's, or the same player's again after a burn); no clock once won.
+            if (won) clearTurnClock(currentGame);
+            else startTurnClock(io, roomId, currentGame);
             sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
             if (won) {
                 await PlayedGame.create({
@@ -139,6 +255,31 @@ export const game = io => {
                     players: currentRoom.players.map(player => player.username).join(','),
                 });
             }
+        });
+
+        // Swap phase: a hand card and a face-up card trade places; everyone sees the new face-up cards.
+        socket.on('swap-cards', payload => {
+            const { roomId, username, hand, faceUp } = payload ?? {};
+            const { error, game: currentGame } = validatePlayer(socket, { roomId, username });
+            const swapError = error ?? swapCards(currentGame, username, hand, faceUp);
+            if (swapError) {
+                socket.emit('action-rejected', swapError);
+                return;
+            }
+            sendUiDataToSocket(io, roomsList[roomId], currentGame, 'game-updated');
+        });
+
+        // Swap phase: a player is done swapping; with everyone ready the play phase starts.
+        socket.on('player-ready', payload => {
+            const { roomId, username } = payload ?? {};
+            const { error, game: currentGame } = validatePlayer(socket, { roomId, username });
+            if (error || currentGame.phase !== 'swap') {
+                socket.emit('action-rejected', error ?? 'The game has started already.');
+                return;
+            }
+            // With everyone ready the first turn starts, and its clock.
+            if (markReady(currentGame, username)) startTurnClock(io, roomId, currentGame);
+            sendUiDataToSocket(io, roomsList[roomId], currentGame, 'game-updated');
         });
 
         socket.on('get-game-state', () => {
@@ -170,7 +311,7 @@ export const game = io => {
             setActivePlayerNext(currentGame.players, username);
 
             // Send new game data to sockets
-            console.log('DRAWNHEHE', currentGame.players);
+            startTurnClock(io, roomId, currentGame);
             sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
         });
     });
@@ -234,12 +375,13 @@ export const buildPlayerView = (room, game, username) => {
     const opponents = {};
     room.players.forEach(otherPlayer => {
         if (otherPlayer.username !== username) {
-            const { userCards, active } = game.players[otherPlayer.username];
+            const { userCards, active, ready } = game.players[otherPlayer.username];
             opponents[otherPlayer.username] = {
                 table: userCards.table.length,
                 hand: userCards.hand.length,
                 tableFlipped: [...userCards.tableFlipped],
                 active,
+                ready: !!ready,
             };
         }
     });
@@ -251,6 +393,11 @@ export const buildPlayerView = (room, game, username) => {
         burntCards: game.burntCards ? game.burntCards : null,
         deck: game.deck.length,
         active: own.active,
+        phase: game.phase ?? 'play',
+        ready: !!own.ready,
+        blindMiss: game.blindMiss ?? null,
+        turnTimeLeft: game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : null,
+        turnTime: game.turnEndsAt ? game.turnTime : null,
     };
 };
 

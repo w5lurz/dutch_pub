@@ -18,14 +18,15 @@ const getFreePort = () =>
 
 /**
  * Starts the real backend (src/app.js) as a child process on a free port, using the
- * database from backend/.env.
+ * database from backend/.env. `env`: extra environment variables (e.g. a faster turn clock).
  */
-export async function startServer() {
+export async function startServer(env = {}) {
     const port = await getFreePort();
 
     const child = spawn(process.execPath, ['src/app.js'], {
         cwd: backendDir,
-        env: { ...process.env, PORT: String(port), CORS_ORIGIN: '' },
+        // A missed blind card is shown only briefly, so the bots' games stay fast.
+        env: { ...process.env, PORT: String(port), CORS_ORIGIN: '', BLIND_REVEAL_MS: '20', ...env },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';

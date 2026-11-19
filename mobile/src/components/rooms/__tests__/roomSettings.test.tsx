@@ -67,7 +67,7 @@ describe('ChoiceRow', () => {
 });
 
 describe('RoomSettingsSheet', () => {
-    const props = { visible: true, onClose: jest.fn(), roomName: 'Pub', settings: { showCardPowers: true, cardBack: 'red' as const } };
+    const props = { visible: true, onClose: jest.fn(), roomName: 'Pub', settings: { showCardPowers: true, cardBack: 'red' as const, turnTimer: 30 as const } };
 
     it('lets the owner change a setting and shows it right away', async () => {
         const onChange = jest.fn();
@@ -92,7 +92,7 @@ describe('RoomSettingsSheet', () => {
 
     it('follows the settings broadcast by the server', async () => {
         const view = await render(<RoomSettingsSheet {...props} canEdit onChange={jest.fn()} />);
-        await view.rerender(<RoomSettingsSheet {...props} settings={{ showCardPowers: false, cardBack: 'blue' }} canEdit onChange={jest.fn()} />);
+        await view.rerender(<RoomSettingsSheet {...props} settings={{ showCardPowers: false, cardBack: 'blue', turnTimer: 30 }} canEdit onChange={jest.fn()} />);
         expect(powersSwitch()).not.toBeChecked();
         expect(backOption('Blue')).toBeSelected();
     });
@@ -107,6 +107,32 @@ describe('RoomSettingsSheet', () => {
         await fireEvent.press(backOption('Blue'));
         expect(onChange).not.toHaveBeenCalled();
         expect(backOption('Red')).toBeSelected();
+    });
+
+    it('lets the owner switch the room between private and public', async () => {
+        const onVisibilityChange = jest.fn();
+        const view = await render(
+            <RoomSettingsSheet {...props} canEdit onChange={jest.fn()} visibility="private" onVisibilityChange={onVisibilityChange} />,
+        );
+        expect(screen.getByRole('radio', { name: 'Private' })).toBeSelected();
+        await fireEvent.press(screen.getByRole('radio', { name: 'Public' }));
+        expect(onVisibilityChange).toHaveBeenCalledWith('public');
+        // Shown at once, before the server's broadcast; then the broadcast value.
+        expect(screen.getByRole('radio', { name: 'Public' })).toBeSelected();
+        await view.rerender(
+            <RoomSettingsSheet {...props} canEdit onChange={jest.fn()} visibility="public" onVisibilityChange={onVisibilityChange} />,
+        );
+        expect(screen.getByRole('radio', { name: 'Public' })).toBeSelected();
+    });
+
+    it('shows the visibility read-only to the other players', async () => {
+        const onVisibilityChange = jest.fn();
+        await render(
+            <RoomSettingsSheet {...props} canEdit={false} onChange={jest.fn()} visibility="public" onVisibilityChange={onVisibilityChange} />,
+        );
+        expect(screen.getByRole('radio', { name: 'Private' })).toBeDisabled();
+        await fireEvent.press(screen.getByRole('radio', { name: 'Private' }));
+        expect(onVisibilityChange).not.toHaveBeenCalled();
     });
 
     it('closes with Done', async () => {
@@ -125,7 +151,7 @@ describe('CreateRoomModal', () => {
         expect(powersSwitch()).toBeChecked();
         await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
         await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
-        expect(onCreate).toHaveBeenCalledWith({ name: 'Pub', slots: 2, visibility: 'private', settings: { showCardPowers: true, cardBack: 'red' } });
+        expect(onCreate).toHaveBeenCalledWith({ name: 'Pub', slots: 2, visibility: 'private', settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 } });
     });
 
     it('sends the chosen settings', async () => {
@@ -134,7 +160,7 @@ describe('CreateRoomModal', () => {
         await fireEvent.press(powersSwitch());
         await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
         await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
-        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { showCardPowers: false, cardBack: 'red' } }));
+        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { showCardPowers: false, cardBack: 'red', turnTimer: 30 } }));
     });
 
     it('sends the chosen card back colour', async () => {
@@ -144,7 +170,7 @@ describe('CreateRoomModal', () => {
         await fireEvent.press(backOption('Blue'));
         await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
         await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
-        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { showCardPowers: true, cardBack: 'blue' } }));
+        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { showCardPowers: true, cardBack: 'blue', turnTimer: 30 } }));
     });
 });
 
@@ -154,7 +180,7 @@ const room = (extra: Partial<TRoom> = {}): TRoom => ({
     players: [{ username: 'me', socketId: 's1' }],
     slots: 2,
     visibility: 'public',
-    settings: { showCardPowers: false, cardBack: 'blue' },
+    settings: { showCardPowers: false, cardBack: 'blue', turnTimer: 0 },
     ...extra,
 });
 
@@ -172,7 +198,7 @@ describe('RoomCard', () => {
     it('shows the settings and opens them for the owner', async () => {
         const onSettings = jest.fn();
         await render(<RoomCard room={room()} isCurrent permissions={permissions} {...handlers} onSettings={onSettings} />);
-        expect(screen.getByText('Settings: Card powers hidden · Blue backs')).toBeTruthy();
+        expect(screen.getByText('Settings: Card powers hidden · Blue backs · No turn timer')).toBeTruthy();
         await fireEvent.press(screen.getByRole('button', { name: 'Change settings of room Pub' }));
         expect(onSettings).toHaveBeenCalled();
     });
@@ -202,7 +228,7 @@ describe('RoomCard', () => {
                 onSettings={jest.fn()}
             />,
         );
-        expect(screen.getByText('Settings: Card powers shown · Red backs')).toBeTruthy();
+        expect(screen.getByText('Settings: Card powers shown · Red backs · 30s turns')).toBeTruthy();
         expect(screen.getByRole('button', { name: 'View settings of room Pub' })).toBeTruthy();
     });
 
@@ -231,16 +257,16 @@ describe('useRoomSettings', () => {
 
     it('returns the defaults for an unknown room', async () => {
         const { result } = await setup({}, 3);
-        expect(result.current).toEqual({ showCardPowers: true, cardBack: 'red' });
+        expect(result.current).toEqual({ showCardPowers: true, cardBack: 'red', turnTimer: 30 });
     });
 
     it('returns the settings of a room by id', async () => {
         const { result } = await setup({ 3: room() }, 3);
-        expect(result.current).toEqual({ showCardPowers: false, cardBack: 'blue' });
+        expect(result.current).toEqual({ showCardPowers: false, cardBack: 'blue', turnTimer: 0 });
     });
 
     it('returns the settings of the current room without an id', async () => {
-        const { result } = await setup({ 1: room({ owner: 'x', players: [], settings: { showCardPowers: true, cardBack: 'red' } }), 2: room() });
-        expect(result.current).toEqual({ showCardPowers: false, cardBack: 'blue' });
+        const { result } = await setup({ 1: room({ owner: 'x', players: [], settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 } }), 2: room() });
+        expect(result.current).toEqual({ showCardPowers: false, cardBack: 'blue', turnTimer: 0 });
     });
 });

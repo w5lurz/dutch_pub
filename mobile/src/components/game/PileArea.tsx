@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { Cards, TCard } from '@dutch-pub/shared';
+import type { BlindMiss, Cards, TCard } from '@dutch-pub/shared';
 
 import Animated, {
     Easing,
@@ -31,6 +31,10 @@ type PileAreaProps = {
     tight?: boolean;
     /** The piles one above the other (portrait with seats beside them) instead of in a row. */
     column?: boolean;
+    /** A face-down card played blind that doesn't fit: it lies on top of the pile for a moment, with a message. */
+    blindMiss?: BlindMiss | null;
+    /** Your username (the message then says "Your"). */
+    username?: string;
 };
 
 /** The drop zone's border + padding, added around the other piles too so all three line up. */
@@ -181,7 +185,7 @@ function BurntHeap({ count, size }: { count: number; size: CardSize }) {
  * a heap of burnt backs.
  * The laid pile is where you drop a card to play it (`CardDropZone`).
  */
-export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false }: PileAreaProps) {
+export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false, blindMiss, username }: PileAreaProps) {
     const burnt = burntCards?.length ?? 0;
     const { deckRef, dropZoneRef } = useCardDrag();
     const still = useReducedMotion();
@@ -224,16 +228,18 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
         };
     }, [burnt, burntCards, still, dropZoneRef, cardWidth, cardHeight, column]);
 
-    const turnText = turnOf === null ? 'Your turn' : turnOf ? `${turnOf}'s turn` : 'Waiting…';
+    const turnText = blindMiss
+        ? `${blindMiss.username === username ? 'Your' : `${blindMiss.username}'s`} blind ${blindMiss.card.name} doesn't fit! Picking up…`
+        : turnOf === null
+          ? 'Your turn'
+          : turnOf
+            ? `${turnOf}'s turn`
+            : 'Waiting…';
+    const turnColours = blindMiss ? 'bg-red-200 text-red-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
 
     return (
         <View ref={areaRef} collapsable={false} className="items-center gap-1.5">
-            <Text
-                accessibilityLiveRegion="polite"
-                className={`rounded-full px-3 py-0.5 text-sm font-semibold ${
-                    turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800'
-                }`}
-            >
+            <Text accessibilityLiveRegion="polite" className={`rounded-full px-3 py-0.5 text-sm font-semibold ${turnColours}`}>
                 {turnText}
             </Text>
             <View className={column ? 'items-center gap-1' : `flex-row items-start justify-center ${tight ? 'gap-1' : 'gap-4'}`}>

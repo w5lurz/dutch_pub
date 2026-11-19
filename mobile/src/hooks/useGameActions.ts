@@ -19,6 +19,8 @@ export const CHAT_COOLDOWN_MS = 3000;
  * - Auto pick-up: on your turn with no playable card it emits `draw-cards` once per state.
  * - `sendMessage(text)` with a 3 s cooldown (`canSend`).
  * - `stopGame()`: the room owner ends the game for everyone (`canStop`: you own the room).
+ * - Swap phase: `swapCards(hand, faceUp)` trades a hand card with a face-up card, `setReady()`
+ *   says you are done (no moves until everyone is).
  *
  * Call it once, in the game screen (it owns the auto pick-up effect), and pass the
  * callbacks down.
@@ -35,6 +37,14 @@ export function useGameActions() {
     const layCard = useCallback(
         (card: TCard | number | Cards, cardIndex: number, touchable = true): boolean => {
             if (roomId === undefined) return false;
+            if (game.phase === 'swap') {
+                dispatch(
+                    setToast({ id: `swap-first-${Date.now()}`, type: 'info', message: 'Swap your cards first, then tap Ready.', duration: 3000 }),
+                );
+                return false;
+            }
+            // A missed blind card is being shown: the pile is about to be picked up.
+            if (game.blindMiss) return false;
             // Several cards laid together: all of the same value, the first must fit the pile.
             const several = Array.isArray(card) ? card : null;
             const first = several ? several[0] : (card as TCard | number);
@@ -66,8 +76,20 @@ export function useGameActions() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             return true;
         },
-        [active, laidCards, roomId, username, socket, dispatch],
+        [active, laidCards, roomId, username, socket, dispatch, game.phase, game.blindMiss],
     );
+
+    // Swap phase: trade a hand card with a face-up card, and say when you are done.
+    const swapping = game.phase === 'swap' && !game.ready;
+    const swapCards = useCallback(
+        (hand: TCard, faceUp: TCard) => {
+            if (roomId !== undefined && swapping) socket.emit('swap-cards', { roomId, username, hand, faceUp });
+        },
+        [roomId, swapping, username, socket],
+    );
+    const setReady = useCallback(() => {
+        if (roomId !== undefined && swapping) socket.emit('player-ready', { roomId, username });
+    }, [roomId, swapping, username, socket]);
 
     // Auto pick-up. `drawnFor` holds the signature of the state we already sent `draw-cards`
     // for; it is cleared once a draw is no longer needed, and while offline (an emit lost to
@@ -119,7 +141,7 @@ export function useGameActions() {
         if (canStop && roomId !== undefined) socket.emit('stop-game', roomId);
     }, [canStop, roomId, socket]);
 
-    return { layCard, sendMessage, canSend, active, username, roomId, canStop, stopGame };
+    return { layCard, sendMessage, canSend, active, username, roomId, canStop, stopGame, swapCards, setReady };
 }
 
 export default useGameActions;

@@ -48,6 +48,7 @@ export default function PlayScreen() {
         deleteRoom,
         startGame,
         updateRoomSettings,
+        updateRoomVisibility,
         refresh,
     } = useRooms();
     const [createVisible, setCreateVisible] = useState(false);
@@ -140,6 +141,8 @@ export default function PlayScreen() {
                     canEdit={permissionsFor(settingsRoomId, settingsRoom).canEditSettings}
                     disabled={!connected}
                     onChange={change => updateRoomSettings(settingsRoomId, change)}
+                    visibility={settingsRoom.visibility === 'public' ? 'public' : 'private'}
+                    onVisibilityChange={visibility => updateRoomVisibility(settingsRoomId, visibility)}
                     onClose={() => setSettingsRoomId(null)}
                 />
             ) : null}

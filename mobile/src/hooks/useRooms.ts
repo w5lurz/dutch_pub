@@ -137,6 +137,14 @@ export function useRooms() {
         [socket],
     );
 
+    /** Owner only, before the game starts: makes the room public or private (guests can't join private rooms). */
+    const updateRoomVisibility = useCallback(
+        (roomId: number, visibility: RoomVisibility) => {
+            socket.emit('update-room-settings', { roomId, visibility });
+        },
+        [socket],
+    );
+
     const refresh = useCallback(() => {
         socket.emit('list-rooms');
     }, [socket]);
@@ -161,6 +169,7 @@ export function useRooms() {
         deleteRoom,
         startGame,
         updateRoomSettings,
+        updateRoomVisibility,
         refresh,
     };
 }
