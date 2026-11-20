@@ -31,7 +31,7 @@ function MessageRow({ message, own, avatar }: { message: ChatMessage; own: boole
 			className={`mb-2 max-w-[85%] flex-row items-end gap-2 ${own ? 'flex-row-reverse self-end' : 'self-start'}`}
 		>
 			<Avatar username={message.senderName} avatar={avatar} size={CHAT_AVATAR} />
-			<View className={`shrink rounded-lg px-3 py-2 ${own ? 'bg-blue-100' : 'bg-gray-100'}`}>
+			<View className={`shrink rounded-lg px-3 py-2 ${own ? 'bg-blue-100' : 'bg-gray-200'}`}>
 				<View className="flex-row items-center justify-between gap-3">
 					<Text className="font-semibold text-gray-900">{message.senderName}</Text>
 					<Text className="text-xs text-gray-500">{message.time}</Text>

@@ -1,5 +1,5 @@
-import { useEffect, useId, useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { useEffect, useId } from 'react';
+import { Platform, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
@@ -43,11 +43,21 @@ const CARD_WARMTH: Stops = [
     { offset: 1, color: '#ffcf8a', opacity: 0 },
 ];
 
-/** A full-size rectangle per gradient, each an ellipse around the lamp's centre (bounding-box units stretch the circle to the screen). */
-function Glow({ layers, width, height }: { layers: readonly Stops[]; width: number; height: number }) {
+/**
+ * A rectangle per gradient, each an ellipse around the lamp's centre (bounding-box units stretch
+ * the circle to the table). Drawn on a 100 × 100 canvas stretched over the table: the view is
+ * sized by the layout (no width / height props, no measuring), so when the phone turns Android
+ * redraws it at the new size in the same frame as the table photo, and the gradients, being
+ * relative to the box, look the same at any size. (Numeric sizes from `onLayout` lagged a frame
+ * or more behind, which left part of the table lit for a moment; "100%" props kept the first size.)
+ */
+// In a browser an <svg> does not stretch to its box by itself (native views do).
+const WEB_SIZE = Platform.OS === 'web' ? { width: '100%', height: '100%' } : {};
+
+function Glow({ layers }: { layers: readonly Stops[] }) {
     const id = useId().replace(/:/g, '');
     return (
-        <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none" {...WEB_SIZE}>
             <Defs>
                 {layers.map((stops, i) => (
                     <RadialGradient key={i} id={`${id}-${i}`} cx="50%" cy={POOL_CENTRE_Y} r="72%" fx="50%" fy={POOL_CENTRE_Y}>
@@ -58,7 +68,7 @@ function Glow({ layers, width, height }: { layers: readonly Stops[]; width: numb
                 ))}
             </Defs>
             {layers.map((_, i) => (
-                <Rect key={i} x="0" y="0" width="100%" height="100%" fill={`url(#${id}-${i})`} />
+                <Rect key={i} x={0} y={0} width={100} height={100} fill={`url(#${id}-${i})`} />
             ))}
         </Svg>
     );
@@ -82,28 +92,15 @@ function useNightAmount() {
  */
 export function TableLighting({ layer }: { layer: 'table' | 'cards' }) {
     const style = useNightAmount();
-    // Its own measured size in numbers, not "100%" or the window size: on Android a percentage-sized
-    // Svg kept its first size after turning the phone, and the window size leaves out the hidden
-    // system bars, which left light strips at the bottom / right edge.
-    const window = useWindowDimensions();
-    const [size, setSize] = useState<{ width: number; height: number } | null>(null);
-    const { width, height } = size ?? window;
     return (
         <Animated.View
-            onLayout={event => setSize({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })}
             pointerEvents="none"
             style={[StyleSheet.absoluteFill, style]}
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
             testID={`table-lighting-${layer}`}
         >
-            {/* Keyed by size: redrawn from scratch when the phone turns. */}
-            <Glow
-                key={`${width}x${height}`}
-                layers={layer === 'table' ? [NIGHT_TABLE, WARM_POOL] : [CARD_SHADE, CARD_WARMTH]}
-                width={width}
-                height={height}
-            />
+            <Glow layers={layer === 'table' ? [NIGHT_TABLE, WARM_POOL] : [CARD_SHADE, CARD_WARMTH]} />
         </Animated.View>
     );
 }
