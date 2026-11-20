@@ -12,3 +12,9 @@ jest.mock('expo-haptics', () => ({
     ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
     NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));
+
+// No native audio in Jest: players that record what they were asked to play.
+jest.mock('expo-audio', () => ({
+    createAudioPlayer: jest.fn(() => ({ play: jest.fn(), seekTo: jest.fn(() => Promise.resolve()), remove: jest.fn() })),
+    setAudioModeAsync: jest.fn(() => Promise.resolve()),
+}));

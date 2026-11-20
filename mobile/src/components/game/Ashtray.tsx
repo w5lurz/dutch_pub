@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
     Easing,
@@ -26,8 +26,56 @@ const PUFFS = 5;
 const PUFF_MS = 4200;
 const PUFF_STAGGER = PUFF_MS / PUFFS;
 
-/** A stubbed-out cigarette: filter, a bit of paper, the burnt end. Drawn along +x from (0, 0). */
-function Butt({ x, y, angle, paper }: { x: number; y: number; angle: number; paper: number }) {
+/**
+ * One cigarette's look: a factory one (white paper, orange filter) or a hand-rolled one
+ * (thinner, a bit crooked, off-white or brown paper; a small white roach or none).
+ */
+export type Smoke = { kind: 'factory' | 'rolled'; paper: string; roach: boolean };
+
+/** Rolling papers: off-white and unbleached brown. */
+const ROLLING_PAPERS = ['#efe7d4', '#b98d5f'];
+
+/** A small seeded random generator (mulberry32): the same seed gives the same numbers on every device. */
+function seededRandom(seed: number) {
+    let state = seed >>> 0;
+    return () => {
+        state = (state + 0x6d2b79f5) >>> 0;
+        let t = state;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+/**
+ * The cigarettes of a game, picked at random from `seed` (the room id), so every device draws
+ * the same ones: the burning one and the three butts, each factory-made or hand-rolled (the
+ * butts mostly like the burning one: the same smoker).
+ */
+export function cigaretteLook(seed: number): { lit: Smoke; butts: Smoke[] } {
+    const random = seededRandom(seed * 7919 + 17);
+    const pick = (rolled: boolean): Smoke =>
+        rolled
+            ? { kind: 'rolled', paper: ROLLING_PAPERS[Math.floor(random() * ROLLING_PAPERS.length)], roach: random() < 0.5 }
+            : { kind: 'factory', paper: '#f4f1ea', roach: false };
+    const rolledSmoker = random() < 0.5;
+    return { lit: pick(rolledSmoker), butts: [0, 1, 2].map(() => pick(random() < 0.75 ? rolledSmoker : !rolledSmoker)) };
+}
+
+/** A stubbed-out cigarette: filter (or roach), a bit of paper, the burnt end. Drawn along +x from (0, 0). */
+function Butt({ x, y, angle, paper, smoke }: { x: number; y: number; angle: number; paper: number; smoke: Smoke }) {
+    if (smoke.kind === 'rolled') {
+        // Thinner, the paper a bit crumpled; a short white roach or just the paper's end.
+        const mouth = smoke.roach ? 6 : 0;
+        return (
+            <G transform={`translate(${x} ${y}) rotate(${angle})`}>
+                <Rect x={1} y={-1} width={mouth + 6 + paper} height={4} rx={1.5} fill="#000" opacity={0.35} />
+                {smoke.roach ? <Rect x={0} y={-2} width={mouth} height={4} rx={1.2} fill="#f7f5ef" /> : null}
+                <Path d={`M ${mouth} -1.8 L ${mouth + 6 + paper} -1.4 L ${mouth + 6 + paper} 1.6 L ${mouth} 2 Z`} fill={smoke.paper} />
+                <Rect x={mouth + 6 + paper} y={-1.8} width={2.2} height={3.8} rx={1} fill="#3d3833" />
+            </G>
+        );
+    }
     return (
         <G transform={`translate(${x} ${y}) rotate(${angle})`}>
             <Rect x={1} y={-1.5} width={14 + paper} height={5} rx={1.5} fill="#000" opacity={0.35} />
@@ -38,8 +86,45 @@ function Butt({ x, y, angle, paper }: { x: number; y: number; angle: number; pap
     );
 }
 
+/** The burning cigarette, lying along +x: the lit tip at x 10-16, the mouth end at 66. */
+function LitCigarette({ smoke }: { smoke: Smoke }) {
+    if (smoke.kind === 'rolled') {
+        // Hand-rolled: thinner and slightly uneven, the paper ending in a roach or a pinched end.
+        const end = smoke.roach ? 59 : 63;
+        return (
+            <G transform="translate(60 60) rotate(-30)">
+                <Rect x={13} y={-0.5} width={51} height={6} rx={2.5} fill="#000" opacity={0.35} />
+                {/* Fatter in the middle, thinner towards the ends, a little uneven. */}
+                <Path d={`M 16 -2.4 Q 30 -3.6 42 -3.1 Q ${end - 6} -2.8 ${end} -2.3 L ${end} 2.2 Q ${end - 6} 2.7 42 3.2 Q 30 3.4 16 2.4 Z`} fill={smoke.paper} />
+                {/* A fold line along the paper. */}
+                <Path d={`M 18 0.6 Q 34 1.2 ${end - 2} 0.4`} stroke="#000" strokeOpacity={0.12} strokeWidth={0.6} fill="none" />
+                {smoke.roach ? (
+                    <G>
+                        <Rect x={59} y={-2.2} width={7} height={4.4} rx={1.4} fill="#f7f5ef" />
+                        <Path d="M 61 -2.2 L 62.5 2.2 M 63.5 -2.2 L 65 2.2" stroke="#cfc9bb" strokeWidth={0.6} />
+                    </G>
+                ) : (
+                    <Path d={`M ${end} -2.4 L ${end + 3} -0.6 L ${end + 3} 0.6 L ${end} 2.2 Z`} fill={smoke.paper} />
+                )}
+                <Rect x={10} y={-2.6} width={6.5} height={5.2} rx={1.8} fill="#9a9690" />
+                <Rect x={10} y={-2} width={2.5} height={4} rx={1.2} fill="#ff5a1f" />
+            </G>
+        );
+    }
+    return (
+        <G transform="translate(60 60) rotate(-30)">
+            <Rect x={13} y={-1} width={53} height={6} rx={2} fill="#000" opacity={0.35} />
+            <Rect x={16} y={-3} width={35} height={6} fill="#f4f1ea" />
+            <Rect x={51} y={-3} width={15} height={6} rx={1.5} fill="#cf8d50" />
+            <Rect x={51} y={-3} width={1} height={6} fill="#a86b35" />
+            <Rect x={10} y={-3} width={6} height={6} rx={1.5} fill="#9a9690" />
+            <Rect x={10} y={-2.4} width={2.5} height={4.8} rx={1.2} fill="#ff5a1f" />
+        </G>
+    );
+}
+
 /** The ashtray seen from above: dark glass rim with three notches, ash, butts and a lit cigarette. */
-function AshtrayArt({ size }: { size: number }) {
+function AshtrayArt({ size, look }: { size: number; look: ReturnType<typeof cigaretteLook> }) {
     const id = useId().replace(/:/g, '');
     return (
         <Svg width={size} height={size} viewBox={`0 0 ${BOX} ${BOX}`}>
@@ -80,18 +165,11 @@ function AshtrayArt({ size }: { size: number }) {
             <Circle cx={47} cy={57} r={2} fill="#85837c" />
             <Circle cx={71} cy={70} r={1.6} fill="#6e6c66" />
             {/* Stubbed-out butts. */}
-            <Butt x={40} y={52} angle={-20} paper={4} />
-            <Butt x={46} y={74} angle={-10} paper={3} />
-            <Butt x={84} y={72} angle={200} paper={5} />
-            {/* The lit cigarette: tip over the bowl, filter out over the rim (resting in the notch). */}
-            <G transform="translate(60 60) rotate(-30)">
-                <Rect x={13} y={-1} width={53} height={6} rx={2} fill="#000" opacity={0.35} />
-                <Rect x={16} y={-3} width={35} height={6} fill="#f4f1ea" />
-                <Rect x={51} y={-3} width={15} height={6} rx={1.5} fill="#cf8d50" />
-                <Rect x={51} y={-3} width={1} height={6} fill="#a86b35" />
-                <Rect x={10} y={-3} width={6} height={6} rx={1.5} fill="#9a9690" />
-                <Rect x={10} y={-2.4} width={2.5} height={4.8} rx={1.2} fill="#ff5a1f" />
-            </G>
+            <Butt x={40} y={52} angle={-20} paper={4} smoke={look.butts[0]} />
+            <Butt x={46} y={74} angle={-10} paper={3} smoke={look.butts[1]} />
+            <Butt x={84} y={72} angle={200} paper={5} smoke={look.butts[2]} />
+            {/* The lit cigarette: tip over the bowl, the other end out over the rim (resting in the notch). */}
+            <LitCigarette smoke={look.lit} />
         </Svg>
     );
 }
@@ -177,10 +255,12 @@ function puffStyle(progress: SharedValue<number>, path: { rise: number; drift: n
  * An ashtray on the table at night: a few butts and a cigarette burning in it, with a
  * glowing tip and smoke curling up from it (still, without smoke, when the system's "reduce
  * motion" is on). Only decoration: no touches, hidden from screen readers; shows by night only.
+ * `seed` (the room id) picks the cigarettes (factory or hand-rolled), the same on every device.
  */
-export function Ashtray({ size, style }: { size: number; style?: StyleProp<ViewStyle> }) {
+export function Ashtray({ size, style, seed = 0 }: { size: number; style?: StyleProp<ViewStyle>; seed?: number }) {
     const night = useTableTheme().mode === 'night';
     const still = useReducedMotion();
+    const look = useMemo(() => cigaretteLook(seed), [seed]);
     if (!night) return null;
     return (
         <Animated.View
@@ -192,7 +272,7 @@ export function Ashtray({ size, style }: { size: number; style?: StyleProp<ViewS
             testID="ashtray"
             style={[{ position: 'absolute', width: size, height: size }, style]}
         >
-            <AshtrayArt size={size} />
+            <AshtrayArt size={size} look={look} />
             <EmberGlow size={size} still={still} />
             {still ? null : (
                 <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: size, height: size }}>

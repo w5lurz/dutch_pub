@@ -66,7 +66,11 @@ export interface ClientToServerEvents {
      * With `cards`: several cards of the same value laid together (`card` is the first of them);
      * the first must fit the pile. Each listed card needs its own copy in the hand / face-up cards.
      */
-    'lay-card': (payload: { card: TCard | number; cards?: TCard[]; cardIndex: number; roomId: number; username?: string }) => void;
+    /**
+     * `call`: with an Ace ("Call Next"), the player who must lay a magic card next (any other
+     * player still in the game; missing or invalid: the next player).
+     */
+    'lay-card': (payload: { card: TCard | number; cards?: TCard[]; cardIndex: number; roomId: number; username?: string; call?: string }) => void;
     'draw-cards': (payload: { roomId: number; username?: string }) => void;
     /** Swap phase, before you are ready: your hand card `hand` and your face-up card `faceUp` trade places. */
     'swap-cards': (payload: { roomId: number; username?: string; hand: TCard; faceUp: TCard }) => void;

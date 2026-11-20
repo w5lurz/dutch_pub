@@ -7,6 +7,7 @@ import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setMessages } from '@/store/chatSlice';
 import { initialState as emptyGame, updateGame } from '@/store/gameSlice';
+import { playSound } from '@/lib/sounds';
 import { setLastGameEnd, setToast, setWinner } from '@/store/generalSlice';
 import { setRooms } from '@/store/roomsSlice';
 import { setInGame } from '@/store/userSlice';
@@ -122,8 +123,9 @@ export function GameSync() {
             );
             if (mine) haptic(Haptics.NotificationFeedbackType.Warning);
         };
-        const onLayCardRejected =(reason: string) => {
+        const onLayCardRejected = (reason: string) => {
             dispatch(setToast({ id: `lay-card-rejected-${Date.now()}`, type: 'sad', message: reason, duration: 3000 }));
+            playSound('invalid');
             haptic(Haptics.NotificationFeedbackType.Error);
         };
         const onMessageSent = (messages: ChatMessage[]) => dispatch(setMessages(messages));

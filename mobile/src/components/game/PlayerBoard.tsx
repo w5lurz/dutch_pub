@@ -1,6 +1,6 @@
 import { useState, type ReactNode, type Ref } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
-import { canLayCard, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
+import { canLayCard, type CardRules, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
 
 import type { Companion, ViewRef } from './CardDrag';
 import { useCardSize, type CardSize } from './cardSize';
@@ -57,6 +57,8 @@ type PlayerBoardProps = {
 	onSwap?: (hand: TCard, faceUp: TCard) => void;
 	/** Turn timer: seconds left of your turn (a countdown by your name); null: not timed. */
 	secondsLeft?: number | null;
+	/** The room's house rules that change which cards fit (for dimming). */
+	cardRules?: CardRules;
 };
 
 /**
@@ -87,6 +89,7 @@ export function PlayerBoard({
 	avatarRef,
 	onSwap,
 	secondsLeft,
+	cardRules,
 }: PlayerBoardProps) {
 	const { labelStyle } = useTableTheme();
 	const { hand, tableFlipped, table } = userCards;
@@ -96,7 +99,7 @@ export function PlayerBoard({
 	const handPlayable = hand.length > 0;
 	const faceUpPlayable = hand.length === 0;
 	const faceDownPlayable = hand.length === 0 && tableFlipped.length === 0;
-	const dim = (card: TCard) => active && !canLayCard(card, laidCards);
+	const dim = (card: TCard) => active && !canLayCard(card, laidCards, cardRules);
 	const hasTableCards = tableFlipped.length > 0 || table > 0;
 	const spots = tableSpots(tableFlipped, table, userCards.spots);
 

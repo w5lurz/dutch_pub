@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canLayCard, hasAnyPlayableCard } from './rules';
+import { canLayCard, hasAnyPlayableCard, isCallNext, isReverse } from './rules';
 import type { Cards, TCard, UserCards } from './types';
 
 // One suit of the deck from backend/src/game.js (suit doesn't affect the rules).
@@ -100,6 +100,26 @@ describe('canLayCard', () => {
         expect(canLayCard(byName('Start Over'), pile)).toBe(true);
         expect(canLayCard(byName('Call Next'), pile)).toBe(true);
         expect(canLayCard(byName('Mirror'), [byName('Mirror'), ...pile])).toBe(true);
+    });
+
+    it('house rule "9 on a magic card" off: a 9 never goes on a magic card', () => {
+        const off = { nineOnMagic: false };
+        expect(canLayCard(byName('You lose'), [byName('Start Over')])).toBe(true);
+        expect(canLayCard(byName('You lose'), [byName('Start Over')], off)).toBe(false);
+        expect(canLayCard(byName('You lose'), [byName('Mirror'), byName('5')], off)).toBe(false);
+        expect(canLayCard(byName('You lose'), [byName('5')], off)).toBe(true);
+        expect(canLayCard(byName('K'), [byName('Start Over')], off)).toBe(true);
+    });
+
+    it('a "Mirror" can never go on a 9', () => {
+        expect(canLayCard(byName('Mirror'), [byName('You lose')])).toBe(false);
+    });
+
+    it('tells the Ace and the 6 apart', () => {
+        expect(isCallNext(byName('Call Next'))).toBe(true);
+        expect(isCallNext(byName('K'))).toBe(false);
+        expect(isReverse(byName('6'))).toBe(true);
+        expect(isReverse(byName('7'))).toBe(false);
     });
 
     it('"Mirror" (0) compares against the card below it', () => {

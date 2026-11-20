@@ -5,8 +5,9 @@ import { router } from 'expo-router';
 import { AvatarSection } from '@/components/account/AvatarSection';
 import { GuestBadge } from '@/components/auth';
 import { DutchPubLogo } from '@/components/icons';
-import { Button, Screen } from '@/components/ui';
+import { Button, Screen, SettingRow } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
+import { setSoundsOn, useSoundsOn } from '@/lib/sounds';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setToast } from '@/store/generalSlice';
 
@@ -39,6 +40,7 @@ export default function AccountScreen() {
 	const dispatch = useAppDispatch();
 	const { logOut } = useSession();
 	const [loggingOut, setLoggingOut] = useState(false);
+	const soundsOn = useSoundsOn();
 
 	const handleLogout = async () => {
 		setLoggingOut(true);
@@ -82,6 +84,15 @@ export default function AccountScreen() {
 			) : (
 				<SignedOut />
 			)}
+			{/* Settings of this phone only (not of the account). */}
+			<View className="mt-4 w-full max-w-md rounded-lg border border-gray-200 bg-white px-4 py-2 shadow">
+				<SettingRow
+					label="Sounds"
+					description="Card, pick-up, burn and win sounds in a game (silent when the phone is)"
+					value={soundsOn}
+					onValueChange={setSoundsOn}
+				/>
+			</View>
 			{__DEV__ ? (
 				<View className="mt-6 flex-row flex-wrap justify-center gap-2">
 					<Button label="Table preview (dev)" variant="gray" size="sm" onPress={() => router.push('/dev/table')} />

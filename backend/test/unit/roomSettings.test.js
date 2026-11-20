@@ -1,7 +1,12 @@
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { DEFAULT_ROOM_SETTINGS } from '@dutch-pub/shared';
+
 import { modifyRooms, roomsList, validateRoomSettingsUpdate } from '../../src/rooms.js';
+
+/** The default settings with `changes` (so a new setting doesn't break these tests). */
+const settings = changes => ({ ...DEFAULT_ROOM_SETTINGS, ...changes });
 
 const ROOM_ID = 1;
 // Sockets as set up by socketAuth.js: `data.user` is the authenticated identity.
@@ -20,7 +25,7 @@ const setUpRoom = (extra = {}) =>
             ],
             slots: 2,
             visibility: 'public',
-            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
+            settings: settings({ showCardPowers: true, cardBack: 'red', turnTimer: 30 }),
             ...extra,
         },
     });
@@ -30,29 +35,29 @@ describe('validateRoomSettingsUpdate', () => {
 
     test('lets the owner change a setting', () => {
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { showCardPowers: false } }), {
-            settings: { showCardPowers: false, cardBack: 'red', turnTimer: 30 },
+            settings: settings({ showCardPowers: false, cardBack: 'red', turnTimer: 30 }),
             visibility: 'public',
         });
     });
 
     test('drops unknown keys and keeps current values for invalid ones', () => {
-        setUpRoom({ settings: { showCardPowers: false, cardBack: 'blue', turnTimer: 60 } });
+        setUpRoom({ settings: settings({ showCardPowers: false, cardBack: 'blue', turnTimer: 60 }) });
         assert.deepEqual(
             validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { showCardPowers: 'yes', cardBack: 'green', turnTimer: 45, mirror: true } }),
-            { settings: { showCardPowers: false, cardBack: 'blue', turnTimer: 60 }, visibility: 'public' },
+            { settings: settings({ showCardPowers: false, cardBack: 'blue', turnTimer: 60 }), visibility: 'public' },
         );
     });
 
     test('lets the owner change the card back colour', () => {
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { cardBack: 'blue' } }), {
-            settings: { showCardPowers: true, cardBack: 'blue', turnTimer: 30 },
+            settings: settings({ showCardPowers: true, cardBack: 'blue', turnTimer: 30 }),
             visibility: 'public',
         });
     });
 
     test('rejects an unknown card back colour', () => {
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { cardBack: 'green' } }), {
-            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
+            settings: settings({ showCardPowers: true, cardBack: 'red', turnTimer: 30 }),
             visibility: 'public',
         });
     });
@@ -60,20 +65,20 @@ describe('validateRoomSettingsUpdate', () => {
     test('fills defaults for a room without settings', () => {
         setUpRoom({ settings: undefined });
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: {} }), {
-            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
+            settings: settings({ showCardPowers: true, cardBack: 'red', turnTimer: 30 }),
             visibility: 'public',
         });
     });
 
     test('does not change the room itself', () => {
         validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { showCardPowers: false } });
-        assert.deepEqual(roomsList[ROOM_ID].settings, { showCardPowers: true, cardBack: 'red', turnTimer: 30 });
+        assert.deepEqual(roomsList[ROOM_ID].settings, settings({ showCardPowers: true, cardBack: 'red', turnTimer: 30 }));
     });
 
     test('lets the owner change the turn timer (off, 15, 30, 60 s)', () => {
         for (const turnTimer of [0, 15, 60]) {
             assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, settings: { turnTimer } }), {
-                settings: { showCardPowers: true, cardBack: 'red', turnTimer },
+                settings: settings({ showCardPowers: true, cardBack: 'red', turnTimer }),
                 visibility: 'public',
             });
         }
@@ -81,7 +86,7 @@ describe('validateRoomSettingsUpdate', () => {
 
     test('lets the owner switch the room between public and private', () => {
         assert.deepEqual(validateRoomSettingsUpdate(ownerSocket, { roomId: ROOM_ID, visibility: 'private' }), {
-            settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 },
+            settings: settings({ showCardPowers: true, cardBack: 'red', turnTimer: 30 }),
             visibility: 'private',
         });
         setUpRoom({ visibility: 'private' });

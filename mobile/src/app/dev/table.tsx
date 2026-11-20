@@ -96,6 +96,8 @@ export default function TablePreview() {
     const [panelOpen, setPanelOpen] = useState(params.panel !== '0');
     const [game, setGame] = useState(() => mockGame(opponents, HAND_SIZES[handIndex], piles, yourTurn, many));
     const [winner, setWinner] = useState<string | null>(null);
+    // The ashtray's cigarettes (by night): another seed, other cigarettes.
+    const [tableSeed, setTableSeed] = useState(1);
 
     if (!__DEV__) return <Redirect href="/" />;
 
@@ -224,6 +226,7 @@ export default function TablePreview() {
                 playerOrder={PLAYER_ORDER}
                 avatars={AVATARS}
                 onLayCard={layCard}
+                tableSeed={tableSeed}
                 messages={MESSAGES}
                 onSendMessage={() => true}
                 canSendMessage
@@ -254,6 +257,7 @@ export default function TablePreview() {
                         <Chip label="Swap phase" onPress={startSwap} />
                         <Chip label="Blind miss" onPress={blindMiss} />
                         <Chip label={game.turnTimeLeft != null ? 'Timer: on' : 'Timer: off'} onPress={toggleTimer} />
+                        <Chip label={`Cigarette ${tableSeed}`} onPress={() => setTableSeed(tableSeed + 1)} />
                         <Chip label="Librarian: you" onPress={() => bigPickUp('you')} />
                         <Chip label="Librarian: Julcsi" onPress={() => bigPickUp('Julcsi')} />
                         <Chip label="Win: you" onPress={() => setWinner('test')} />

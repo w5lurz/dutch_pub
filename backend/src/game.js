@@ -1,4 +1,4 @@
-import { canLayCard, normalizeRoomSettings } from '@dutch-pub/shared';
+import { canLayCard, isCallNext, isReverse, normalizeRoomSettings } from '@dutch-pub/shared';
 import { emptySocketRoom, games, modifyRooms, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
 import { identityError } from './socketAuth.js';
@@ -29,7 +29,8 @@ export const clearTurnClock = game => {
 export const timeOutTurn = game => {
     const entry = Object.entries(game.players).find(([, player]) => player.active);
     if (!entry) return undefined;
-    setActivePlayerNext(game.players, entry[0]);
+    game.call = null;
+    setActivePlayerNext(game);
     return entry[0];
 };
 
@@ -59,6 +60,22 @@ export const startTurnClock = (io, roomId, game) => {
             sendUiDataToSocket(io, roomsList[roomId] ?? room, game, 'game-updated');
         }, limit),
     );
+};
+
+/**
+ * Ends a missed blind card's moment (`game.blindMiss`): its player picks up the pile with it and
+ * the next player is on. Nothing when the game was stopped or finished meanwhile.
+ */
+export const finishBlindMiss = (io, roomId, game) => {
+    if (games[roomId] !== game || !game.blindMiss) return;
+    const { username } = game.blindMiss;
+    game.blindMiss = null;
+    game.players[username].userCards.hand = [...game.laidCards].sort((a, b) => a.value - b.value);
+    game.laidCards = null;
+    game.call = null;
+    setActivePlayerNext(game);
+    startTurnClock(io, roomId, game);
+    if (roomsList[roomId]) sendUiDataToSocket(io, roomsList[roomId], game, 'cards-drawn');
 };
 
 /**
@@ -177,7 +194,7 @@ export const validateLayCard = (socket, { card, cards, roomId, username }) => {
         if (serverCards.some(own => own.value !== serverCards[0].value)) {
             return { error: 'Only cards of the same value can be laid together.' };
         }
-        if (!canLayCard(serverCards[0], currentGame.laidCards)) {
+        if (!canLayCard(serverCards[0], currentGame.laidCards, currentGame.rules)) {
             return { error: 'You cannot lay that card.' };
         }
         return { card: serverCards[0], cards: serverCards };
@@ -186,7 +203,7 @@ export const validateLayCard = (socket, { card, cards, roomId, username }) => {
     if (!serverCard) {
         return { error: "You don't have that card." };
     }
-    if (!canLayCard(serverCard, currentGame.laidCards)) {
+    if (!canLayCard(serverCard, currentGame.laidCards, currentGame.rules)) {
         return { error: 'You cannot lay that card.' };
     }
     return { card: serverCard };
@@ -195,7 +212,7 @@ export const validateLayCard = (socket, { card, cards, roomId, username }) => {
 export const game = io => {
     io.on('connection', socket => {
         socket.on('lay-card', async payload => {
-            const { cardIndex, roomId, username } = payload;
+            const { cardIndex, roomId, username, call } = payload;
             const validation = validateLayCard(socket, payload);
             if (validation.error) {
                 console.log('LAY CARD REJECTED', validation.error, payload);
@@ -213,28 +230,19 @@ export const game = io => {
                 const spot = nthCardSpot(userCards.table, validation.card);
                 const blindCard = userCards.table[spot];
                 userCards.table = userCards.table.map((own, i) => (i === spot ? null : own));
-                if (!canLayCard(blindCard, currentGame.laidCards)) {
+                if (!canLayCard(blindCard, currentGame.laidCards, currentGame.rules)) {
                     // It doesn't fit: first everyone sees it on top of the pile for a moment (no
                     // moves meanwhile), then its player picks up the pile with it.
                     currentGame.laidCards = [blindCard, ...(currentGame.laidCards ?? [])];
                     currentGame.blindMiss = { username, card: blindCard };
                     clearTurnClock(currentGame);
                     sendUiDataToSocket(io, currentRoom, currentGame, 'game-updated');
-                    setTimeout(() => {
-                        // Stopped or restarted meanwhile: nothing to pick up.
-                        if (games[roomId] !== currentGame || !currentGame.blindMiss) return;
-                        currentGame.blindMiss = null;
-                        userCards.hand = [...currentGame.laidCards].sort((a, b) => a.value - b.value);
-                        currentGame.laidCards = null;
-                        setActivePlayerNext(currentGame.players, username);
-                        startTurnClock(io, roomId, currentGame);
-                        sendUiDataToSocket(io, roomsList[roomId] ?? currentRoom, currentGame, 'cards-drawn');
-                    }, BLIND_REVEAL_MS);
+                    setTimeout(() => finishBlindMiss(io, roomId, currentGame), BLIND_REVEAL_MS);
                     return;
                 }
                 applyLay(currentGame, username, [blindCard], cardIndex, { fromTable: true });
             } else {
-                applyLay(currentGame, username, validation.cards ?? [validation.card], cardIndex);
+                applyLay(currentGame, username, validation.cards ?? [validation.card], cardIndex, { call });
             }
 
             const won = userCards.hand.length === 0 && present(userCards.tableFlipped).length === 0 && present(userCards.table).length === 0;
@@ -312,8 +320,9 @@ export const game = io => {
             // Setting laidCards to null (given to hand)
             currentGame.laidCards = null;
 
-            // Setting active player to next
-            setActivePlayerNext(currentGame.players, username);
+            // The next player is on (after a called player: the one after them).
+            currentGame.call = null;
+            setActivePlayerNext(currentGame);
 
             // Send new game data to sockets
             startTurnClock(io, roomId, currentGame);
@@ -383,9 +392,11 @@ const topRun = pile => {
  * `fromTable`: a revealed face-down card, already removed), refills the hand to 3 from the
  * deck, then puts them on the pile one after the other (the last one on top). A 10, or four
  * of a kind on top of the pile, burns it and the same player goes again; otherwise the turn
- * passes on.
+ * passes on: with an Ace ("Call Next") to the player `call` names (any other player; missing or
+ * invalid: the next one), who must lay a magic card; with a 6 and the room's "6 reverses" rule,
+ * after the direction flips (once, however many 6s).
  */
-export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = false } = {}) => {
+export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = false, call } = {}) => {
     const userCards = game.players[username].userCards;
     if (!fromTable) {
         if (userCards.hand.length !== 0) userCards.hand = withoutCards(userCards.hand, cards);
@@ -401,11 +412,20 @@ export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = fal
     if (cards[0].value === 10 || topRun(pile) >= 4) {
         game.burntCards = [...pile, ...(game.burntCards ?? [])];
         game.laidCards = null;
-    } else {
-        game.laidCards = pile;
-        setActivePlayerNext(game.players, username);
+        game.call = null;
+        return;
     }
+    game.laidCards = pile;
+    if (game.rules?.sixReverses && isReverse(cards[0])) {
+        game.direction = game.direction === -1 ? 1 : -1;
+    }
+    const target = isCallNext(cards[0]) && call !== username && game.players[call] ? call : undefined;
+    setActivePlayerNext(game, target);
+    game.call = isCallNext(cards[0]) ? { by: username, target: activeName(game) } : null;
 };
+
+/** Who is on turn in `game`. */
+const activeName = game => Object.keys(game.players).find(name => game.players[name].active);
 
 /**
  * What `username` may see of `game`: their own cards (face-down table cards only as a
@@ -442,6 +462,8 @@ export const buildPlayerView = (room, game, username) => {
         phase: game.phase ?? 'play',
         ready: !!own.ready,
         blindMiss: game.blindMiss ?? null,
+        direction: game.direction === -1 ? -1 : 1,
+        call: game.call ?? null,
         turnTimeLeft: game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : null,
         turnTime: game.turnEndsAt ? game.turnTime : null,
     };
@@ -474,15 +496,18 @@ export const buildGameState = username => {
     return { roomId, game, rooms: roomsList, messages: roomMessages[`game-${roomId}`] ?? [] };
 };
 
-const setActivePlayerNext = (players, username) => {
-    const activePlayerIndex = Object.values(players).findIndex(playerSpecificGame => playerSpecificGame.active);
-    players[username].active = false;
-    if (activePlayerIndex + 1 >= Object.keys(players).length) {
-        Object.values(players)[0].active = true;
-    } else {
-        Object.values(players)[activePlayerIndex + 1].active = true;
-    }
-    console.log('SET NEXT2', players);
+/**
+ * Passes the turn on in `game`: to player `to` when given (an Ace's call), otherwise to the
+ * next player after whoever is on turn, in the game's direction (seat order, or reversed).
+ */
+export const setActivePlayerNext = (game, to) => {
+    const names = Object.keys(game.players);
+    const from = names.findIndex(name => game.players[name].active);
+    const step = game.direction === -1 ? -1 : 1;
+    const next = to && game.players[to] ? to : names[(from + step + names.length) % names.length];
+    names.forEach(name => {
+        game.players[name].active = name === next;
+    });
 };
 
 export let deck = [

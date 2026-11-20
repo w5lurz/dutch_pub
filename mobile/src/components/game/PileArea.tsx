@@ -35,6 +35,10 @@ type PileAreaProps = {
     blindMiss?: BlindMiss | null;
     /** Your username (the message then says "Your"). */
     username?: string;
+    /** The last Ace's call (who must lay a magic card now). */
+    call?: { by: string; target: string } | null;
+    /** The turn order is reversed (a 6, with the "6 reverses" house rule). */
+    reversed?: boolean;
 };
 
 /** The drop zone's border + padding, added around the other piles too so all three line up. */
@@ -185,7 +189,7 @@ function BurntHeap({ count, size }: { count: number; size: CardSize }) {
  * a heap of burnt backs.
  * The laid pile is where you drop a card to play it (`CardDropZone`).
  */
-export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false, blindMiss, username }: PileAreaProps) {
+export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false, blindMiss, username, call, reversed = false }: PileAreaProps) {
     const burnt = burntCards?.length ?? 0;
     const { deckRef, dropZoneRef } = useCardDrag();
     const still = useReducedMotion();
@@ -228,20 +232,36 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
         };
     }, [burnt, burntCards, still, dropZoneRef, cardWidth, cardHeight, column]);
 
+    const name = (player: string, you: string) => (player === username ? you : player);
+    // An Ace's call, while the called player is on turn.
+    const calling = !blindMiss && call && (turnOf === null ? call.target === username : turnOf === call.target);
     const turnText = blindMiss
         ? `${blindMiss.username === username ? 'Your' : `${blindMiss.username}'s`} blind ${blindMiss.card.name} doesn't fit! Picking up…`
-        : turnOf === null
+        : calling && call
+          ? `${name(call.by, 'You')} called ${name(call.target, 'you')}: a magic card or pick up!`
+          : turnOf === null
           ? 'Your turn'
           : turnOf
             ? `${turnOf}'s turn`
             : 'Waiting…';
-    const turnColours = blindMiss ? 'bg-red-200 text-red-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
+    const turnColours = blindMiss ? 'bg-red-200 text-red-900' : calling ? 'bg-amber-200 text-amber-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
 
     return (
         <View ref={areaRef} collapsable={false} className="items-center gap-1.5">
-            <Text accessibilityLiveRegion="polite" className={`rounded-full px-3 py-0.5 text-sm font-semibold ${turnColours}`}>
-                {turnText}
-            </Text>
+            <View className="flex-row flex-wrap items-center justify-center gap-1.5">
+                <Text accessibilityLiveRegion="polite" className={`rounded-full px-3 py-0.5 text-sm font-semibold ${turnColours}`}>
+                    {turnText}
+                </Text>
+                {reversed ? (
+                    <Text
+                        accessibilityLabel="Turn order reversed"
+                        testID="turn-reversed"
+                        className="rounded-full bg-purple-200 px-2 py-0.5 text-sm font-semibold text-purple-900"
+                    >
+                        ↺ Reversed
+                    </Text>
+                ) : null}
+            </View>
             <View className={column ? 'items-center gap-1' : `flex-row items-start justify-center ${tight ? 'gap-1' : 'gap-4'}`}>
                 <Pile title={`Deck (${deck})`} inset>
                     {/* Measured by your hand: drawn cards fly in from here. */}

@@ -12,6 +12,7 @@ import { rooms } from './rooms.js';
 import { game } from './game.js';
 import { chat } from './chat.js';
 import { socketAuth } from './socketAuth.js';
+import { startPersistence } from './persistence.js';
 
 console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 // dotenv.config({ path: '.env' });
@@ -26,7 +27,8 @@ const app = express();
 const port = process.env.PORT || 3030;
 const server = http.Server(app);
 
-db.sequelize.sync();
+// Creates missing tables (refresh_tokens, game_snapshots, ...); awaited below before listening.
+const synced = db.sequelize.sync();
 
 // The only client is the mobile app. Native apps send no Origin header, so CORS doesn't
 // apply to them; CORS_ORIGIN (comma-separated) is only needed to run the Expo app in a
@@ -52,9 +54,6 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message });
 });
 
-server.listen(port, () => {
-    console.log(`Backend started - Listening on port ${port}`);
-});
 
 console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 
@@ -73,3 +72,10 @@ socketAuth(io);
 rooms(io);
 game(io);
 chat(io);
+
+// Rooms and games from before a restart are back in memory before anyone can connect.
+await synced;
+await startPersistence(io);
+server.listen(port, () => {
+    console.log(`Backend started - Listening on port ${port}`);
+});

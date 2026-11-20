@@ -5,6 +5,7 @@ import User from './user.model.js';
 import PlayedGame from './played_game.model.js';
 import UserProfile from './user_profile.model.js';
 import RefreshToken from './refresh_token.model.js';
+import GameSnapshot from './game_snapshot.model.js';
 import { isDevEnv } from '../utils/utils.js';
 
 const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool, reconnect } = dbConfig;
@@ -36,5 +37,6 @@ db.user = User(sequelize, Sequelize);
 db.played_game = PlayedGame(sequelize, Sequelize);
 db.user_profile = UserProfile(sequelize, Sequelize);
 db.refresh_token = RefreshToken(sequelize, Sequelize);
+db.game_snapshot = GameSnapshot(sequelize, Sequelize);
 
 export default db;

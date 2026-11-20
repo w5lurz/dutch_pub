@@ -3,7 +3,7 @@ import { FlatList, Modal, Pressable, Text, View } from 'react-native';
 import type { ChatMessage } from '@dutch-pub/shared';
 
 import { CloseIcon } from '@/components/icons';
-import { Button, KeyboardSpacer, Screen, TextField } from '@/components/ui';
+import { Avatar, Button, KeyboardSpacer, Screen, TextField } from '@/components/ui';
 import { useTheme } from '@/lib/theme';
 
 type ChatModalProps = {
@@ -16,20 +16,28 @@ type ChatModalProps = {
 	onSend: (message: string) => boolean;
 	/** False during the 3 s cooldown after sending. */
 	canSend: boolean;
+	/** Chosen avatars by username (null / missing: generated from the name), shown by each message. */
+	avatars?: Readonly<Record<string, string | null | undefined>>;
 };
 
-function MessageRow({ message, own }: { message: ChatMessage; own: boolean }) {
+/** The sender's avatar beside the bubble: on the left for others, on the right for you. */
+const CHAT_AVATAR = 28;
+
+function MessageRow({ message, own, avatar }: { message: ChatMessage; own: boolean; avatar?: string | null }) {
 	return (
 		<View
 			accessible
 			accessibilityLabel={`${message.senderName} at ${message.time}: ${message.message}`}
-			className={`mb-2 max-w-[85%] rounded-lg px-3 py-2 ${own ? 'self-end bg-blue-100' : 'self-start bg-gray-100'}`}
+			className={`mb-2 max-w-[85%] flex-row items-end gap-2 ${own ? 'flex-row-reverse self-end' : 'self-start'}`}
 		>
-			<View className="flex-row items-center justify-between gap-3">
-				<Text className="font-semibold text-gray-900">{message.senderName}</Text>
-				<Text className="text-xs text-gray-500">{message.time}</Text>
+			<Avatar username={message.senderName} avatar={avatar} size={CHAT_AVATAR} />
+			<View className={`shrink rounded-lg px-3 py-2 ${own ? 'bg-blue-100' : 'bg-gray-100'}`}>
+				<View className="flex-row items-center justify-between gap-3">
+					<Text className="font-semibold text-gray-900">{message.senderName}</Text>
+					<Text className="text-xs text-gray-500">{message.time}</Text>
+				</View>
+				<Text className="text-gray-900">{message.message}</Text>
 			</View>
-			<Text className="text-gray-900">{message.message}</Text>
 		</View>
 	);
 }
@@ -43,7 +51,7 @@ const MODAL_ORIENTATIONS = ['portrait', 'landscape', 'landscape-left', 'landscap
  * no visible input label, the list shrinking above the input (KeyboardSpacer), and
  * no Android full-screen keyboard ("extract") mode, so the messages stay visible.
  */
-export function ChatModal({ visible, onClose, messages, username, onSend, canSend }: ChatModalProps) {
+export function ChatModal({ visible, onClose, messages, username, onSend, canSend, avatars }: ChatModalProps) {
 	const colors = useTheme();
 	const [text, setText] = useState('');
 	// Inverted list: newest first in the data, shown at the bottom and kept in view.
@@ -90,7 +98,9 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 							inverted
 							data={newestFirst}
 							keyExtractor={(message) => String(message.id)}
-							renderItem={({ item }) => <MessageRow message={item} own={item.senderName === username} />}
+							renderItem={({ item }) => (
+								<MessageRow message={item} own={item.senderName === username} avatar={avatars?.[item.senderName]} />
+							)}
 							className="flex-1"
 							contentContainerClassName="px-4 py-2"
 							keyboardShouldPersistTaps="handled"

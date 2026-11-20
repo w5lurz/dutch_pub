@@ -29,7 +29,16 @@ export type RoomSettings = {
     cardBack: CardBackColor;
     /** Seconds each player has for a turn before it is skipped; 0 = no timer. */
     turnTimer: TurnTimer;
+    /** House rule: a 9 ("You lose") may be laid on a magic card (true: the base game). */
+    nineOnMagic: boolean;
+    /** House rule: a 6 reverses the turn order. */
+    sixReverses: boolean;
+    /** Decks in the game: 0 = auto (2 with 4 players, else 1). */
+    decks: DeckCount;
 };
+
+/** The deck choices: 0 = auto. */
+export type DeckCount = 0 | 1 | 2;
 
 /** The turn timer choices, in seconds (0 = off). */
 export type TurnTimer = 0 | 15 | 30 | 60;
@@ -111,6 +120,10 @@ export type Game = {
      */
     turnTimeLeft?: number | null;
     turnTime?: number | null;
+    /** Turn order: 1 = as the seats go (clockwise), -1 = reversed (a 6, with "6 reverses" on). */
+    direction?: 1 | -1;
+    /** The last Ace's call: `by` laid it, `target` must lay a magic card (cleared by the next move). */
+    call?: { by: string; target: string } | null;
 };
 
 export type TLeaderBoard = Array<{

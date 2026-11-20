@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Cards, ChatMessage, Game, TCard } from '@dutch-pub/shared';
+import type { CardRules, Cards, ChatMessage, Game, TCard } from '@dutch-pub/shared';
 
 import { Screen } from '@/components/ui';
 
+import { needsAceCall } from './aceCall';
+import { AceCallSheet } from './AceCallSheet';
 import { Ashtray } from './Ashtray';
 import { useBigPickUp } from './bigPickUp';
 import { CardDragProvider, measure, type Rect, type ViewRef } from './CardDrag';
@@ -28,6 +30,7 @@ import { TableLamp } from './TableLamp';
 import { TableLighting } from './TableLighting';
 import { useTableTheme } from './tableTheme';
 import { useTurnSecondsLeft } from './TurnCountdown';
+import { useGameSounds } from './gameSounds';
 
 export type GameTableProps = {
 	game: Game;
@@ -44,8 +47,15 @@ export type GameTableProps = {
 	 * missing from it (or with null) get the avatar generated from their name.
 	 */
 	avatars?: Readonly<Record<string, string | null | undefined>>;
-	/** Plays a card (or several of the same value at once); returns whether the move was legal (see `useGameActions.layCard`). */
-	onLayCard: (card: TCard | number | Cards, cardIndex: number, touchable: boolean) => boolean;
+	/**
+	 * Plays a card (or several of the same value at once); returns whether the move was legal (see
+	 * `useGameActions.layCard`). `call`: with an Ace, the player who must lay a magic card next.
+	 */
+	onLayCard: (card: TCard | number | Cards, cardIndex: number, touchable: boolean, call?: string) => boolean;
+	/** The room's house rules that change which cards fit (dimmed cards, the Ace check). */
+	cardRules?: CardRules;
+	/** Picks the table's random details the same on every device (the room id): e.g. the cigarettes. */
+	tableSeed?: number;
 	messages: ChatMessage[];
 	onSendMessage: (message: string) => boolean;
 	canSendMessage: boolean;
@@ -115,6 +125,8 @@ export function GameTable({
 	winner,
 	onSwapCards,
 	onReady,
+	cardRules,
+	tableSeed = 0,
 }: GameTableProps) {
 	const { paletteClass } = useTableTheme();
 	const window = useWindowDimensions();
@@ -163,6 +175,8 @@ export function GameTable({
 	const swapPhase = game.phase === 'swap';
 	// Turn timer: one countdown for whoever is on turn (shown by their name).
 	const secondsLeft = useTurnSecondsLeft(game);
+	// The table's sounds (a card laid, a burn, a pick-up, the win).
+	useGameSounds(game, winner);
 	const opponentList = Object.values(game.opponents);
 	const readyCount = opponentList.filter((opponent) => opponent.ready).length + (game.ready ? 1 : 0);
 
@@ -171,6 +185,18 @@ export function GameTable({
 	const known = (playerOrder ?? []).filter((name) => name === username || name in game.opponents);
 	const order = [...known, ...opponentNames.filter((name) => !known.includes(name))];
 	const seats = seatPositions(order, username, layout);
+
+	// An Ace dropped on the pile (with 2+ others to choose from): first pick who must lay a magic
+	// card; the Ace stays in your hand until then. With one other player it is always them.
+	const others = order.filter((name) => name !== username);
+	const [aceCall, setAceCall] = useState<{ card: TCard | Cards; cardIndex: number } | null>(null);
+	if (aceCall && (!active || swapPhase)) setAceCall(null); // the turn is over (e.g. the timer ran out)
+	const layCard = (card: TCard | number | Cards, cardIndex: number, touchable: boolean) => {
+		const situation = { touchable, active, swapPhase, others: others.length, laidCards: game.laidCards, rules: cardRules };
+		if (!needsAceCall(card, situation)) return onLayCard(card, cardIndex, touchable);
+		setAceCall({ card: card as TCard | Cards, cardIndex });
+		return false;
+	};
 	const seatAt = (position: SeatPosition) =>
 		seats
 			.filter((seat) => seat.position === position)
@@ -224,6 +250,8 @@ export function GameTable({
 			column={pilesColumn}
 			blindMiss={game.blindMiss}
 			username={username}
+			call={game.call}
+			reversed={game.direction === -1}
 		/>
 	);
 
@@ -235,6 +263,7 @@ export function GameTable({
 			{/* Night only: an ashtray with a burning cigarette near the table's bottom-left corner, a bit
                 in from the edge (portrait: on the left between the left seat's cards and yours). */}
 			<Ashtray
+				seed={tableSeed}
 				size={Math.round(cardHeight * (layout === 'portrait' ? 0.75 : 0.85))}
 				style={layout === 'portrait' ? { left: '7%', top: '62%' } : { left: '10%', bottom: '13%' }}
 			/>
@@ -271,7 +300,8 @@ export function GameTable({
 							active={active && !swapPhase}
 							username={username}
 							avatar={username ? avatars?.[username] : undefined}
-							onLayCard={onLayCard}
+							onLayCard={layCard}
+							cardRules={cardRules}
 							handSize={layout === 'wide' ? 'lg' : 'md'}
 							overlapStacks={window.height < SHORT_HEIGHT}
 							corner={
@@ -301,6 +331,16 @@ export function GameTable({
 					</CardDragProvider>
 				</CardSettingsProvider>
 
+				<AceCallSheet
+					visible={!!aceCall}
+					players={others}
+					avatars={avatars}
+					onCancel={() => setAceCall(null)}
+					onCall={(player) => {
+						if (aceCall) onLayCard(aceCall.card, aceCall.cardIndex, true, player);
+						setAceCall(null);
+					}}
+				/>
 				<ChatModal
 					visible={chatOpen}
 					onClose={() => toggleChat(false)}
@@ -308,6 +348,7 @@ export function GameTable({
 					username={username}
 					onSend={onSendMessage}
 					canSend={canSendMessage}
+					avatars={avatars}
 				/>
 			</Screen>
 			{/* The winner's shot, sliding over the table (lit by the lamp at night, like the cards). */}

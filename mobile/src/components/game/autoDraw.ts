@@ -1,4 +1,4 @@
-import { hasAnyPlayableCard, type Game } from '@dutch-pub/shared';
+import { hasAnyPlayableCard, type CardRules, type Game } from '@dutch-pub/shared';
 
 /**
  * When it is the player's turn and none of their cards can be laid, they must pick up the
@@ -10,10 +10,10 @@ import { hasAnyPlayableCard, type Game } from '@dutch-pub/shared';
  * Nothing is played in the swap phase, nor while a missed blind card is shown (the server
  * picks up the pile itself then).
  */
-export function pileDrawSignature(roomId: number | undefined, game: Game): string | null {
+export function pileDrawSignature(roomId: number | undefined, game: Game, rules: CardRules = {}): string | null {
     const { userCards, laidCards, active } = game;
     if (roomId === undefined || !active || game.phase === 'swap' || game.blindMiss) return null;
     if (userCards.hand.length === 0 && userCards.tableFlipped.length === 0 && userCards.table === 0) return null;
-    if (hasAnyPlayableCard(userCards, laidCards)) return null;
+    if (hasAnyPlayableCard(userCards, laidCards, rules)) return null;
     return JSON.stringify([roomId, userCards.hand, userCards.tableFlipped, userCards.table, laidCards]);
 }

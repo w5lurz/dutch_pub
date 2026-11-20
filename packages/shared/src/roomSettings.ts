@@ -1,16 +1,21 @@
 // Per-room options chosen by the room owner. Rooms live in server memory, so adding a
 // setting means: add it to `RoomSettings`, `DEFAULT_ROOM_SETTINGS` and `SETTING_VALIDATORS`.
 
-import type { CardBackColor, RoomSettings, TurnTimer } from './types';
+import type { CardBackColor, DeckCount, RoomSettings, TurnTimer } from './types';
 
 export const CARD_BACK_COLORS: readonly CardBackColor[] = ['red', 'blue'];
 /** Turn timer choices in seconds (0 = off). */
 export const TURN_TIMERS: readonly TurnTimer[] = [0, 15, 30, 60];
+/** Deck choices (0 = auto). */
+export const DECK_COUNTS: readonly DeckCount[] = [0, 1, 2];
 
 export const DEFAULT_ROOM_SETTINGS: Readonly<RoomSettings> = Object.freeze({
     showCardPowers: true,
     cardBack: 'red',
     turnTimer: 30,
+    nineOnMagic: true,
+    sixReverses: false,
+    decks: 0,
 });
 
 /** Whether a value is valid for each known setting. */
@@ -18,6 +23,9 @@ const SETTING_VALIDATORS: { [K in keyof RoomSettings]: (value: unknown) => value
     showCardPowers: (value): value is boolean => typeof value === 'boolean',
     cardBack: (value): value is CardBackColor => CARD_BACK_COLORS.includes(value as CardBackColor),
     turnTimer: (value): value is TurnTimer => TURN_TIMERS.includes(value as TurnTimer),
+    nineOnMagic: (value): value is boolean => typeof value === 'boolean',
+    sixReverses: (value): value is boolean => typeof value === 'boolean',
+    decks: (value): value is DeckCount => DECK_COUNTS.includes(value as DeckCount),
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> =>

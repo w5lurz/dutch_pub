@@ -37,6 +37,7 @@ export default function GameScreen() {
         return ownAvatar !== undefined && username ? { ...byName, [username]: ownAvatar } : byName;
     }, [roomPlayers, ownAvatar, username]);
     const roomSettings = useRoomSettings();
+    const cardRules = useMemo(() => ({ nineOnMagic: roomSettings.nineOnMagic }), [roomSettings.nineOnMagic]);
     const running = inGame !== undefined;
 
     useAnyOrientationWhileFocused();
@@ -83,6 +84,8 @@ export default function GameScreen() {
                 winner={winner}
                 onSwapCards={swapCards}
                 onReady={setReady}
+                cardRules={cardRules}
+                tableSeed={inGame}
             />
             {__DEV__ ? (
                 // Dev builds only: the card preview, also during a game (back returns here).

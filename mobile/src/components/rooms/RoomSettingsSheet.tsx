@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import type { RoomSettings } from '@dutch-pub/shared';
 
 import { BottomSheet, Button, ChoiceRow } from '@/components/ui';
@@ -79,17 +79,20 @@ export function RoomSettingsSheet({
             <Text className="text-sm text-gray-700">
                 {canEdit ? `Players in ${roomName} see these settings before the game starts.` : `Only the owner of ${roomName} can change these.`}
             </Text>
-            {shownVisibility && onVisibilityChange ? (
-                <ChoiceRow
-                    label="Visibility"
-                    description="Guests can't join private rooms"
-                    options={VISIBILITY_OPTIONS}
-                    value={shownVisibility}
-                    onChange={changeVisibility}
-                    disabled={!canEdit || disabled}
-                />
-            ) : null}
-            <RoomSettingsFields value={shown} onChange={change} disabled={!canEdit || disabled} />
+            {/* Scrolls on small phones (the settings plus the house rules are taller than the sheet). */}
+            <ScrollView className="shrink">
+                {shownVisibility && onVisibilityChange ? (
+                    <ChoiceRow
+                        label="Visibility"
+                        description="Guests can't join private rooms"
+                        options={VISIBILITY_OPTIONS}
+                        value={shownVisibility}
+                        onChange={changeVisibility}
+                        disabled={!canEdit || disabled}
+                    />
+                ) : null}
+                <RoomSettingsFields value={shown} onChange={change} disabled={!canEdit || disabled} />
+            </ScrollView>
             <Button label="Done" variant="gray" onPress={close} />
         </BottomSheet>
     );

@@ -220,6 +220,9 @@ const rebindPlayer = socket => {
     });
 };
 
+/** Decks for a game: the room's choice, or auto (2 with 4 players, else 1). */
+export const deckCount = (settings, playerCount) => settings.decks || (playerCount > 3 ? 2 : 1);
+
 /** How long a running game waits for its disconnected owner before it is stopped (env for tests). */
 const OWNER_GONE_MS = Number(process.env.OWNER_GONE_MS ?? 120000);
 
@@ -271,6 +274,14 @@ const ownerGone = (io, username) => {
             }, OWNER_GONE_MS),
         );
     });
+};
+
+/**
+ * After a restart (games restored from the database) nobody is connected yet: every running
+ * game waits for its owner, as after a disconnect.
+ */
+export const watchOwnersAfterRestart = io => {
+    new Set(Object.values(roomsList).filter(room => room.inGame).map(room => room.owner)).forEach(owner => ownerGone(io, owner));
 };
 
 /** The owner is connected again: their games keep running. */
@@ -380,12 +391,17 @@ export const rooms = io => {
             };
 
             // Create new deck and shuffle it, init new game
+            // The room's rules are fixed once the game starts (settings can't change after the start).
+            const settings = normalizeRoomSettings(newRoom.settings);
             let deck = shuffleDeck(initialDeck);
-            if (newRoom.players.length > 3) {
+            if (deckCount(settings, newRoom.players.length) === 2) {
                 deck = [...deck, ...shuffleDeck(initialDeck)];
             }
             const newGame = {
                 players: {},
+                rules: { nineOnMagic: settings.nineOnMagic, sixReverses: settings.sixReverses },
+                direction: 1,
+                call: null,
             };
             // Populate Backend-side data of a game
             const rand = newRoom.players[Math.floor(Math.random() * newRoom.players.length)];

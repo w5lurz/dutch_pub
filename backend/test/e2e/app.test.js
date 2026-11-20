@@ -3,7 +3,7 @@
 // the end, one `played_games` row, and deletes them again afterwards.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canLayCard } from '@dutch-pub/shared';
+import { canLayCard, DEFAULT_ROOM_SETTINGS } from '@dutch-pub/shared';
 import { io } from 'socket.io-client';
 
 import db from '../../src/models/index.js';
@@ -50,6 +50,7 @@ after(async () => {
     if (created) await db.refresh_token.destroy({ where: { user_id: created.id } });
     await db.user.destroy({ where: { username: user.username } });
     await db.played_game.destroy({ where: { winner: [user.username, guestName] } });
+    await db.game_snapshot.destroy({ where: { scope: { [db.Sequelize.Op.like]: 'e2e-%' } } });
     await db.sequelize.close();
 });
 
@@ -324,7 +325,7 @@ describe('socket game flow', () => {
         const [rooms] = await broadcast;
         roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `room_${stamp}`));
         assert.ok(roomId, 'room not found in broadcast');
-        assert.deepEqual(rooms[roomId].settings, { showCardPowers: false, cardBack: 'red', turnTimer: 30 }, 'settings are validated');
+        assert.deepEqual(rooms[roomId].settings, { ...DEFAULT_ROOM_SETTINGS, showCardPowers: false, cardBack: 'red' }, 'settings are validated');
         assert.equal(rooms[roomId].players[0].avatar, 'fox', "the owner's chosen avatar");
     });
 
@@ -365,14 +366,14 @@ describe('socket game flow', () => {
         const broadcast = waitFor(b, 'rooms-listed');
         a.emit('update-room-settings', { roomId, settings: { showCardPowers: true, cardBack: 'blue', unknownSetting: 1 } });
         const [rooms] = await broadcast;
-        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue', turnTimer: 30 });
+        assert.deepEqual(rooms[roomId].settings, { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'blue' });
     });
 
     test('an unknown card back colour keeps the current one', async () => {
         const broadcast = waitFor(b, 'rooms-listed');
         a.emit('update-room-settings', { roomId, settings: { cardBack: 'green' } });
         const [rooms] = await broadcast;
-        assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue', turnTimer: 30 });
+        assert.deepEqual(rooms[roomId].settings, { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'blue' });
     });
 
     test('the owner switches the room to private and back; everyone sees it', async () => {
@@ -385,7 +386,7 @@ describe('socket game flow', () => {
             a.emit('update-room-settings', { roomId, visibility });
             const [rooms] = await broadcast;
             assert.equal(rooms[roomId].visibility, visibility);
-            assert.deepEqual(rooms[roomId].settings, { showCardPowers: true, cardBack: 'blue', turnTimer: 30 }, 'settings unchanged');
+            assert.deepEqual(rooms[roomId].settings, { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'blue' }, 'settings unchanged');
         }
     });
 
@@ -766,6 +767,76 @@ describe('turn timer, private rooms and an owner who is gone', () => {
         assert.equal(owner, user.username);
         assert.equal(reason, 'owner-left');
         assert.equal(rooms[roomId], undefined, 'the room is gone');
+    });
+});
+
+describe('a server restart keeps the games', () => {
+    const scope = `e2e-restart-${stamp}`;
+    let first;
+    let second;
+    let a;
+    let b;
+    let roomId;
+    const connectTo = async (target, token) => {
+        const socket = io(target.baseUrl, { transports: ['websocket'], reconnection: false, auth: { token } });
+        await new Promise((resolve, reject) => {
+            socket.once('connect', resolve);
+            socket.once('connect_error', reject);
+        });
+        return socket;
+    };
+
+    after(async () => {
+        a?.close();
+        b?.close();
+        await first?.stop();
+        await second?.stop();
+    });
+
+    test('a game running when the server stops is back after the restart, with the same cards and turn', async () => {
+        first = await startServer({ SNAPSHOT_SCOPE: scope });
+        a = await connectTo(first, userToken);
+        b = await connectTo(first, guestToken);
+        const created = waitFor(a, 'rooms-listed');
+        a.emit('create-room', { name: `restart_${stamp}`, owner: user.username, slots: 2, visibility: 'public' });
+        const [rooms] = await created;
+        roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `restart_${stamp}`));
+        const joined = waitFor(a, 'joined-room');
+        b.emit('join-room', { username: guestName, roomId });
+        await joined;
+        const started = Promise.all([waitFor(a, 'game-started'), waitFor(b, 'game-started')]);
+        a.emit('start-game', roomId);
+        const [[before]] = await started;
+        const sent = waitFor(a, 'message-sent');
+        b.emit('send-message', { roomId, username: guestName, message: 'before the restart' });
+        await sent;
+        await new Promise(resolve => setTimeout(resolve, 400)); // a snapshot is written every 100 ms
+
+        a.close();
+        b.close();
+        await first.stop();
+        first = undefined;
+
+        second = await startServer({ SNAPSHOT_SCOPE: scope });
+        a = await connectTo(second, userToken);
+        a.emit('get-game-state');
+        const [state] = await waitFor(a, 'game-state');
+        assert.equal(state.roomId, roomId);
+        assert.ok(state.rooms[roomId].inGame);
+        assert.deepEqual(state.game.userCards.hand, before.userCards.hand);
+        assert.deepEqual(state.game.userCards.tableFlipped, before.userCards.tableFlipped);
+        assert.equal(state.game.active, before.active);
+        assert.equal(state.game.phase, 'swap');
+        assert.ok(state.messages.some(message => message.message === 'before the restart'), 'the chat is back too');
+    });
+
+    test('after the restart the game goes on, and ends (its snapshot goes with it)', async () => {
+        b = await connectTo(second, guestToken);
+        const stopped = waitFor(b, 'game-stopped');
+        a.emit('stop-game', roomId);
+        await stopped;
+        await new Promise(resolve => setTimeout(resolve, 400));
+        assert.equal(await db.game_snapshot.count({ where: { scope, room_id: roomId } }), 0);
     });
 });
 

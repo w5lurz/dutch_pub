@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { canLayCard, type Cards, type TCard } from '@dutch-pub/shared';
 
 import { pileDrawSignature } from '@/components/game/autoDraw';
+import { useRoomSettings } from '@/hooks/useRoomSettings';
+import { playSound } from '@/lib/sounds';
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setToast } from '@/store/generalSlice';
@@ -33,9 +35,12 @@ export function useGameActions() {
     const game = useAppSelector(state => state.game);
     const active = !!game.active;
     const laidCards = game.laidCards;
+    // The room's house rules that change which cards fit.
+    const { nineOnMagic } = useRoomSettings();
+    const cardRules = useMemo(() => ({ nineOnMagic }), [nineOnMagic]);
 
     const layCard = useCallback(
-        (card: TCard | number | Cards, cardIndex: number, touchable = true): boolean => {
+        (card: TCard | number | Cards, cardIndex: number, touchable = true, call?: string): boolean => {
             if (roomId === undefined) return false;
             if (game.phase === 'swap') {
                 dispatch(
@@ -67,16 +72,24 @@ export function useGameActions() {
                 dispatch(setToast({ id: `place-card-failed-${Date.now()}`, type: 'warning', message: 'You cannot place that card!', duration: 3000 }));
                 return false;
             }
-            if (first === undefined || !canLayCard(first, laidCards)) {
+            if (first === undefined || !canLayCard(first, laidCards, cardRules)) {
                 dispatch(setToast({ id: `lay-card-failed-${Date.now()}`, type: 'sad', message: 'You cannot lay that card.', duration: 3000 }));
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+                playSound('invalid');
                 return false;
             }
-            socket.emit('lay-card', { card: first, ...(several && several.length > 1 ? { cards: several } : {}), cardIndex, roomId, username });
+            socket.emit('lay-card', {
+                card: first,
+                ...(several && several.length > 1 ? { cards: several } : {}),
+                ...(call ? { call } : {}),
+                cardIndex,
+                roomId,
+                username,
+            });
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             return true;
         },
-        [active, laidCards, roomId, username, socket, dispatch, game.phase, game.blindMiss],
+        [active, laidCards, roomId, username, socket, dispatch, game.phase, game.blindMiss, cardRules],
     );
 
     // Swap phase: trade a hand card with a face-up card, and say when you are done.
@@ -96,7 +109,7 @@ export function useGameActions() {
     // a disconnect is re-sent after reconnecting, if the re-synced state still needs it).
     const drawnFor = useRef<string | null>(null);
     useEffect(() => {
-        const signature = connected ? pileDrawSignature(roomId, game) : null;
+        const signature = connected ? pileDrawSignature(roomId, game, cardRules) : null;
         if (signature === null) {
             drawnFor.current = null;
             return;
@@ -113,7 +126,7 @@ export function useGameActions() {
             }),
         );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    }, [connected, roomId, game, username, socket, dispatch]);
+    }, [connected, roomId, game, username, socket, dispatch, cardRules]);
 
     // Chat cooldown.
     const [canSend, setCanSend] = useState(true);

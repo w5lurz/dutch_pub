@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, renderHook, screen } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
-import { generatedAvatarId, type TRoom, type TRooms } from '@dutch-pub/shared';
+import { DEFAULT_ROOM_SETTINGS, generatedAvatarId, type TRoom, type TRooms } from '@dutch-pub/shared';
 
 import { ChoiceRow, SettingRow } from '@/components/ui';
 import { CreateRoomModal } from '../CreateRoomModal';
@@ -67,7 +67,7 @@ describe('ChoiceRow', () => {
 });
 
 describe('RoomSettingsSheet', () => {
-    const props = { visible: true, onClose: jest.fn(), roomName: 'Pub', settings: { showCardPowers: true, cardBack: 'red' as const, turnTimer: 30 as const } };
+    const props = { visible: true, onClose: jest.fn(), roomName: 'Pub', settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'red' as const, turnTimer: 30 as const } };
 
     it('lets the owner change a setting and shows it right away', async () => {
         const onChange = jest.fn();
@@ -92,7 +92,7 @@ describe('RoomSettingsSheet', () => {
 
     it('follows the settings broadcast by the server', async () => {
         const view = await render(<RoomSettingsSheet {...props} canEdit onChange={jest.fn()} />);
-        await view.rerender(<RoomSettingsSheet {...props} settings={{ showCardPowers: false, cardBack: 'blue', turnTimer: 30 }} canEdit onChange={jest.fn()} />);
+        await view.rerender(<RoomSettingsSheet {...props} settings={{ ...DEFAULT_ROOM_SETTINGS, showCardPowers: false, cardBack: 'blue' as const, turnTimer: 30 as const }} canEdit onChange={jest.fn()} />);
         expect(powersSwitch()).not.toBeChecked();
         expect(backOption('Blue')).toBeSelected();
     });
@@ -151,7 +151,7 @@ describe('CreateRoomModal', () => {
         expect(powersSwitch()).toBeChecked();
         await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
         await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
-        expect(onCreate).toHaveBeenCalledWith({ name: 'Pub', slots: 2, visibility: 'private', settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 } });
+        expect(onCreate).toHaveBeenCalledWith({ name: 'Pub', slots: 2, visibility: 'private', settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'red' as const, turnTimer: 30 as const } });
     });
 
     it('sends the chosen settings', async () => {
@@ -160,7 +160,7 @@ describe('CreateRoomModal', () => {
         await fireEvent.press(powersSwitch());
         await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
         await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
-        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { showCardPowers: false, cardBack: 'red', turnTimer: 30 } }));
+        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: false, cardBack: 'red' as const, turnTimer: 30 as const } }));
     });
 
     it('sends the chosen card back colour', async () => {
@@ -170,7 +170,7 @@ describe('CreateRoomModal', () => {
         await fireEvent.press(backOption('Blue'));
         await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
         await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
-        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { showCardPowers: true, cardBack: 'blue', turnTimer: 30 } }));
+        expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'blue' as const, turnTimer: 30 as const } }));
     });
 });
 
@@ -180,7 +180,7 @@ const room = (extra: Partial<TRoom> = {}): TRoom => ({
     players: [{ username: 'me', socketId: 's1' }],
     slots: 2,
     visibility: 'public',
-    settings: { showCardPowers: false, cardBack: 'blue', turnTimer: 0 },
+    settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: false, cardBack: 'blue' as const, turnTimer: 0 as const },
     ...extra,
 });
 
@@ -257,16 +257,16 @@ describe('useRoomSettings', () => {
 
     it('returns the defaults for an unknown room', async () => {
         const { result } = await setup({}, 3);
-        expect(result.current).toEqual({ showCardPowers: true, cardBack: 'red', turnTimer: 30 });
+        expect(result.current).toEqual({ ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'red' as const, turnTimer: 30 as const });
     });
 
     it('returns the settings of a room by id', async () => {
         const { result } = await setup({ 3: room() }, 3);
-        expect(result.current).toEqual({ showCardPowers: false, cardBack: 'blue', turnTimer: 0 });
+        expect(result.current).toEqual({ ...DEFAULT_ROOM_SETTINGS, showCardPowers: false, cardBack: 'blue' as const, turnTimer: 0 as const });
     });
 
     it('returns the settings of the current room without an id', async () => {
-        const { result } = await setup({ 1: room({ owner: 'x', players: [], settings: { showCardPowers: true, cardBack: 'red', turnTimer: 30 } }), 2: room() });
-        expect(result.current).toEqual({ showCardPowers: false, cardBack: 'blue', turnTimer: 0 });
+        const { result } = await setup({ 1: room({ owner: 'x', players: [], settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'red' as const, turnTimer: 30 as const } }), 2: room() });
+        expect(result.current).toEqual({ ...DEFAULT_ROOM_SETTINGS, showCardPowers: false, cardBack: 'blue' as const, turnTimer: 0 as const });
     });
 });
