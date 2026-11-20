@@ -47,8 +47,19 @@ const DECK_OPTIONS: ChoiceField<'decks'>['options'] = [
 
 /** Every room setting with its copy. A new setting is one line here (a switch, or a choice of a few options). */
 export const ROOM_SETTING_FIELDS: readonly RoomSettingField[] = [
-    { kind: 'switch', key: 'showCardPowers', label: 'Show card powers', description: 'Special cards show what they do (e.g. CLEAR ALL)' },
-    { kind: 'choice', key: 'cardBack', label: 'Card backs', description: 'Colour of the backs of the cards', options: CARD_BACK_OPTIONS },
+    {
+        kind: 'switch',
+        key: 'showCardPowers',
+        label: 'Show card powers',
+        description: 'Special cards show what they do (e.g. CLEAR ALL)',
+    },
+    {
+        kind: 'choice',
+        key: 'cardBack',
+        label: 'Card backs',
+        description: 'Colour of the backs of the cards',
+        options: CARD_BACK_OPTIONS,
+    },
     {
         kind: 'choice',
         key: 'turnTimer',
@@ -56,9 +67,20 @@ export const ROOM_SETTING_FIELDS: readonly RoomSettingField[] = [
         description: 'Time to lay a card; when it runs out the turn is skipped',
         options: TURN_TIMER_OPTIONS,
     },
-    { kind: 'switch', key: 'nineOnMagic', label: '9 on a magic card', description: 'A 9 ("You lose") may be laid on a magic card' },
+    {
+        kind: 'switch',
+        key: 'nineOnMagic',
+        label: '9 on a magic card',
+        description: 'A 9 ("You lose") may be laid on a magic card',
+    },
     { kind: 'switch', key: 'sixReverses', label: '6 reverses', description: 'A 6 reverses the turn order' },
-    { kind: 'choice', key: 'decks', label: 'Decks', description: 'Auto: 2 decks with 4 players, else 1', options: DECK_OPTIONS },
+    {
+        kind: 'choice',
+        key: 'decks',
+        label: 'Decks',
+        description: 'Auto: 2 decks with 4 players, else 1',
+        options: DECK_OPTIONS,
+    },
 ];
 
 export type RoomSettingsFieldsProps = {
