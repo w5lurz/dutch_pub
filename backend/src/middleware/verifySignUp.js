@@ -1,7 +1,11 @@
+import { isReservedUsername } from '../account.js';
 import db from '../models/index.js';
 const User = db.user;
 
 export const checkDuplicateUsernameOrEmail = async (req, res, next) => {
+    if (isReservedUsername(req.body.username)) {
+        return res.status(400).send({ message: 'Registration Failed! Username is already in use!' });
+    }
     try {
         // Check username
         let user = await User.findOne({

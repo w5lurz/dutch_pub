@@ -3,6 +3,7 @@
 // the end, one `played_games` row, and deletes them again afterwards.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { canLayCard, DEFAULT_ROOM_SETTINGS } from '@dutch-pub/shared';
 import { io } from 'socket.io-client';
 
@@ -869,3 +870,215 @@ function botMove(view) {
     return { event: 'lay-card', payload: { card: 0, cardIndex: 0 } };
 }
 
+
+describe('push notifications', () => {
+    // Its own server: notifications go to a fake push service, turns time out fast (300 ms) so
+    // they pass back and forth without anyone playing, and a turn's notification waits 50 ms.
+    let pushServer;
+    let fakePush;
+    let received = []; // the messages the fake push service got
+    const goneTokens = new Set(); // the fake push service answers DeviceNotRegistered for these
+    let a; // the registered user
+    let b; // the guest
+    const tokenA = `ExponentPushToken[e2e-a-${stamp}]`;
+    const tokenB = `ExponentPushToken[e2e-b-${stamp}]`;
+    const roomName = `push_${stamp}`;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const pushRequest = (path, options) =>
+        fetch(pushServer.baseUrl + path, {
+            method: options.method,
+            headers: { 'Content-Type': 'application/json', ...(options.token && { Authorization: `Bearer ${options.token}` }) },
+            body: JSON.stringify(options.body),
+        });
+    const connectPush = async token => {
+        const socket = io(pushServer.baseUrl, { transports: ['websocket'], reconnection: false, auth: { token } });
+        await new Promise((resolve, reject) => {
+            socket.once('connect', resolve);
+            socket.once('connect_error', reject);
+        });
+        return socket;
+    };
+    const sentTo = to => received.filter(message => message.to === to);
+    const waitForPush = async (to, ms = 3000) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+            const message = received.find(other => other.to === to);
+            if (message) return message;
+            await sleep(25);
+        }
+        throw new Error(`No notification to ${to}`);
+    };
+
+    before(async () => {
+        fakePush = http.createServer((req, res) => {
+            let body = '';
+            req.on('data', chunk => (body += chunk));
+            req.on('end', () => {
+                const messages = JSON.parse(body);
+                received.push(...messages);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(
+                    JSON.stringify({
+                        data: messages.map(message =>
+                            goneTokens.has(message.to) ? { status: 'error', details: { error: 'DeviceNotRegistered' } } : { status: 'ok', id: 'x' },
+                        ),
+                    }),
+                );
+            });
+        });
+        await new Promise(resolve => fakePush.listen(0, resolve));
+        pushServer = await startServer({
+            PUSH_URL: `http://localhost:${fakePush.address().port}/push`,
+            PUSH_DELAY_MS: '50',
+            TURN_SECOND_MS: '20',
+        });
+    });
+
+    after(async () => {
+        a?.close();
+        b?.close();
+        await pushServer?.stop();
+        await new Promise(resolve => (fakePush ? fakePush.close(resolve) : resolve()));
+        await db.push_token.destroy({ where: { token: [tokenA, tokenB] } });
+    });
+
+    test('a phone registers its push token (only an Expo push token)', async () => {
+        assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', token: userToken, body: { token: 'nope' } })).status, 400);
+        assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', body: { token: tokenA } })).status, 403);
+        assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', token: userToken, body: { token: tokenA } })).status, 204);
+        assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', token: guestToken, body: { token: tokenB } })).status, 204);
+        assert.ok(await db.push_token.findByPk(tokenA), "a registered user's token is stored");
+    });
+
+    test('whoever is away gets "your turn"; whoever has the app open does not', async () => {
+        a = await connectPush(userToken);
+        b = await connectPush(guestToken);
+        const created = waitFor(a, 'rooms-listed');
+        a.emit('create-room', { name: roomName, owner: user.username, slots: 2, visibility: 'public', settings: { turnTimer: 15 } });
+        const [rooms] = await created;
+        const roomId = Number(Object.keys(rooms).find(key => rooms[key].name === roomName));
+        const joined = waitFor(a, 'joined-room');
+        b.emit('join-room', { username: guestName, roomId });
+        await joined;
+        const started = waitFor(b, 'game-started');
+        a.emit('start-game', roomId);
+        await started;
+        b.emit('app-state', 'background');
+        a.emit('player-ready', { roomId, username: user.username });
+        b.emit('player-ready', { roomId, username: guestName });
+
+        const message = await waitForPush(tokenB);
+        assert.equal(message.title, 'Your turn');
+        assert.equal(message.body, `Lay a card in ${roomName}.`);
+        assert.equal(message.channelId, 'turn');
+        assert.equal(message.data.roomId, roomId);
+        await sleep(700); // a few more turns
+        assert.equal(sentTo(tokenA).length, 0, 'the app is open: no notification');
+
+        b.emit('app-state', 'active');
+        await sleep(100);
+        const count = sentTo(tokenB).length;
+        await sleep(700);
+        assert.equal(sentTo(tokenB).length, count, 'back in the app: no more notifications');
+    });
+
+    test('a phone that dropped the app is forgotten; logging out stops the notifications', async () => {
+        goneTokens.add(tokenA);
+        a.emit('app-state', 'background');
+        await waitForPush(tokenA);
+        await sleep(100);
+        assert.equal(await db.push_token.findByPk(tokenA), null);
+
+        b.emit('app-state', 'background');
+        await waitForPush(tokenB);
+        assert.equal((await pushRequest('/api/auth/logout', { method: 'POST', body: { refreshToken: 'x', pushToken: tokenB } })).status, 204);
+        await sleep(100);
+        received = [];
+        await sleep(700);
+        assert.equal(sentTo(tokenB).length, 0);
+    });
+});
+
+describe('account deletion', () => {
+    const doomed = { username: `e2e_del_${stamp}`, email: `e2e_del_${stamp}@example.test`, password: 'e2e-password-456' };
+    const web = { username: `e2e_delweb_${stamp}`, email: `e2e_delweb_${stamp}@example.test`, password: 'e2e-password-789' };
+    const friend = `e2e_friend_${stamp}`;
+    const { Op } = db.Sequelize;
+    let token = '';
+
+    before(async () => {
+        await request('/api/auth/signup', { method: 'POST', body: doomed });
+        token = (await (await request('/api/auth/login', { method: 'POST', body: doomed })).json()).token;
+        await db.played_game.bulkCreate([
+            { winner: doomed.username, players: `${doomed.username},${friend}` },
+            { winner: friend, players: `${friend},${doomed.username}` },
+        ]);
+    });
+
+    after(async () => {
+        await db.played_game.destroy({ where: { players: { [Op.like]: `%${friend}%` } } });
+        await db.user.destroy({ where: { username: [doomed.username, web.username] } });
+    });
+
+    test('nobody can take the name deleted players get', async () => {
+        const res = await request('/api/auth/signup', { method: 'POST', body: { username: '[deleted]', email: `x_${stamp}@example.test`, password: 'x' } });
+        assert.equal(res.status, 400);
+        assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: '[Deleted]' } })).status, 403);
+    });
+
+    test('guests have no account; a wrong password or being in a room refuses it', async () => {
+        assert.equal((await request('/api/users/me', { method: 'DELETE', token: guestToken, body: { password: 'x' } })).status, 403);
+        assert.equal((await request('/api/users/me', { method: 'DELETE', token, body: { password: 'wrong' } })).status, 401);
+
+        const socket = await connectSocket({ auth: { token } });
+        const created = waitFor(socket, 'rooms-listed');
+        socket.emit('create-room', { name: `del_${stamp}`, owner: doomed.username, slots: 2, visibility: 'public' });
+        const [rooms] = await created;
+        const roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `del_${stamp}`));
+        const refused = await request('/api/users/me', { method: 'DELETE', token, body: { password: doomed.password } });
+        assert.equal(refused.status, 409);
+        assert.match((await refused.json()).message, /Leave the room/);
+
+        const deletedRoom = waitFor(socket, 'room-deleted');
+        socket.emit('delete-room', roomId);
+        await deletedRoom;
+        const disconnected = waitFor(socket, 'disconnect');
+        assert.equal((await request('/api/users/me', { method: 'DELETE', token, body: { password: doomed.password } })).status, 204);
+        await disconnected;
+        socket.close();
+    });
+
+    test('the account is gone; the other players keep their games, without the name', async () => {
+        assert.equal((await request('/api/auth/login', { method: 'POST', body: doomed })).status, 404);
+        const games = await db.played_game.findAll({ where: { players: { [Op.like]: `%${friend}%` } }, raw: true });
+        assert.deepEqual(games.map(game => [game.winner, game.players]).sort(), [
+            ['[deleted]', `[deleted],${friend}`],
+            [friend, `${friend},[deleted]`],
+        ]);
+        const board = await (await request('/api/games/leaderboard')).json();
+        assert.equal(board.some(entry => entry.winner === '[deleted]' || entry.favouriteFriend === '[deleted]'), false);
+        assert.ok(board.some(entry => entry.winner === friend));
+    });
+
+    test('the privacy policy and the deletion web page', async () => {
+        const policy = await request('/privacy');
+        assert.equal(policy.status, 200);
+        assert.match(await policy.text(), /Dutch Pub privacy policy/);
+        assert.match(await (await request('/account/delete')).text(), /<form method="post"/);
+
+        await request('/api/auth/signup', { method: 'POST', body: web });
+        const post = password =>
+            fetch(`${server.baseUrl}/account/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ username: web.username, password }).toString(),
+            });
+        const wrong = await post('wrong');
+        assert.equal(wrong.status, 401);
+        assert.match(await wrong.text(), /Wrong username or password/);
+        const right = await post(web.password);
+        assert.equal(right.status, 200);
+        assert.match(await right.text(), /has been deleted/);
+        assert.equal(await db.user.findOne({ where: { username: web.username } }), null);
+    });
+});

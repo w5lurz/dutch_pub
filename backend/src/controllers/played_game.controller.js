@@ -1,3 +1,4 @@
+import { DELETED_PLAYER } from '../account.js';
 import { getAvatarsByUsername } from '../avatars.js';
 import db from '../models/index.js';
 const PlayedGame = db.played_game;
@@ -18,7 +19,8 @@ export const all = async (req, res) => {
  */
 export const buildLeaderBoard = playedGames => {
     const games = playedGames.map(game => ({ ...game, players: String(game.players ?? '').split(',').filter(Boolean) }));
-    const winners = [...new Set(games.map(game => game.winner))];
+    // Deleted accounts (their name is DELETED_PLAYER) are neither on the board nor anyone's favourite friend.
+    const winners = [...new Set(games.map(game => game.winner))].filter(winner => winner !== DELETED_PLAYER);
     return winners
         .map(player => {
             let wins = 0;
@@ -31,7 +33,7 @@ export const buildLeaderBoard = playedGames => {
                 }
                 if (!game.players.includes(player)) continue;
                 for (const friend of game.players) {
-                    if (friend !== player) friends[friend] = (friends[friend] ?? 0) + 1;
+                    if (friend !== player && friend !== DELETED_PLAYER) friends[friend] = (friends[friend] ?? 0) + 1;
                 }
             }
             const favouriteFriend = Object.entries(friends).sort(([, a], [, b]) => b - a)[0]?.[0];

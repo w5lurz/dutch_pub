@@ -13,7 +13,9 @@ import {
     verifyGuestRefreshToken,
 } from '../middleware/authJwt.js';
 
+import { isReservedUsername } from '../account.js';
 import { getAvatarSafe } from '../avatars.js';
+import { forgetPushToken, isExpoPushToken } from '../push.js';
 import db from '../models/index.js';
 const User = db.user;
 const RefreshToken = db.refresh_token;
@@ -117,6 +119,9 @@ export const isUsernameAvailable = async (username, guestId) => {
 export const addGuest = async (req, res, next) => {
     try {
         const guestUsername = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+        if (isReservedUsername(guestUsername)) {
+            return res.status(403).send({ message: 'This username is already taken!' });
+        }
         if (!guestUsername) {
             return res.status(400).send({ message: 'Please choose a username!' });
         }
@@ -185,7 +190,7 @@ export const refreshSession = async (req, res) => {
 };
 
 /**
- * `POST /logout` with `{ refreshToken }`: revokes it (a registered user's), so it can't be used
+ * `POST /logout` with `{ refreshToken, pushToken? }`: revokes it (and the phone gets no more notifications) (a registered user's), so it can't be used
  * again. Always 204: logging out works even if the token is already gone. (A guest's refresh
  * token can't be revoked; it simply runs out.)
  */
@@ -195,6 +200,7 @@ export const logOut = async (req, res) => {
         if (typeof refreshToken === 'string' && refreshToken) {
             await RefreshToken.destroy({ where: { token_hash: hashToken(refreshToken) } });
         }
+        if (isExpoPushToken(req.body?.pushToken)) await forgetPushToken(req.body.pushToken);
         return res.status(204).end();
     } catch (error) {
         return res.status(500).send({ message: error.message });

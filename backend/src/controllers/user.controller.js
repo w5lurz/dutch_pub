@@ -1,4 +1,6 @@
+import { deleteAccount } from '../account.js';
 import { getAvatarSafe } from '../avatars.js';
+import { forgetPushToken, isExpoPushToken, registerPushToken } from '../push.js';
 import db from '../models/index.js';
 const User = db.user;
 
@@ -22,4 +24,46 @@ export const userBoard = async (req, res) => {
     }
 
     return res.status(200).send({ id: user.id, username: user.username, email: user.email, avatar: await getAvatarSafe(user.id) });
+};
+
+/**
+ * `DELETE /api/users/me` with `{ password }`: deletes the logged-in user's account (`deleteAccount`).
+ * 204; 401 wrong password; 403 guest; 409 in a room.
+ */
+export const deleteMe = async (req, res) => {
+    if (req.auth?.guest) {
+        return res.status(403).send({ message: 'Guests have no account to delete.' });
+    }
+    try {
+        const user = await User.findByPk(req.userId);
+        if (!user) return res.status(204).end();
+        const { status, message } = await deleteAccount(user, req.body?.password, req.app.get('io'));
+        return status === 204 ? res.status(204).end() : res.status(status).send({ message });
+    } catch (error) {
+        return res.status(500).send({ message: error.message });
+    }
+};
+
+/** `PUT /api/users/me/push-token` with `{ token }` (an Expo push token): "your turn" notifications go to this phone. 204; 400 not a push token. */
+export const setPushToken = async (req, res) => {
+    const token = req.body?.token;
+    if (!isExpoPushToken(token)) {
+        return res.status(400).send({ message: 'Not a push token.' });
+    }
+    try {
+        await registerPushToken(req.auth, token);
+        return res.status(204).end();
+    } catch (error) {
+        return res.status(500).send({ message: error.message });
+    }
+};
+
+/** `DELETE /api/users/me/push-token` with `{ token }`: no more notifications to this phone. Always 204 (no access token needed). */
+export const deletePushToken = async (req, res) => {
+    try {
+        if (isExpoPushToken(req.body?.token)) await forgetPushToken(req.body.token);
+        return res.status(204).end();
+    } catch (error) {
+        return res.status(500).send({ message: error.message });
+    }
 };

@@ -44,6 +44,8 @@ export interface ServerToClientEvents {
 /** Events clients emit to the server. */
 export interface ClientToServerEvents {
     'list-rooms': () => void;
+    /** The app went to the background or came back: while away, "your turn" comes as a push notification. */
+    'app-state': (state: 'active' | 'background') => void;
     /** `settings` is optional; missing or invalid values get the defaults (`DEFAULT_ROOM_SETTINGS`). */
     'create-room': (room: { name: string; owner: string; slots: number; visibility: string; settings?: Partial<RoomSettings> }) => void;
     /**

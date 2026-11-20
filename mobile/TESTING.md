@@ -21,6 +21,8 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Staying logged in: leave the app logged in (as a user and as a guest) for more than 2 hours, also with the phone asleep, then use it: still logged in, no "Please log in again". After logging out, the old session is gone for good.
 - [ ] Join as a guest; the guest name stays taken while that guest is away.
 - [ ] Wrong password / unknown user / taken name show a message.
+- [ ] Delete account (Account tab, registered users only): the sheet asks for the password; a wrong one says "Wrong password."; while in a room it says to leave it first (in a running game: once it is over). Deleted: a toast, you are logged out, logging in with that name fails, the name is free to register again, and you are gone from the leaderboard (the other players keep their wins). Also on the web: `<server>/account/delete`.
+- [ ] Privacy policy: the link on the Account tab and under the registration form opens `<server>/privacy` in the browser.
 - [ ] Password fields (log in, registration: both): the eye button on the right shows the password, tapping again hides it; it is disabled while signing in.
 - [ ] Avatars: a new account shows the avatar generated from its name (the same on every device). Account → "Change avatar": pick one; it shows at once on the Account screen, in your room card, at your seat and at the other players' tables (also mid-game), and on the leaderboard; it survives log out / log in, an app restart and a second device. "Use my generated one" goes back. Guests see their generated avatar with a note and no picker. Saving offline shows an error and keeps the old one. (Dev: Account tab → Avatars, or /dev/avatars, shows all presets.)
 
@@ -66,6 +68,7 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Airplane mode mid-game, then back: the connection banner shows and clears, the state re-syncs.
 - [ ] Restart the backend mid-game (Ctrl+C, start again): the app reconnects and the game goes on: same cards, same turn (it starts again with full time), the chat is still there. Rooms in the lobby are back too. The owner has 2 minutes to come back, as after a disconnect.
 - [ ] Kill and reopen the app while in a game: it goes straight back into the game.
+- [ ] Notifications (needs the Firebase setup in the build): the first game start asks for the permission (Android 13+). Put the app in the background (or close it) mid-game: when your turn comes, a "Your turn — Lay a card in <room>." notification arrives about 2 s later (after an Ace call: "<name> called you!"). With the app open: none. Opening the app clears it. Account tab → "Notifications" off: none on this phone; logging out: none either. A burn that gives you another turn sends no second one.
 
 ### Look
 

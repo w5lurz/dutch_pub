@@ -16,6 +16,7 @@ import { useSession } from '@/hooks/useSession';
 import { GameSync } from '@/providers/GameSync';
 import { navigationTheme, useTheme } from '@/lib/theme';
 import { initCrashReporting } from '@/lib/crashReporting';
+import { initNotifications } from '@/lib/notifications';
 import { initSounds } from '@/lib/sounds';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { store, useAppSelector } from '@/store';
@@ -30,6 +31,7 @@ lockPortrait();
 // Crash and error reports (Sentry), in release builds with a DSN only.
 initCrashReporting();
 initSounds();
+initNotifications();
 
 /** Loads the logged-in user from the stored token once, on app start. */
 function RestoreSession() {

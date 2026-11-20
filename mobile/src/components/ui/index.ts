@@ -9,3 +9,4 @@ export { Screen, type ScreenProps } from './Screen';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption } from './SegmentedControl';
 export { SettingRow, type SettingRowProps } from './SettingRow';
 export { TextField, type TextFieldProps } from './TextField';
+export { TextLink, type TextLinkProps } from './TextLink';

@@ -18,3 +18,14 @@ jest.mock('expo-audio', () => ({
     createAudioPlayer: jest.fn(() => ({ play: jest.fn(), seekTo: jest.fn(() => Promise.resolve()), remove: jest.fn() })),
     setAudioModeAsync: jest.fn(() => Promise.resolve()),
 }));
+
+// No push service in Jest: permission granted, a fixed token.
+jest.mock('expo-notifications', () => ({
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(() => Promise.resolve(null)),
+    getPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted', canAskAgain: true })),
+    requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted', canAskAgain: true })),
+    getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ type: 'expo', data: 'ExponentPushToken[test]' })),
+    dismissAllNotificationsAsync: jest.fn(() => Promise.resolve()),
+    AndroidImportance: { HIGH: 6 },
+}));

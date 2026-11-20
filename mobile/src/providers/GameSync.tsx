@@ -7,6 +7,7 @@ import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setMessages } from '@/store/chatSlice';
 import { initialState as emptyGame, updateGame } from '@/store/gameSlice';
+import { clearNotifications, registerForPush } from '@/lib/notifications';
 import { playSound } from '@/lib/sounds';
 import { setLastGameEnd, setToast, setWinner } from '@/store/generalSlice';
 import { setRooms } from '@/store/roomsSlice';
@@ -56,6 +57,8 @@ export function GameSync() {
             dispatch(setInGame(state.game && state.roomId !== null ? state.roomId : undefined));
         };
         const onGameStarted = (game: Game, rooms: TRooms, roomId: number) => {
+            // "Your turn" notifications while the app is away: the permission is asked here, where it makes sense.
+            registerForPush({ ask: true });
             dispatch(setLastGameEnd(null));
             dispatch(setWinner(null));
             dispatch(setRooms(rooms));
@@ -173,12 +176,23 @@ export function GameSync() {
     useEffect(() => {
         if (connected && signedIn) {
             socket.emit('get-game-state');
+            // The server takes a new socket for an open app; it may have (re)connected in the background.
+            if (AppState.currentState === 'background') socket.emit('app-state', 'background');
         }
     }, [socket, connected, signedIn]);
 
+    // This phone's push token for whoever is logged in (asking for the permission waits for a game).
+    useEffect(() => {
+        if (username) registerForPush();
+    }, [username]);
+
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextState => {
+            // While away, the server sends "your turn" as a notification instead.
+            if (nextState === 'background' && socket.connected) socket.emit('app-state', 'background');
             if (nextState !== 'active') return;
+            clearNotifications();
+            if (socket.connected) socket.emit('app-state', 'active');
             if (!socket.connected) {
                 socket.connect(); // `connect` then triggers the re-sync above
             } else if (signedIn) {

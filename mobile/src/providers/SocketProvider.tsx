@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 
 import { clearToken } from '@/lib/authToken';
 import { API_URL } from '@/lib/config';
+import { forgetPush } from '@/lib/notifications';
 import { getValidToken, refreshSession } from '@/lib/session';
 import type { AppSocket } from '@/lib/types';
 import { setToast } from '@/store/generalSlice';
@@ -66,6 +67,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
                     }
                 }
                 // The session is over (or a guest name got taken): drop it and continue anonymously.
+                await forgetPush();
                 await clearToken();
                 dispatch(setUser(null));
                 dispatch(setToast({ id: `session-${Date.now()}`, type: 'info', message: 'Please log in again.', duration: 3000 }));

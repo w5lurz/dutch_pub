@@ -17,3 +17,6 @@ yarn-error.log*
 .env
 **/.env
 !**/.env.example
+
+# Firebase config for Android push (an EAS file variable on the build servers)
+/mobile/google-services.json

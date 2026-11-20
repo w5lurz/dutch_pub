@@ -52,7 +52,15 @@
           "enableBackgroundPlayback": false
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#374151",
+          "defaultChannel": "turn"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

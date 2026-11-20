@@ -2,6 +2,7 @@ import { canLayCard, isCallNext, isReverse, normalizeRoomSettings } from '@dutch
 import { emptySocketRoom, games, modifyRooms, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
 import { identityError } from './socketAuth.js';
+import { notifyTurn } from './push.js';
 
 import db from './models/index.js';
 const PlayedGame = db.played_game;
@@ -43,6 +44,8 @@ export const timeOutTurn = game => {
  */
 export const startTurnClock = (io, roomId, game) => {
     clearTurnClock(game);
+    // Whoever is on turn now gets a notification if the app is away (with or without a timer).
+    notifyTurn(io, roomId, game);
     const room = roomsList[roomId];
     const limit = normalizeRoomSettings(room?.settings).turnTimer * TURN_SECOND_MS;
     if (!room || games[roomId] !== game || game.phase === 'swap' || game.blindMiss || limit <= 0) return;

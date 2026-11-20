@@ -3,6 +3,7 @@ import type { AuthResponse } from '@dutch-pub/shared';
 
 import { api } from '@/lib/api';
 import { clearToken, getToken, setToken } from '@/lib/authToken';
+import { forgetPush } from '@/lib/notifications';
 import { endSession } from '@/lib/session';
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch } from '@/store';
@@ -75,7 +76,8 @@ export function useSession() {
     );
 
     const logOut = useCallback(async () => {
-        // Revokes the refresh token on the server and forgets both tokens.
+        // No more notifications to this phone; revokes the refresh token on the server and forgets both tokens.
+        await forgetPush();
         await endSession();
         dispatch(setUser(null));
         reconnect();
@@ -96,5 +98,26 @@ export function useSession() {
         }
     }, [dispatch]);
 
-    return { logIn, register, joinAsGuest, logOut, restoreSession };
+    /**
+     * Deletes the logged-in user's account (after checking `password`); the app goes on
+     * anonymously. Refused while they are in a room (the server says why).
+     */
+    const deleteAccount = useCallback(
+        async (password: string): Promise<Result> => {
+            try {
+                const res = await api.deleteAccount(password);
+                if (res.status !== 204) return { ok: false, message: await errorMessage(res, 'Could not delete your account.') };
+            } catch {
+                return { ok: false, message: 'Cannot reach the server.' };
+            }
+            await forgetPush();
+            await clearToken();
+            dispatch(setUser(null));
+            reconnect();
+            return { ok: true };
+        },
+        [dispatch, reconnect],
+    );
+
+    return { logIn, register, joinAsGuest, logOut, deleteAccount, restoreSession };
 }

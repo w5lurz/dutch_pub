@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { AvatarSection } from '@/components/account/AvatarSection';
+import { DeleteAccountSheet } from '@/components/account/DeleteAccountSheet';
 import { GuestBadge } from '@/components/auth';
 import { DutchPubLogo } from '@/components/icons';
-import { Button, Screen, SettingRow } from '@/components/ui';
+import { Button, Screen, SettingRow, TextLink } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
+import { PRIVACY_URL } from '@/lib/config';
+import { setNotificationsOn, useNotificationsOn } from '@/lib/notifications';
 import { setSoundsOn, useSoundsOn } from '@/lib/sounds';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setToast } from '@/store/generalSlice';
@@ -38,9 +41,20 @@ function SignedOut() {
 export default function AccountScreen() {
 	const user = useAppSelector((state) => state.user);
 	const dispatch = useAppDispatch();
-	const { logOut } = useSession();
+	const { logOut, deleteAccount } = useSession();
 	const [loggingOut, setLoggingOut] = useState(false);
+	const [deleting, setDeleting] = useState(false);
 	const soundsOn = useSoundsOn();
+	const notificationsOn = useNotificationsOn();
+
+	const handleDelete = async (password: string) => {
+		const result = await deleteAccount(password);
+		if (!result.ok) return result.message;
+		dispatch(
+			setToast({ id: `account-deleted-${Date.now()}`, type: 'info', message: 'Your account has been deleted.', duration: 4000 }),
+		);
+		return null;
+	};
 
 	const handleLogout = async () => {
 		setLoggingOut(true);
@@ -80,6 +94,18 @@ export default function AccountScreen() {
 					) : (
 						<Button label="Log out" variant="red" onPress={handleLogout} loading={loggingOut} className="mt-2 w-full" />
 					)}
+					{!user.isGuest ? (
+						<>
+							<Button
+								label="Delete account"
+								variant="gray"
+								size="sm"
+								onPress={() => setDeleting(true)}
+								className="mt-2"
+							/>
+							<DeleteAccountSheet visible={deleting} onClose={() => setDeleting(false)} onDelete={handleDelete} />
+						</>
+					) : null}
 				</View>
 			) : (
 				<SignedOut />
@@ -92,7 +118,19 @@ export default function AccountScreen() {
 					value={soundsOn}
 					onValueChange={setSoundsOn}
 				/>
+				<SettingRow
+					label="Notifications"
+					description="“Your turn” when Dutch Pub is in the background"
+					value={notificationsOn}
+					onValueChange={setNotificationsOn}
+				/>
 			</View>
+			<TextLink
+				label="Privacy policy"
+				hint="Opens in the browser"
+				onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
+				className="mt-4"
+			/>
 			{__DEV__ ? (
 				<View className="mt-6 flex-row flex-wrap justify-center gap-2">
 					<Button label="Table preview (dev)" variant="gray" size="sm" onPress={() => router.push('/dev/table')} />

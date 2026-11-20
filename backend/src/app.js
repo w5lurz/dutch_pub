@@ -13,6 +13,8 @@ import { game } from './game.js';
 import { chat } from './chat.js';
 import { socketAuth } from './socketAuth.js';
 import { startPersistence } from './persistence.js';
+import { push } from './push.js';
+import { pages } from './pages.js';
 
 console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 // dotenv.config({ path: '.env' });
@@ -49,6 +51,9 @@ app.use('/api/users', usersRouters);
 
 app.use('/api/games', playedGamesRoutes);
 
+// The privacy policy and the account deletion page (linked from the app and the store listings).
+app.use(pages());
+
 // Error-handling middleware below
 app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message });
@@ -72,6 +77,9 @@ socketAuth(io);
 rooms(io);
 game(io);
 chat(io);
+push(io);
+// Account deletion disconnects the deleted user's sockets.
+app.set('io', io);
 
 // Rooms and games from before a restart are back in memory before anyone can connect.
 await synced;

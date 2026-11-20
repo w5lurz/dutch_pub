@@ -1,10 +1,11 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { TextInput } from 'react-native';
+import { Linking, TextInput } from 'react-native';
 import { router } from 'expo-router';
 
 import { AuthForm, AuthSwitchLink } from '@/components/auth';
-import { Button, TextField } from '@/components/ui';
+import { Button, TextField, TextLink } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
+import { PRIVACY_URL } from '@/lib/config';
 import { useAppDispatch } from '@/store';
 import { setToast } from '@/store/generalSlice';
 
@@ -136,6 +137,12 @@ export default function RegistrationScreen() {
                 disabled={!allFilled || !passwordsMatch || (emailTouched && !emailValid)}
                 loading={loading}
                 className="w-full"
+            />
+            <TextLink
+                label="Privacy policy"
+                hint="Opens in the browser"
+                onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
+                className="self-center"
             />
         </AuthForm>
     );
