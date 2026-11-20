@@ -1,0 +1,31 @@
+# Automatic dependency updates: Dependabot opens a pull request when a package has a new
+# version (and at once for security fixes); the "Backend tests" workflow runs on each one.
+# GitHub reads this file only from the default branch (master).
+#
+# The mobile app is left out on purpose: Expo pins the versions that work with its SDK, so it is
+# updated by hand with an SDK upgrade (`npx expo install expo@latest --fix`).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+    # Minor and patch updates in one pull request a week; major versions one by one.
+    groups:
+      backend:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /packages/shared
+    schedule:
+      interval: monthly
+    groups:
+      shared:
+        update-types: [minor, patch]
+
+  # The versions of the actions the workflows use.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
