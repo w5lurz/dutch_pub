@@ -44,7 +44,13 @@ export default function ForgotPasswordScreen() {
                 <>
                     <Text className="text-base text-gray-700">{sent}</Text>
                     <Text className="text-sm text-gray-500">Open the link in the email, choose a new password, then log in with it.</Text>
-                    <Button label="Back to log in" variant="blue" onPress={() => router.back()} className="w-full" />
+                    <Button
+                        label="Back to log in"
+                        variant="blue"
+                        // Opened straight at this address (web, reload): nothing to go back to.
+                        onPress={() => (router.canGoBack() ? router.back() : router.replace('/login'))}
+                        className="w-full"
+                    />
                 </>
             ) : (
                 <>
