@@ -3,7 +3,10 @@
 // the end, one `played_games` row, and deletes them again afterwards.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
 import { canLayCard, DEFAULT_ROOM_SETTINGS } from '@dutch-pub/shared';
 import { io } from 'socket.io-client';
 
@@ -1147,25 +1150,25 @@ describe('security', () => {
         assert.equal(short.status, 400);
     });
 
-    test('chat: only text, at most 500 characters, the last 100 messages kept', async () => {
+    test('chat: only text, at most 256 characters, the last 50 messages kept', async () => {
         const owner = await connectSecure(userToken);
         const created = waitFor(owner, 'rooms-listed');
         owner.emit('create-room', { name: `chat_${stamp}`, owner: user.username, slots: 2, visibility: 'public' });
         const [rooms] = await created;
         const roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `chat_${stamp}`));
 
-        for (const message of [{ evil: true }, ['a'], '   ', 'x'.repeat(501)]) {
+        for (const message of [{ evil: true }, ['a'], '   ', 'x'.repeat(257)]) {
             const refused = waitFor(owner, 'action-rejected');
             owner.emit('send-message', { roomId, username: user.username, message });
-            assert.match((await refused)[0], /1 to 500 characters/);
+            assert.match((await refused)[0], /1 to 256 characters/);
         }
         let last;
         owner.on('message-sent', messages => (last = messages));
-        for (let i = 1; i <= 105; i++) owner.emit('send-message', { roomId, username: user.username, message: `m${i}` });
-        await waitFor2(() => last?.at(-1)?.message === 'm105');
-        assert.equal(last.length, 100);
+        for (let i = 1; i <= 55; i++) owner.emit('send-message', { roomId, username: user.username, message: `m${i}` });
+        await waitFor2(() => last?.at(-1)?.message === 'm55');
+        assert.equal(last.length, 50);
         assert.equal(last[0].message, 'm6');
-        assert.equal(last.at(-1).id, 105, 'ids keep counting');
+        assert.equal(last.at(-1).id, 55, 'ids keep counting');
 
         const deleted = waitFor(owner, 'room-deleted');
         owner.emit('delete-room', roomId);
@@ -1214,3 +1217,89 @@ async function waitFor2(check, ms = 5000) {
         await new Promise(resolve => setTimeout(resolve, 20));
     }
 }
+
+describe('forgot password', () => {
+    // Its own server: mails go to a file (MAIL_OUTBOX), links point at PUBLIC_URL.
+    const outbox = path.join(os.tmpdir(), `dutch-pub-outbox-${stamp}.jsonl`);
+    const resetUser = { username: `e2e_reset_${stamp}`, email: `e2e_reset_${stamp}@example.test`, password: 'old-password-1' };
+    let resetServer;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const mails = () => (fs.existsSync(outbox) ? fs.readFileSync(outbox, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : []);
+    const waitForMail = async () => {
+        for (let i = 0; i < 100 && mails().length === 0; i++) await sleep(20);
+        return mails().at(-1);
+    };
+    const submit = (fields) =>
+        fetch(`${resetServer.baseUrl}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(fields).toString(),
+        });
+
+    before(async () => {
+        resetServer = await startServer({ MAIL_OUTBOX: outbox, PUBLIC_URL: 'https://dutchpub.example/', SMTP_HOST: '' });
+        await post(`${resetServer.baseUrl}/api/auth/signup`, resetUser);
+    });
+
+    after(async () => {
+        await resetServer?.stop();
+        fs.rmSync(outbox, { force: true });
+        const created = await db.user.findOne({ where: { username: resetUser.username }, attributes: ['id'], raw: true });
+        if (created) {
+            await db.refresh_token.destroy({ where: { user_id: created.id } });
+            await db.password_reset.destroy({ where: { user_id: created.id } });
+        }
+        await db.user.destroy({ where: { username: resetUser.username } });
+    });
+
+    test('not set up: the server says so', async () => {
+        const plain = await startServer({ MAIL_OUTBOX: '', PUBLIC_URL: '', SMTP_HOST: '' });
+        try {
+            assert.equal((await post(`${plain.baseUrl}/api/auth/forgot-password`, { email: resetUser.email })).status, 503);
+        } finally {
+            await plain.stop();
+        }
+    });
+
+    test('the same answer for unknown emails, and no mail', async () => {
+        const unknown = await post(`${resetServer.baseUrl}/api/auth/forgot-password`, { email: `nobody_${stamp}@example.test` });
+        const known = await post(`${resetServer.baseUrl}/api/auth/forgot-password`, { email: resetUser.email });
+        assert.equal(unknown.status, 200);
+        assert.equal(known.status, 200);
+        assert.deepEqual(await unknown.json(), await known.json());
+        const mail = await waitForMail();
+        assert.equal(mails().length, 1, 'only the known email got a mail');
+        assert.equal(mail.to, resetUser.email);
+        assert.match(mail.text, new RegExp(`Hi ${resetUser.username}`));
+        assert.equal((await post(`${resetServer.baseUrl}/api/auth/forgot-password`, { email: 'nope' })).status, 400);
+    });
+
+    test('the link sets a new password once; every phone is logged out', async () => {
+        const login = await (await post(`${resetServer.baseUrl}/api/auth/login`, resetUser)).json();
+        const link = mails().at(-1).text.match(/https:\/\/dutchpub\.example\/reset-password\?token=\S+/)[0];
+        const token = new URL(link).searchParams.get('token');
+
+        assert.equal((await fetch(`${resetServer.baseUrl}/reset-password?token=wrong`)).status, 400);
+        const form = await fetch(`${resetServer.baseUrl}/reset-password?token=${encodeURIComponent(token)}`);
+        assert.equal(form.status, 200);
+        assert.match(await form.text(), /<form method="post" action="\/reset-password">/);
+
+        assert.equal((await submit({ token, password: 'short', confirm: 'short' })).status, 400);
+        assert.equal((await submit({ token, password: 'new-password-1', confirm: 'other-password-1' })).status, 400);
+        const done = await submit({ token, password: 'new-password-1', confirm: 'new-password-1' });
+        assert.equal(done.status, 200);
+        assert.match(await done.text(), /has been changed/);
+
+        assert.equal((await submit({ token, password: 'third-password-1', confirm: 'third-password-1' })).status, 400, 'used once');
+        assert.equal((await post(`${resetServer.baseUrl}/api/auth/login`, resetUser)).status, 401, 'the old password is gone');
+        assert.equal((await post(`${resetServer.baseUrl}/api/auth/login`, { ...resetUser, password: 'new-password-1' })).status, 200);
+        assert.equal((await post(`${resetServer.baseUrl}/api/auth/refresh`, { refreshToken: login.refreshToken })).status, 401, 'logged out');
+    });
+
+    test('at most 3 mails per email per hour', async () => {
+        const statuses = [];
+        for (let i = 0; i < 3; i++) statuses.push((await post(`${resetServer.baseUrl}/api/auth/forgot-password`, { email: resetUser.email.toUpperCase() })).status);
+        assert.deepEqual(statuses, [200, 200, 429], 'one was sent before');
+    });
+});

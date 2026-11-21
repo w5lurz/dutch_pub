@@ -60,6 +60,7 @@ export const deleteAccount = async (user, password, io) => {
             if (players !== game.players || winner !== game.winner) await game.update({ players, winner }, { transaction });
         }
         await db.refresh_token.destroy({ where: { user_id: user.id }, transaction });
+        await db.password_reset.destroy({ where: { user_id: user.id }, transaction });
         await db.user_profile.destroy({ where: { user_id: user.id }, transaction });
         await User.destroy({ where: { id: user.id }, transaction });
     });

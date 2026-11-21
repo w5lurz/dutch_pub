@@ -7,6 +7,7 @@ import UserProfile from './user_profile.model.js';
 import RefreshToken from './refresh_token.model.js';
 import GameSnapshot from './game_snapshot.model.js';
 import PushToken from './push_token.model.js';
+import PasswordReset from './password_reset.model.js';
 import { isDevEnv } from '../utils/utils.js';
 
 const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool, reconnect } = dbConfig;
@@ -42,5 +43,6 @@ db.user_profile = UserProfile(sequelize, Sequelize);
 db.refresh_token = RefreshToken(sequelize, Sequelize);
 db.game_snapshot = GameSnapshot(sequelize, Sequelize);
 db.push_token = PushToken(sequelize, Sequelize);
+db.password_reset = PasswordReset(sequelize, Sequelize);
 
 export default db;

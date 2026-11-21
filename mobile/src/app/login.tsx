@@ -3,7 +3,7 @@ import { TextInput } from 'react-native';
 import { router } from 'expo-router';
 
 import { AuthForm, AuthSwitchLink } from '@/components/auth';
-import { Button, TextField } from '@/components/ui';
+import { Button, TextField, TextLink } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
 import { useAppDispatch } from '@/store';
 import { setToast } from '@/store/generalSlice';
@@ -76,6 +76,7 @@ export default function LoginScreen() {
                 editable={!loading}
             />
             <Button label="Sign in" variant="blue" onPress={handleSubmit} disabled={!canSubmit} loading={loading} className="w-full" />
+            <TextLink label="Forgot password?" onPress={() => router.push('/forgot-password')} className="self-center" />
         </AuthForm>
     );
 }

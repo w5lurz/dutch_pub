@@ -61,6 +61,12 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
     /** Revokes a refresh token (logging out). Always 204. */
     const logOut = (refreshToken: string) => postAnonymous('/api/auth/logout', { refreshToken });
 
+    /**
+     * "Forgot password?": emails a link to set a new password, if an account uses `email`. 200 +
+     * `{ message }` either way; 400 not an email; 429 too many; 503 not set up on the server.
+     */
+    const requestPasswordReset = (email: string) => postAnonymous('/api/auth/forgot-password', { email });
+
     /** Deletes the logged-in user's account. 204; 401 wrong password; 403 guest; 409 in a room (`{ message }`). */
     const deleteAccount = (password: string) => send('DELETE', '/api/users/me', { password });
 
@@ -85,6 +91,7 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
         addGuest,
         refreshSession,
         logOut,
+        requestPasswordReset,
         deleteAccount,
         setPushToken,
         deletePushToken,

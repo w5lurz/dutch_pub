@@ -14,12 +14,12 @@ const User = db.user;
 const deleteTries = limiter({ windowMs: 15 * 60 * 1000, max: 10 });
 const deleteTriesPerAddress = limiter({ windowMs: 15 * 60 * 1000, max: 50 });
 
-const POLICY_DATE = '20 November 2026';
+const POLICY_DATE = '21 November 2026';
 
-const escapeHtml = text =>
+export const escapeHtml = text =>
     String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
-const page = (title, body) => `<!doctype html>
+export const page = (title, body) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -61,11 +61,12 @@ export const privacyPolicyHtml = () => {
 
 <h2>What we keep</h2>
 <ul>
-<li><strong>Your account</strong> (if you register): username, email address, your password (stored only as a one-way hash, never in plain text) and the avatar you picked.</li>
+<li><strong>Your account</strong> (if you register): username, email address, your password (stored only as a one-way hash, never in plain text) and the avatar you picked. Your email address is used only to send you a link to set a new password, when you ask for one.</li>
 <li><strong>Guest name</strong> (if you play as a guest): the name you chose, kept only in the server’s memory while your guest session lasts (at most 7 days).</li>
 <li><strong>Played games</strong>: for each finished game, the winner, the usernames of the players and the date. This makes up the leaderboard that every player can see.</li>
 <li><strong>Rooms, games and chat</strong>: while a room exists, the server keeps its players, the cards and the chat messages, and saves them to its database every second so a game survives a server restart. They are deleted when the game ends or the room is closed, and at the latest after 24 hours.</li>
 <li><strong>Sign-in tokens</strong>: so you stay logged in, the server keeps a hashed token for each phone you are logged in on, for up to 30 days. Logging out deletes it.</li>
+<li><strong>Password reset links</strong>: when you ask for a new password, we email you a link that works once, for an hour. The server keeps only a hash of it, deleted once it is used or replaced.</li>
 <li><strong>Notification token</strong> (if you allow notifications): an address the push service gives your phone, used only to tell you when it is your turn. Logging out, turning notifications off or deleting your account removes it.</li>
 <li><strong>Crash reports</strong> (only in app versions where crash reporting is turned on): when the app crashes, a report with the error, the app version, the phone model and operating system is sent to Sentry. It does not contain your cards, your chat or your password.</li>
 <li><strong>Connection data</strong>: like any server, ours and its hosting provider see your IP address while you are connected and may keep it in short-lived technical logs.</li>
@@ -78,7 +79,7 @@ export const privacyPolicyHtml = () => {
 <h2>Who else sees it</h2>
 <ul>
 <li><strong>Other players</strong> see your username, avatar, your moves and your chat messages in the rooms you join, and your wins on the leaderboard. Your email address is never shown to anyone.</li>
-<li><strong>Service providers</strong> that run parts of the app for us: our server hosting provider; Expo (650 Industries), Google Firebase Cloud Messaging and Apple Push Notification service, which deliver notifications; Sentry, for crash reports when turned on. They may only use the data to provide their service to us.</li>
+<li><strong>Service providers</strong> that run parts of the app for us: our server hosting provider; Expo (650 Industries), Google Firebase Cloud Messaging and Apple Push Notification service, which deliver notifications; our email provider, which delivers password reset emails; Sentry, for crash reports when turned on. They may only use the data to provide their service to us.</li>
 </ul>
 
 <h2>Why we use it</h2>

@@ -2,9 +2,9 @@ import { roomById } from './rooms.js';
 import { identityError } from './socketAuth.js';
 
 /** Longest chat message (as the app's input). */
-export const CHAT_MAX_LENGTH = 500;
+export const CHAT_MAX_LENGTH = 256;
 /** Messages kept per room: older ones drop off (each new message sends the whole history). */
-export const CHAT_HISTORY = 100;
+export const CHAT_HISTORY = 50;
 /** One message per second per player at most (the app waits 3 s anyway). Env for tests. */
 const CHAT_GAP_MS = Number(process.env.CHAT_GAP_MS ?? 1000);
 /** When each player last sent a message. */

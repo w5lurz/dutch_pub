@@ -117,7 +117,7 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 							onSubmitEditing={() => !sendDisabled && send()}
 							returnKeyType="send"
 							submitBehavior="submit"
-							maxLength={500}
+							maxLength={256}
 							containerClassName="flex-1 w-auto"
 						/>
 						<Button

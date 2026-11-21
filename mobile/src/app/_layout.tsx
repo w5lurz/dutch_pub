@@ -90,6 +90,7 @@ function RootLayout() {
                                 <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Dutch Pub' }} />
                                 <Stack.Screen name="login" options={{ title: 'Log in' }} />
                                 <Stack.Screen name="registration" options={{ title: 'Registration' }} />
+                                <Stack.Screen name="forgot-password" options={{ title: 'Forgot password' }} />
                                 {/* Dev-only mock game table (UI work), see src/app/dev/table.tsx. */}
                                 <Stack.Screen name="dev/table" options={{ headerShown: false }} />
                                 <Stack.Screen name="dev/cards" options={{ title: 'Card preview' }} />

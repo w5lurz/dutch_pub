@@ -16,6 +16,7 @@ import { socketAuth } from './socketAuth.js';
 import { startPersistence } from './persistence.js';
 import { push } from './push.js';
 import { pages } from './pages.js';
+import { passwordReset } from './passwordReset.js';
 import { guardHandlers, limitEvents } from './socketSafety.js';
 
 const { json } = bodyParser;
@@ -69,6 +70,8 @@ app.use('/api/games', playedGamesRoutes);
 
 // The privacy policy and the account deletion page (linked from the app and the store listings).
 app.use(pages());
+// "Forgot password?": the app's request and the page the email links to.
+app.use(passwordReset());
 
 // Errors nobody caught: no details to the client (they may name tables or columns).
 app.use((err, req, res, next) => {
@@ -79,7 +82,7 @@ app.use((err, req, res, next) => {
 
 const io = new Server(server, {
     cors: { origin: corsOrigin },
-    // The app's events are small (a chat message is at most 500 characters).
+    // The app's events are small (a chat message is at most 256 characters).
     maxHttpBufferSize: 16 * 1024,
     connectionStateRecovery: {
         // The backup duration of the sessions and the packets
