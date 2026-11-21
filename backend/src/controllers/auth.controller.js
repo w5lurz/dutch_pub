@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { usernameError } from '@dutch-pub/shared';
 
 import { Op } from 'sequelize';
 
@@ -13,10 +14,11 @@ import {
     verifyGuestRefreshToken,
 } from '../middleware/authJwt.js';
 
-import { isReservedUsername } from '../account.js';
+import { PASSWORD_ROUNDS } from '../account.js';
 import { getAvatarSafe } from '../avatars.js';
 import { forgetPushToken, isExpoPushToken } from '../push.js';
 import db from '../models/index.js';
+import { serverError } from '../utils/utils.js';
 const User = db.user;
 const RefreshToken = db.refresh_token;
 
@@ -37,32 +39,34 @@ export const modifyGuestsList = newGuests => {
     guestsList = newGuests;
 };
 
+/** `POST /signup`: the body was checked by `checkDuplicateUsernameOrEmail` (rules, duplicates). */
 export const signUp = async (req, res) => {
-    // Save User to Database
-    console.log('SIGNUP');
     try {
         await User.create({
             username: req.body.username,
             email: req.body.email,
-            password: bcrypt.hashSync(req.body.password, 8),
+            password: await bcrypt.hash(req.body.password, PASSWORD_ROUNDS),
         });
-        console.log('SIGNUP2');
-
         res.status(201).send({ message: `User ${req.body.username} registered successfully!` });
     } catch (error) {
-        res.status(500).send({ message: error.message });
+        serverError(res, error, 'SIGNUP');
     }
 };
 
 export const loginUser = async (req, res, next) => {
     try {
-        const user = await User.findOne({ where: { username: req.body.username } });
+        const { username, password } = req.body ?? {};
+        if (typeof username !== 'string' || typeof password !== 'string') {
+            return res.status(400).send({ message: 'Please give your username and password.' });
+        }
+        const user = await User.findOne({ where: { username: username.trim() } });
 
         if (!user) {
             return res.status(404).send({ message: 'No user with this username found.' });
         }
 
-        const passwordIsValid = bcrypt.compareSync(req.body.password, user.password);
+        // Async: the hashing doesn't hold up the other players' moves meanwhile.
+        const passwordIsValid = await bcrypt.compare(password, user.password);
 
         if (!passwordIsValid) {
             return res.status(401).send({
@@ -72,6 +76,10 @@ export const loginUser = async (req, res, next) => {
 
         // The app sends it back as `Authorization: Bearer <token>` and in the socket handshake;
         // before it expires, the app trades `refreshToken` for new ones (`refreshSession`).
+        // Passwords stored with fewer rounds (older accounts) get the current number now.
+        if (bcrypt.getRounds(user.password) < PASSWORD_ROUNDS) {
+            await user.update({ password: await bcrypt.hash(password, PASSWORD_ROUNDS) });
+        }
         const token = signUserToken(user);
         // Expired refresh tokens of anyone are dropped now and then (here: on each login).
         await RefreshToken.destroy({ where: { expires_at: { [Op.lt]: new Date() } } });
@@ -86,7 +94,7 @@ export const loginUser = async (req, res, next) => {
             refreshToken,
         });
     } catch (error) {
-        return res.status(500).send({ message: error.message });
+        return serverError(res, error);
     }
 };
 
@@ -106,7 +114,9 @@ const dropExpiredGuests = () => {
 /** Whether `username` is free: no registered user has it and no other guest (`guestId`) holds it. */
 export const isUsernameAvailable = async (username, guestId) => {
     dropExpiredGuests();
-    if (guestsList.some(guest => guest.username === username && guest.id !== guestId)) {
+    // Case doesn't make a different name ("Tamás" and "tamás" would look like the same player).
+    const lower = username.toLowerCase();
+    if (guestsList.some(guest => guest.username.toLowerCase() === lower && guest.id !== guestId)) {
         return false;
     }
     return !(await User.findOne({ where: { username }, attributes: ['id'] }));
@@ -119,11 +129,9 @@ export const isUsernameAvailable = async (username, guestId) => {
 export const addGuest = async (req, res, next) => {
     try {
         const guestUsername = typeof req.body.username === 'string' ? req.body.username.trim() : '';
-        if (isReservedUsername(guestUsername)) {
-            return res.status(403).send({ message: 'This username is already taken!' });
-        }
-        if (!guestUsername) {
-            return res.status(400).send({ message: 'Please choose a username!' });
+        const invalid = usernameError(guestUsername);
+        if (invalid) {
+            return res.status(400).send({ message: invalid });
         }
 
         if (!(await isUsernameAvailable(guestUsername))) {
@@ -135,7 +143,7 @@ export const addGuest = async (req, res, next) => {
         guestsList = [...guestsList, { ...newGuest, expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000 }];
         return res.status(200).send({ ...newGuest, token, refreshToken: signGuestRefreshToken(newGuest) });
     } catch (error) {
-        return res.status(500).send({ message: error.message });
+        return serverError(res, error);
     }
 };
 
@@ -185,7 +193,7 @@ export const refreshSession = async (req, res) => {
             refreshToken: await issueRefreshToken(user.id),
         });
     } catch (error) {
-        return res.status(500).send({ message: error.message });
+        return serverError(res, error);
     }
 };
 
@@ -203,6 +211,6 @@ export const logOut = async (req, res) => {
         if (isExpoPushToken(req.body?.pushToken)) await forgetPushToken(req.body.pushToken);
         return res.status(204).end();
     } catch (error) {
-        return res.status(500).send({ message: error.message });
+        return serverError(res, error);
     }
 };

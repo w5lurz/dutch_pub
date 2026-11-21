@@ -2,6 +2,7 @@ import { deleteAccount } from '../account.js';
 import { getAvatarSafe } from '../avatars.js';
 import { forgetPushToken, isExpoPushToken, registerPushToken } from '../push.js';
 import db from '../models/index.js';
+import { serverError } from '../utils/utils.js';
 const User = db.user;
 
 // Public fields only: never expose password hashes or emails.
@@ -40,7 +41,7 @@ export const deleteMe = async (req, res) => {
         const { status, message } = await deleteAccount(user, req.body?.password, req.app.get('io'));
         return status === 204 ? res.status(204).end() : res.status(status).send({ message });
     } catch (error) {
-        return res.status(500).send({ message: error.message });
+        return serverError(res, error);
     }
 };
 
@@ -54,7 +55,7 @@ export const setPushToken = async (req, res) => {
         await registerPushToken(req.auth, token);
         return res.status(204).end();
     } catch (error) {
-        return res.status(500).send({ message: error.message });
+        return serverError(res, error);
     }
 };
 
@@ -64,6 +65,6 @@ export const deletePushToken = async (req, res) => {
         if (isExpoPushToken(req.body?.token)) await forgetPushToken(req.body.token);
         return res.status(204).end();
     } catch (error) {
-        return res.status(500).send({ message: error.message });
+        return serverError(res, error);
     }
 };

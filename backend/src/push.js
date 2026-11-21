@@ -21,6 +21,8 @@ const CHANNEL_ID = 'turn';
 
 /** Guests' push tokens (guest id → tokens), in memory only. */
 const guestTokens = new Map();
+/** Push tokens kept per player (a few phones); older ones are dropped. */
+const MAX_TOKENS_PER_PLAYER = 5;
 /** Who was on turn when each game last started a turn (no new notification for the same player again, e.g. after a burn). */
 const lastOnTurn = new WeakMap();
 
@@ -31,9 +33,16 @@ export const isExpoPushToken = token => typeof token === 'string' && token.lengt
 export const registerPushToken = async (auth, token) => {
     await forgetPushToken(token);
     if (auth.guest) {
-        guestTokens.set(auth.id, new Set([...(guestTokens.get(auth.id) ?? []), token]));
+        guestTokens.set(auth.id, new Set([...(guestTokens.get(auth.id) ?? []), token].slice(-MAX_TOKENS_PER_PLAYER)));
     } else {
         await PushToken.upsert({ token, user_id: auth.id });
+        const older = await PushToken.findAll({
+            where: { user_id: auth.id },
+            order: [['updatedAt', 'DESC']],
+            offset: MAX_TOKENS_PER_PLAYER,
+            attributes: ['token'],
+        });
+        if (older.length) await PushToken.destroy({ where: { token: older.map(row => row.token) } });
     }
 };
 

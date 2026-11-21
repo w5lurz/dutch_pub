@@ -13,9 +13,16 @@ const rejected = (socket, error) => {
 
 const ROOM_VISIBILITIES = ['public', 'private'];
 
+/**
+ * Room `roomId` (a number or a numeric string from a client), or undefined. Only the list's own
+ * entries: a plain `roomsList[roomId]` would also "find" built-in properties like `__proto__`.
+ */
+export const roomById = roomId =>
+    (typeof roomId === 'number' || typeof roomId === 'string') && Object.hasOwn(roomsList, roomId) ? roomsList[roomId] : undefined;
+
 /** Error when `roomId` doesn't exist, or (with `ownerOnly`) the socket's user doesn't own it. */
 const roomError = (socket, roomId, { ownerOnly = false } = {}) => {
-    const room = roomsList[roomId];
+    const room = roomById(roomId);
     if (!room) return 'This room does not exist.';
     if (ownerOnly && room.owner !== socket.data.user.username) return 'Only the room owner can do that.';
     return null;
@@ -306,7 +313,8 @@ export const rooms = io => {
             socket.emit('rooms-listed', roomsList);
         });
 
-        socket.on('create-room', ({ name, owner, slots, visibility, settings }) => {
+        socket.on('create-room', payload => {
+            const { name, owner, slots, visibility, settings } = payload ?? {};
             if (rejected(socket, createRoomError(socket, { name, owner, slots, visibility }))) return;
             const newKey = Object.keys(roomsList).length === 0 ? 1 : +Object.keys(roomsList)[Object.keys(roomsList).length - 1] + 1;
             const socketRoomId = `game-${newKey}`;
@@ -347,7 +355,8 @@ export const rooms = io => {
             io.emit('room-deleted', roomsList);
         });
 
-        socket.on('join-room', ({ username, roomId }) => {
+        socket.on('join-room', payload => {
+            const { username, roomId } = payload ?? {};
             if (rejected(socket, joinRoomError(socket, { username, roomId }))) return;
             roomsList = {
                 ...roomsList,
@@ -360,7 +369,8 @@ export const rooms = io => {
             io.emit('joined-room', roomsList);
         });
 
-        socket.on('leave-room', ({ username, roomId }) => {
+        socket.on('leave-room', payload => {
+            const { username, roomId } = payload ?? {};
             if (rejected(socket, leaveRoomError(socket, { username, roomId }))) return;
             roomsList = {
                 ...roomsList,

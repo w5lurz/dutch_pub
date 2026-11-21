@@ -1023,7 +1023,7 @@ describe('account deletion', () => {
     test('nobody can take the name deleted players get', async () => {
         const res = await request('/api/auth/signup', { method: 'POST', body: { username: '[deleted]', email: `x_${stamp}@example.test`, password: 'x' } });
         assert.equal(res.status, 400);
-        assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: '[Deleted]' } })).status, 403);
+        assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: '[Deleted]' } })).status, 400);
     });
 
     test('guests have no account; a wrong password or being in a room refuses it', async () => {
@@ -1082,3 +1082,135 @@ describe('account deletion', () => {
         assert.equal(await db.user.findOne({ where: { username: web.username } }), null);
     });
 });
+
+describe('security', () => {
+    // Its own server: chat without the 1 s gap and a higher event limit, so the limits under test
+    // can be reached quickly; its login limits are its own too.
+    let secure;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const post = (path, body) =>
+        fetch(secure.baseUrl + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const connectSecure = async token => {
+        const socket = io(secure.baseUrl, { transports: ['websocket'], reconnection: false, ...(token && { auth: { token } }) });
+        await new Promise((resolve, reject) => {
+            socket.once('connect', resolve);
+            socket.once('connect_error', reject);
+        });
+        return socket;
+    };
+    const healthy = async () => (await fetch(`${secure.baseUrl}/api/health`)).ok;
+
+    before(async () => {
+        secure = await startServer({ CHAT_GAP_MS: '0', SOCKET_EVENTS_PER_SECOND: '500' });
+    });
+
+    after(async () => {
+        await secure?.stop();
+    });
+
+    test('malformed socket events are refused, the server keeps running', async () => {
+        const anonymous = await connectSecure();
+        for (const [event, payload, answer = 'action-rejected'] of [
+            ['create-room', undefined],
+            ['lay-card', null, 'lay-card-rejected'],
+            ['draw-cards', 'x'],
+            ['join-room', 42],
+            ['send-message', null],
+            ['update-room-settings', null],
+        ]) {
+            const refused = waitFor(anonymous, answer);
+            anonymous.emit(event, payload);
+            await refused;
+        }
+        anonymous.close();
+
+        const name = `sec_${stamp}`;
+        const { token } = await (await post('/api/auth/add-guest', { username: name })).json();
+        const guest = await connectSecure(token);
+        for (const roomId of ['__proto__', 'constructor', 'toString']) {
+            const refused = waitFor(guest, 'action-rejected');
+            guest.emit('join-room', { username: name, roomId });
+            assert.equal((await refused)[0], 'This room does not exist.');
+        }
+        guest.close();
+        assert.ok(await healthy(), 'still running');
+    });
+
+    test('names: built-in property names, commas and the like are refused', async () => {
+        for (const username of ['__proto__', 'constructor', 'a,b', '[deleted]', 'x'.repeat(21)]) {
+            assert.equal((await post('/api/auth/add-guest', { username })).status, 400, username);
+        }
+        const res = await post('/api/auth/signup', { username: `ok_${stamp}`, email: 'not-an-email', password: 'long-enough-1' });
+        assert.equal(res.status, 400);
+        assert.match((await res.json()).message, /email/);
+        const short = await post('/api/auth/signup', { username: `ok_${stamp}`, email: `ok_${stamp}@example.test`, password: 'short' });
+        assert.equal(short.status, 400);
+    });
+
+    test('chat: only text, at most 500 characters, the last 100 messages kept', async () => {
+        const owner = await connectSecure(userToken);
+        const created = waitFor(owner, 'rooms-listed');
+        owner.emit('create-room', { name: `chat_${stamp}`, owner: user.username, slots: 2, visibility: 'public' });
+        const [rooms] = await created;
+        const roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `chat_${stamp}`));
+
+        for (const message of [{ evil: true }, ['a'], '   ', 'x'.repeat(501)]) {
+            const refused = waitFor(owner, 'action-rejected');
+            owner.emit('send-message', { roomId, username: user.username, message });
+            assert.match((await refused)[0], /1 to 500 characters/);
+        }
+        let last;
+        owner.on('message-sent', messages => (last = messages));
+        for (let i = 1; i <= 105; i++) owner.emit('send-message', { roomId, username: user.username, message: `m${i}` });
+        await waitFor2(() => last?.at(-1)?.message === 'm105');
+        assert.equal(last.length, 100);
+        assert.equal(last[0].message, 'm6');
+        assert.equal(last.at(-1).id, 105, 'ids keep counting');
+
+        const deleted = waitFor(owner, 'room-deleted');
+        owner.emit('delete-room', roomId);
+        await deleted;
+        owner.close();
+    });
+
+    test('a flood of events from one connection is dropped, then disconnected', async () => {
+        const flooder = await connectSecure();
+        const slowDown = waitFor(flooder, 'action-rejected');
+        const gone = waitFor(flooder, 'disconnect', 5000);
+        for (let i = 0; i < 3000; i++) flooder.emit('list-rooms');
+        assert.equal((await slowDown)[0], 'Slow down a little.');
+        await gone;
+        assert.ok(await healthy());
+    });
+
+    test('logging in: 10 tries per account per 15 minutes', async () => {
+        const statuses = [];
+        for (let i = 0; i < 11; i++) statuses.push((await post('/api/auth/login', { username: `Nobody_${stamp}`, password: 'x' })).status);
+        assert.deepEqual(statuses.slice(0, 10), Array(10).fill(404));
+        assert.equal(statuses[10], 429);
+        // Another spelling of the same name counts too; another account doesn't.
+        assert.equal((await post('/api/auth/login', { username: ` nobody_${stamp}`, password: 'x' })).status, 429);
+        assert.equal((await post('/api/auth/login', { username: `other_${stamp}`, password: 'x' })).status, 404);
+    });
+
+    test('no internal details: headers, too large and broken bodies', async () => {
+        const res = await fetch(`${secure.baseUrl}/api/health`);
+        assert.equal(res.headers.get('x-powered-by'), null);
+        assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+        assert.match(res.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+        const big = await post('/api/auth/login', { username: 'x'.repeat(20000), password: 'x' });
+        assert.equal(big.status, 413);
+        const broken = await fetch(`${secure.baseUrl}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{oops' });
+        assert.equal(broken.status, 400);
+        assert.deepEqual(await broken.json(), { message: 'Invalid request.' });
+    });
+});
+
+/** Waits until `check()` is true (polls every 20 ms, at most `ms`). */
+async function waitFor2(check, ms = 5000) {
+    const end = Date.now() + ms;
+    while (!check()) {
+        if (Date.now() > end) throw new Error('Timed out');
+        await new Promise(resolve => setTimeout(resolve, 20));
+    }
+}

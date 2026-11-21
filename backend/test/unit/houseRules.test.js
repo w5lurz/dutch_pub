@@ -81,8 +81,9 @@ describe('Ace ("Call Next") calls a player', () => {
         assert.equal(game.call, null, 'the call is over');
     });
 
-    test('no call, an unknown player or yourself: the next player', () => {
-        for (const call of [undefined, 'zed', 'a']) {
+    test('no call, an unknown player, yourself or a built-in property name: the next player', () => {
+        // A built-in name like __proto__ once "found" a player and left nobody on turn (the game froze).
+        for (const call of [undefined, 'zed', 'a', '__proto__', 'constructor', 'toString', { evil: true }]) {
             const game = setUp({ hand: [ace(), card(5)] });
             applyLay(game, 'a', [ace()], 0, { call });
             assert.equal(onTurn(game), 'b', `call: ${call}`);

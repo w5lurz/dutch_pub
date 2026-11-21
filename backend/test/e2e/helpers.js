@@ -25,9 +25,10 @@ export async function startServer(env = {}) {
 
     const child = spawn(process.execPath, ['src/app.js'], {
         cwd: backendDir,
-        // A missed blind card is shown only briefly, so the bots' games stay fast.
+        // A missed blind card is shown only briefly, so the bots' games stay fast (and the bots may
+        // send more events per second than a person could).
         // Its own snapshot scope: test servers never load or delete the real server's saved games.
-        env: { ...process.env, PORT: String(port), CORS_ORIGIN: '', BLIND_REVEAL_MS: '20', SNAPSHOT_SCOPE: `e2e-${port}`, SNAPSHOT_MS: '100', ...env },
+        env: { ...process.env, PORT: String(port), CORS_ORIGIN: '', BLIND_REVEAL_MS: '20', SNAPSHOT_SCOPE: `e2e-${port}`, SNAPSHOT_MS: '100', SOCKET_EVENTS_PER_SECOND: '1000', ...env },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';

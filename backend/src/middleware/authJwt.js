@@ -31,7 +31,7 @@ export const hashToken = token => crypto.createHash('sha256').update(token).dige
 /** The decoded payload of a valid access token, or null (invalid, expired, or a refresh token). */
 export const verifyAccessToken = token => {
     try {
-        const decoded = jwt.verify(token, secret);
+        const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
         return decoded.typ === 'refresh' ? null : decoded;
     } catch {
         return null;
@@ -41,7 +41,7 @@ export const verifyAccessToken = token => {
 /** The decoded payload of a valid guest refresh token, or null. */
 export const verifyGuestRefreshToken = token => {
     try {
-        const decoded = jwt.verify(token, secret);
+        const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
         return decoded.typ === 'refresh' && decoded.guest ? decoded : null;
     } catch {
         return null;

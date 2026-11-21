@@ -1,5 +1,5 @@
 import { canLayCard, isCallNext, isReverse, normalizeRoomSettings } from '@dutch-pub/shared';
-import { emptySocketRoom, games, modifyRooms, roomsList } from './rooms.js';
+import { emptySocketRoom, games, modifyRooms, roomById, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
 import { identityError } from './socketAuth.js';
 import { notifyTurn } from './push.js';
@@ -90,12 +90,12 @@ const validatePlayer = (socket, { roomId, username }) => {
     if (authError) {
         return { error: authError };
     }
-    const currentRoom = roomsList[roomId];
-    const currentGame = games[roomId];
+    const currentRoom = roomById(roomId);
+    const currentGame = currentRoom && Object.hasOwn(games, roomId) ? games[roomId] : undefined;
     if (!currentRoom || !currentGame) {
         return { error: 'This game does not exist.' };
     }
-    const player = currentGame.players[username];
+    const player = Object.hasOwn(currentGame.players, username) ? currentGame.players[username] : undefined;
     const roomPlayer = currentRoom.players.find(roomPlayer => roomPlayer.username === username);
     if (!player || !roomPlayer || roomPlayer.socketId !== socket.id) {
         return { error: 'You are not a player in this game.' };
@@ -185,6 +185,10 @@ export const validateLayCard = (socket, { card, cards, roomId, username }) => {
 
     const playableCards = hand.length !== 0 ? hand : tableFlipped;
     if (Array.isArray(cards) && cards.length > 0) {
+        // At most 8 cards of one value exist (two decks).
+        if (cards.length > 8) {
+            return { error: "You don't have that card." };
+        }
         const pool = [...playableCards];
         const serverCards = [];
         for (const requested of cards) {
@@ -215,8 +219,8 @@ export const validateLayCard = (socket, { card, cards, roomId, username }) => {
 export const game = io => {
     io.on('connection', socket => {
         socket.on('lay-card', async payload => {
-            const { cardIndex, roomId, username, call } = payload;
-            const validation = validateLayCard(socket, payload);
+            const { cardIndex, roomId, username, call } = payload ?? {};
+            const validation = validateLayCard(socket, payload ?? {});
             if (validation.error) {
                 console.log('LAY CARD REJECTED', validation.error, payload);
                 socket.emit('lay-card-rejected', validation.error);
@@ -302,7 +306,8 @@ export const game = io => {
             socket.emit('game-state', buildGameState(socket.data.user?.username));
         });
 
-        socket.on('draw-cards', ({ roomId, username }) => {
+        socket.on('draw-cards', payload => {
+            const { roomId, username } = payload ?? {};
             const { error } = validateTurn(socket, { roomId, username });
             if (error) {
                 console.log('DRAW CARDS REJECTED', error, roomId, username);
@@ -422,7 +427,8 @@ export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = fal
     if (game.rules?.sixReverses && isReverse(cards[0])) {
         game.direction = game.direction === -1 ? 1 : -1;
     }
-    const target = isCallNext(cards[0]) && call !== username && game.players[call] ? call : undefined;
+    // Only a player of this game (not a built-in property name like `__proto__`, which would leave nobody on turn).
+    const target = isCallNext(cards[0]) && call !== username && typeof call === 'string' && Object.hasOwn(game.players, call) ? call : undefined;
     setActivePlayerNext(game, target);
     game.call = isCallNext(cards[0]) ? { by: username, target: activeName(game) } : null;
 };
@@ -507,7 +513,7 @@ export const setActivePlayerNext = (game, to) => {
     const names = Object.keys(game.players);
     const from = names.findIndex(name => game.players[name].active);
     const step = game.direction === -1 ? -1 : 1;
-    const next = to && game.players[to] ? to : names[(from + step + names.length) % names.length];
+    const next = to && Object.hasOwn(game.players, to) ? to : names[(from + step + names.length) % names.length];
     names.forEach(name => {
         game.players[name].active = name === next;
     });

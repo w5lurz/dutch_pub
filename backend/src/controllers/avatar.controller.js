@@ -1,6 +1,7 @@
 import { parseAvatarUpdate, saveAvatar } from '../avatars.js';
 import db from '../models/index.js';
 import { applyAvatarChange } from '../rooms.js';
+import { serverError } from '../utils/utils.js';
 
 const User = db.user;
 
@@ -26,6 +27,6 @@ export const setMyAvatar = async (req, res) => {
         applyAvatarChange(user.id, user.username, avatar);
         return res.status(200).send({ avatar });
     } catch (err) {
-        return res.status(500).send({ message: err.message });
+        return serverError(res, err);
     }
 };

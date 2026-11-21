@@ -6,8 +6,13 @@ import express, { Router } from 'express';
 
 import { deleteAccount } from './account.js';
 import db from './models/index.js';
+import { limiter, TOO_MANY } from './rateLimit.js';
 
 const User = db.user;
+
+// Deleting asks for the password: limited like logging in (per account, and per address).
+const deleteTries = limiter({ windowMs: 15 * 60 * 1000, max: 10 });
+const deleteTriesPerAddress = limiter({ windowMs: 15 * 60 * 1000, max: 50 });
 
 const POLICY_DATE = '20 November 2026';
 
@@ -121,6 +126,9 @@ export const pages = () => {
 
     router.post('/account/delete', express.urlencoded({ extended: false, limit: '4kb' }), async (req, res) => {
         const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+        if (!deleteTries(username.toLowerCase()) || !deleteTriesPerAddress(String(req.ip))) {
+            return res.status(429).type('html').send(deletePageHtml(TOO_MANY));
+        }
         try {
             const user = username ? await User.findOne({ where: { username } }) : null;
             const result = user ? await deleteAccount(user, req.body.password, req.app.get('io')) : { status: 401 };

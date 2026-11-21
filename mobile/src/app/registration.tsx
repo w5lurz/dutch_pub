@@ -1,6 +1,7 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Linking, TextInput } from 'react-native';
 import { router } from 'expo-router';
+import { passwordError as passwordRule, usernameError as usernameRule } from '@dutch-pub/shared';
 
 import { AuthForm, AuthSwitchLink } from '@/components/auth';
 import { Button, TextField, TextLink } from '@/components/ui';
@@ -35,11 +36,14 @@ export default function RegistrationScreen() {
     // Email is checked once the field was left (or on submit); the confirmation live, as on the web.
     const emailError = emailTouched && email.trim() !== '' && !emailValid ? 'Please enter a valid email address' : null;
     const confirmError = confirmPassword !== '' && !passwordsMatch ? 'Passwords do not match' : null;
+    // The server's rules (packages/shared), shown as soon as something is typed.
+    const usernameError = username.trim() !== '' ? usernameRule(username) : null;
+    const passwordError = password !== '' ? passwordRule(password) : null;
 
     const handleSubmit = async () => {
         if (loading) return;
         setEmailTouched(true);
-        if (!allFilled || !emailValid || !passwordsMatch) return;
+        if (!allFilled || !emailValid || !passwordsMatch || usernameError || passwordError) return;
 
         setLoading(true);
         const result = await register(username.trim(), email.trim(), password);
@@ -71,6 +75,7 @@ export default function RegistrationScreen() {
                 placeholder="your preferred username"
                 value={username}
                 onChangeText={setUsername}
+                error={usernameError}
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="username-new"
@@ -104,6 +109,7 @@ export default function RegistrationScreen() {
                 placeholder="••••••••"
                 value={password}
                 onChangeText={setPassword}
+                error={passwordError}
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -134,7 +140,7 @@ export default function RegistrationScreen() {
                 label="Create an account"
                 variant="blue"
                 onPress={handleSubmit}
-                disabled={!allFilled || !passwordsMatch || (emailTouched && !emailValid)}
+                disabled={!allFilled || !passwordsMatch || (emailTouched && !emailValid) || !!usernameError || !!passwordError}
                 loading={loading}
                 className="w-full"
             />

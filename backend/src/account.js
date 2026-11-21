@@ -15,6 +15,9 @@ const User = db.user;
  */
 export const DELETED_PLAYER = '[deleted]';
 
+/** bcrypt cost of stored passwords (older accounts are re-hashed with it at their next login). */
+export const PASSWORD_ROUNDS = 10;
+
 /** Names nobody can register or join as a guest with. */
 export const isReservedUsername = username => typeof username === 'string' && username.trim().toLowerCase() === DELETED_PLAYER;
 
@@ -33,7 +36,7 @@ export const withoutPlayer = (players, username) =>
  * Returns `{ status, message? }`: 204, 401 wrong password, 409 in a room.
  */
 export const deleteAccount = async (user, password, io) => {
-    if (typeof password !== 'string' || !bcrypt.compareSync(password, user.password)) {
+    if (typeof password !== 'string' || !(await bcrypt.compare(password, user.password))) {
         return { status: 401, message: 'Wrong password.' };
     }
     const room = Object.values(roomsList).find(other => other.players.some(player => player.username === user.username));

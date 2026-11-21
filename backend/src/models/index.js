@@ -16,6 +16,8 @@ const sequelize = new Sequelize(DB, USER, PASSWORD, {
     dialect: _dialect,
     port: PORT,
     reconnect,
+    // SQL logging would put emails, password hashes and tokens into the logs: only on request.
+    logging: process.env.DB_LOG === '1' ? console.log : false,
     ...(!isDevEnv && {
         dialectOptions: {
             socketPath: '/cloudsql/dutch-card:europe-west6:dutch-pub',
