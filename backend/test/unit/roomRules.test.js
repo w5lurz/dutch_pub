@@ -43,6 +43,21 @@ describe('room rules (the server checks what the app only hides)', () => {
             assert.equal(createRoomError(outsider, { ...valid, slots: 5 }), 'A room has 2, 3 or 4 seats.');
             assert.equal(createRoomError(outsider, { ...valid, visibility: 'secret' }), 'A room is public or private.');
         });
+        test('not when the server is full (MAX_ROOMS, default 300)', () => {
+            const before = process.env.MAX_ROOMS;
+            try {
+                modifyRooms(Object.fromEntries(Array.from({ length: 300 }, (_, i) => [i + 1, room({ owner: `o${i}`, players: [] })])));
+                assert.match(createRoomError(outsider, valid), /server is full/);
+                process.env.MAX_ROOMS = '301';
+                assert.equal(createRoomError(outsider, valid), null);
+                process.env.MAX_ROOMS = '2';
+                modifyRooms({ 1: room(), 2: room({ owner: 'x', players: [] }) });
+                assert.match(createRoomError(outsider, valid), /server is full/);
+            } finally {
+                if (before === undefined) delete process.env.MAX_ROOMS;
+                else process.env.MAX_ROOMS = before;
+            }
+        });
         test('only as yourself', () => {
             assert.equal(createRoomError(outsider, { ...valid, owner: 'someone' }), 'You can only act as yourself.');
         });

@@ -63,6 +63,9 @@ export const resumeClocks = io => {
     watchOwnersAfterRestart(io);
 };
 
+/** Rooms per snapshot query (a room's state is a few KB). */
+const SNAPSHOT_CHUNK = 100;
+
 /** What was last written per room id (to write only the rooms that changed). */
 const written = new Map();
 let writing = Promise.resolve();
@@ -72,10 +75,16 @@ export const writeSnapshots = () => {
     writing = writing
         .then(async () => {
             const current = new Map(Object.keys(roomsList).map(id => [Number(id), snapshotOf(id)]));
-            for (const [roomId, state] of current) {
-                if (written.get(roomId) === state) continue;
-                await db.game_snapshot.upsert({ scope: SCOPE, room_id: roomId, state });
-                written.set(roomId, state);
+            const changed = [...current].filter(([roomId, state]) => written.get(roomId) !== state);
+            // A few queries for all of them (one per room took ~7 ms each and fell behind from
+            // ~150 busy rooms, see test/load); in chunks, as one query has a size limit.
+            for (let i = 0; i < changed.length; i += SNAPSHOT_CHUNK) {
+                const chunk = changed.slice(i, i + SNAPSHOT_CHUNK);
+                await db.game_snapshot.bulkCreate(
+                    chunk.map(([roomId, state]) => ({ scope: SCOPE, room_id: roomId, state })),
+                    { updateOnDuplicate: ['state', 'updatedAt'] },
+                );
+                chunk.forEach(([roomId, state]) => written.set(roomId, state));
             }
             const gone = [...written.keys()].filter(roomId => !current.has(roomId));
             if (gone.length) {

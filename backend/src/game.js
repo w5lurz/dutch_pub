@@ -478,9 +478,19 @@ export const buildPlayerView = (room, game, username) => {
     };
 };
 
-export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
+/**
+ * Sends each player of `room` their view of `game` as `message`, with a room list: the whole list
+ * when the game starts, afterwards only the game's own room. The list doesn't change with a move,
+ * and with many rooms it was nearly all of the data (110 KB per move at 200 rooms, see
+ * test/load). An app replaces its list with it, so during a game it holds just its own room; the
+ * whole list comes back with `game-won` / `game-stopped`. (Players of running games get no room
+ * list broadcasts either, see `broadcastRooms`.)
+ */
+export const sendUiDataToSocket = (io, room, game, message, roomId) => {
+    const id = roomId ?? room.socketRoomId?.replace('game-', '');
+    const rooms = message === 'game-started' || id === undefined ? roomsList : { [id]: room };
     room.players.forEach(player => {
-        io.to(player.socketId).emit(message, buildPlayerView(room, game, player.username), roomsList, roomId);
+        io.to(player.socketId).emit(message, buildPlayerView(room, game, player.username), rooms, roomId);
     });
 };
 

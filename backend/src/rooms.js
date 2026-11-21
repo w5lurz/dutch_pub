@@ -45,7 +45,18 @@ export const createRoomError = (socket, { name, owner, slots, visibility } = {})
     }
     if (![2, 3, 4].includes(slots)) return 'A room has 2, 3 or 4 seats.';
     if (!ROOM_VISIBILITIES.includes(visibility)) return 'A room is public or private.';
+    if (Object.keys(roomsList).length >= maxRooms()) return 'The server is full right now. Please try again in a few minutes.';
     return null;
+};
+
+/**
+ * At most this many rooms at once (env MAX_ROOMS, default 300). Memory is the limit: ~1.2 MB per
+ * room with its 4 connections (load test, test/load). Size it to the host's RAM: 512 MB ~150,
+ * 1 GB ~300, 2 GB ~800 (CPU still had room at 800).
+ */
+const maxRooms = () => {
+    const max = Number(process.env.MAX_ROOMS);
+    return Number.isInteger(max) && max > 0 ? max : 300;
 };
 
 /** Checks a `join-room` request (as the app's Join button): returns the error message, or null. */
@@ -181,6 +192,38 @@ const roomPlayer = (socket, username) => ({ username, socketId: socket?.id, avat
 
 let ioServer = null;
 
+/** The room list goes out to everyone at most this often (ms); changes in between go out together. */
+const ROOMS_BROADCAST_MS = Number(process.env.ROOMS_BROADCAST_MS ?? 1000);
+let lastRoomsBroadcast = 0;
+let pendingRoomsBroadcast = null; // { event } while a broadcast waits for its turn
+
+/**
+ * Sends the room list as `event` (`rooms-listed`, `joined-room`, ...: the app treats them alike)
+ * to everyone except the players of running games, who get their own room with every game update.
+ * At most once per ROOMS_BROADCAST_MS: a change within that time is sent at its end, together
+ * with any others, as the latest list under the latest event name. With many rooms the list is
+ * large and changes several times a second (see test/load).
+ */
+export const broadcastRooms = (io, event = 'rooms-listed') => {
+    if (!io) return;
+    if (pendingRoomsBroadcast) {
+        pendingRoomsBroadcast.event = event;
+        return;
+    }
+    const send = name => {
+        pendingRoomsBroadcast = null;
+        lastRoomsBroadcast = Date.now();
+        const playing = Object.values(roomsList)
+            .filter(room => room.inGame)
+            .map(room => room.socketRoomId);
+        (playing.length ? io.except(playing) : io).emit(name, roomsList);
+    };
+    const wait = lastRoomsBroadcast + ROOMS_BROADCAST_MS - Date.now();
+    if (wait <= 0) return send(event);
+    pendingRoomsBroadcast = { event };
+    setTimeout(() => send(pendingRoomsBroadcast.event), wait);
+};
+
 /**
  * After user `userId` saved a new avatar (REST): updates their entry in every room and the
  * cached identity of their sockets, then broadcasts the room list so the change shows at
@@ -203,7 +246,15 @@ export const applyAvatarChange = (userId, username, avatar, io = ioServer) => {
             return [roomId, { ...room, players }];
         }),
     );
-    if (changed) io?.emit('rooms-listed', roomsList);
+    if (changed) {
+        broadcastRooms(io);
+        // The players of a running game get no broadcasts: their own room, as with game updates.
+        Object.entries(roomsList).forEach(([roomId, room]) => {
+            if (room.inGame && room.players.some(player => player.username === username)) {
+                io?.to(room.socketRoomId).emit('rooms-listed', { [roomId]: room });
+            }
+        });
+    }
     return changed;
 };
 
@@ -260,7 +311,7 @@ const broadcastStop = (io, roomId, reason) => {
     const rooms = stopGame(roomId);
     io.to(gameId).emit('game-stopped', owner, rooms, reason);
     emptySocketRoom(io, gameId);
-    io.emit('rooms-listed', rooms);
+    broadcastRooms(io);
 };
 
 /**
@@ -333,7 +384,7 @@ export const rooms = io => {
             socket.data.username = owner;
             socket.data.roomId = socketRoomId;
             socket.join(socketRoomId);
-            io.emit('rooms-listed', roomsList);
+            broadcastRooms(io);
         });
 
         socket.on('update-room-settings', payload => {
@@ -341,7 +392,7 @@ export const rooms = io => {
             if (rejected(socket, error)) return;
             const { roomId } = payload;
             roomsList = { ...roomsList, [roomId]: { ...roomsList[roomId], settings, visibility } };
-            io.emit('rooms-listed', roomsList);
+            broadcastRooms(io);
         });
 
         socket.on('delete-room', roomId => {
@@ -352,7 +403,7 @@ export const rooms = io => {
             emptySocketRoom(io, `game-${roomId}`);
             const { [`game-${roomId}`]: _messages, ...restMessages } = roomMessages;
             modifyRoomMessages(restMessages);
-            io.emit('room-deleted', roomsList);
+            broadcastRooms(io, 'room-deleted');
         });
 
         socket.on('join-room', payload => {
@@ -366,7 +417,7 @@ export const rooms = io => {
             socket.data.username = username;
             socket.data.roomId = `game-${roomId}`;
             socket.join(`game-${roomId}`);
-            io.emit('joined-room', roomsList);
+            broadcastRooms(io, 'joined-room');
         });
 
         socket.on('leave-room', payload => {
@@ -382,7 +433,7 @@ export const rooms = io => {
 
             socket.data.roomId = '';
             socket.leave(`game-${roomId}`);
-            io.emit('left-room', roomsList);
+            broadcastRooms(io, 'left-room');
         });
 
         // The owner ends the running game for everyone (nobody wins); the players go back to the lobby.
