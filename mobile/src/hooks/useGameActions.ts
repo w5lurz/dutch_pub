@@ -4,6 +4,7 @@ import { canLayCard, type Cards, type TCard } from '@dutch-pub/shared';
 
 import { pileDrawSignature } from '@/components/game/autoDraw';
 import { useRoomSettings } from '@/hooks/useRoomSettings';
+import i18n from '@/i18n';
 import { playSound } from '@/lib/sounds';
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -44,7 +45,7 @@ export function useGameActions() {
             if (roomId === undefined) return false;
             if (game.phase === 'swap') {
                 dispatch(
-                    setToast({ id: `swap-first-${Date.now()}`, type: 'info', message: 'Swap your cards first, then tap Ready.', duration: 3000 }),
+                    setToast({ id: `swap-first-${Date.now()}`, type: 'info', message: i18n.t('server.swapFirst'), duration: 3000 }),
                 );
                 return false;
             }
@@ -58,22 +59,22 @@ export function useGameActions() {
                     setToast({
                         id: `lay-cards-mixed-${Date.now()}`,
                         type: 'warning',
-                        message: 'Only cards of the same value can be laid together.',
+                        message: i18n.t('server.sameValue'),
                         duration: 3000,
                     }),
                 );
                 return false;
             }
             if (!active) {
-                dispatch(setToast({ id: `not-your-turn-${Date.now()}`, type: 'warning', message: "It's not your turn yet.", duration: 3000 }));
+                dispatch(setToast({ id: `not-your-turn-${Date.now()}`, type: 'warning', message: i18n.t('game.toast.notYourTurnYet'), duration: 3000 }));
                 return false;
             }
             if (!touchable) {
-                dispatch(setToast({ id: `place-card-failed-${Date.now()}`, type: 'warning', message: 'You cannot place that card!', duration: 3000 }));
+                dispatch(setToast({ id: `place-card-failed-${Date.now()}`, type: 'warning', message: i18n.t('game.toast.cannotPlace'), duration: 3000 }));
                 return false;
             }
             if (first === undefined || !canLayCard(first, laidCards, cardRules)) {
-                dispatch(setToast({ id: `lay-card-failed-${Date.now()}`, type: 'sad', message: 'You cannot lay that card.', duration: 3000 }));
+                dispatch(setToast({ id: `lay-card-failed-${Date.now()}`, type: 'sad', message: i18n.t('server.cannotLay'), duration: 3000 }));
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
                 playSound('invalid');
                 return false;
@@ -121,7 +122,7 @@ export function useGameActions() {
             setToast({
                 id: `cards-drawn-${Date.now()}`,
                 type: 'sad',
-                message: 'You could not lay any card, so you picked up the pile.',
+                message: i18n.t('game.toast.autoPickedUp'),
                 duration: 3000,
             }),
         );

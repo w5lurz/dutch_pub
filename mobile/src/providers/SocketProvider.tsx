@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { io } from 'socket.io-client';
 
+import i18n, { serverMessage } from '@/i18n';
 import { clearToken } from '@/lib/authToken';
 import { API_URL } from '@/lib/config';
 import { forgetPush } from '@/lib/notifications';
@@ -70,12 +71,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
                 await forgetPush();
                 await clearToken();
                 dispatch(setUser(null));
-                dispatch(setToast({ id: `session-${Date.now()}`, type: 'info', message: 'Please log in again.', duration: 3000 }));
+                dispatch(setToast({ id: `session-${Date.now()}`, type: 'info', message: i18n.t('session.logInAgain'), duration: 3000 }));
                 socket.connect();
             }
         };
         const onActionRejected = (reason: string) =>
-            dispatch(setToast({ id: `action-rejected-${Date.now()}`, type: 'sad', message: reason, duration: 3000 }));
+            dispatch(setToast({ id: `action-rejected-${Date.now()}`, type: 'sad', message: serverMessage(reason), duration: 3000 }));
 
         socket.on('connect', onConnect);
         socket.on('disconnect', onDisconnect);

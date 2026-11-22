@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
+import i18n from '@/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CardRules, Cards, ChatMessage, Game, TCard } from '@dutch-pub/shared';
 
@@ -272,7 +273,7 @@ export function GameTable({
 					<CardDragProvider>
 						<View
 							className={`flex-row items-start justify-around px-2 ${layout === 'wide' && short ? 'pt-2' : 'pt-1'}`}
-							accessibilityLabel={`Opponents, ${seats.length}`}
+							accessibilityLabel={i18n.t('game.opponents', { count: seats.length })}
 						>
 							{seatAt('top-left')}
 							{seatAt('top')}

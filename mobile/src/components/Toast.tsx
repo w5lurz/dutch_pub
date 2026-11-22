@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Pressable, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,13 +8,7 @@ import type { ToastType } from '@/lib/types';
 import { setToast } from '@/store/generalSlice';
 import { useAppDispatch, useAppSelector } from '@/store';
 
-const titles: Record<ToastType, string> = {
-    success: '🎉 Hurray!',
-    info: 'ℹ️ You must know about this.',
-    warning: '⚠️ Hello there!',
-    error: '❌ Oh no!',
-    sad: "😔 We're sorry!",
-};
+const icons: Record<ToastType, string> = { success: '🎉', info: 'ℹ️', warning: '⚠️', error: '❌', sad: '😔' };
 
 const colors: Record<ToastType, string> = {
     success: 'bg-green-100 border-green-400',
@@ -25,6 +20,7 @@ const colors: Record<ToastType, string> = {
 
 /** Global toast host, driven by `general.toast` in the store. Mount once in the root layout. */
 export default function Toast() {
+    const { t } = useTranslation();
     const toast = useAppSelector(state => state.general.toast);
     const dispatch = useAppDispatch();
     const insets = useSafeAreaInsets();
@@ -53,7 +49,7 @@ export default function Toast() {
                 className={`w-full max-w-sm rounded-md border p-4 shadow-lg ${colors[toast.type]}`}
             >
                 <Text className="text-base text-gray-900">
-                    <Text className="font-semibold">{titles[toast.type]}</Text> {toast.message}
+                    <Text className="font-semibold">{`${icons[toast.type]} ${t(`toast.${toast.type}`)}`}</Text> {toast.message}
                 </Text>
             </Pressable>
         </Animated.View>

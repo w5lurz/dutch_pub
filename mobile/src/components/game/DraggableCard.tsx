@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
+import i18n from '@/i18n';
 import Animated, {
 	Easing,
 	FadeInDown,
@@ -100,7 +101,7 @@ export function DraggableCard({
 	const tap = useTapGesture({ runOnJS: true, onActivate: onSelect });
 	const gesture = useCompetingGestures(pan, tap);
 
-	const label = card ? cardLabel(card) : 'Face-down card';
+	const label = card ? cardLabel(card) : i18n.t('cards.faceDown');
 	// Lifted along the card's own axis (straight up for an untilted card), then tilted.
 	const angle = (rotation * Math.PI) / 180;
 	const lifted = useSharedValue(selected ? 1 : 0);
@@ -138,9 +139,9 @@ export function DraggableCard({
 					accessible
 					accessibilityRole="button"
 					accessibilityLabel={label}
-					accessibilityHint={accessibilityHint ?? 'Tap to select, drag onto the laid pile to play'}
+					accessibilityHint={accessibilityHint ?? i18n.t('game.cardHint')}
 					accessibilityState={{ selected }}
-					accessibilityActions={[{ name: 'activate' }, { name: 'play', label: 'Play' }]}
+					accessibilityActions={[{ name: 'activate' }, { name: 'play', label: i18n.t('common.play') }]}
 					onAccessibilityAction={event => {
 						if (event.nativeEvent.actionName === 'play') onPlay();
 						else onSelect();

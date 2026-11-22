@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import i18n from '@/i18n';
+import { cardName, suitName } from '@/i18n/cards';
 import type { TCard } from '@dutch-pub/shared';
 
 import { CardBackArt, CardFaceArt } from '@/components/cards';
@@ -41,8 +43,8 @@ const BACK_RADIUS = 6;
 
 /** "7 of hearts", "Mirror (0) of clubs". */
 export function cardLabel(card: TCard): string {
-    const name = card.name === String(card.value) ? card.name : `${card.name} (${card.value})`;
-    return `${name} of ${card.color}`;
+    const name = card.name === String(card.value) ? cardName(card) : `${cardName(card)} (${card.value})`;
+    return i18n.t('cards.label', { name, suit: suitName(card.color) });
 }
 
 /** The French-suited face (RevK deck): full face on big cards, a compact index on small ones. */
@@ -98,7 +100,7 @@ export function PlayingCard({
     const showFace = !!card && !faceDown;
     const label =
         accessibilityLabel ??
-        (showFace ? cardLabel(card) : plusCount > 0 ? `Face-down card, ${plusCount} more below` : 'Face-down card');
+        (showFace ? cardLabel(card) : plusCount > 0 ? i18n.t('cards.faceDownMore', { count: plusCount }) : i18n.t('cards.faceDown'));
 
     const face = showFace ? (
         // Both inside the 2dp outline on each side.
@@ -197,7 +199,7 @@ export function EmptyCardSlot({ size = 'md', label }: { size?: CardSize; label: 
             style={{ width, height }}
             className="items-center justify-center rounded-md border-2 border-dashed border-gray-300"
         >
-            <Text className="text-xs text-gray-400">Empty</Text>
+            <Text className="text-xs text-gray-400">{i18n.t('cards.empty')}</Text>
         </View>
     );
 }

@@ -35,7 +35,7 @@ export function Paragraph({ children, className = '' }: TextProps) {
 }
 
 /** Inline bold text; must be nested inside a `Paragraph` or `Bullet`. */
-export function Strong({ children }: { children: ReactNode }) {
+export function Strong({ children }: { children?: ReactNode }) {
     return <Text className="font-semibold">{children}</Text>;
 }
 

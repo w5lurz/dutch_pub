@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BottomSheet, Button, TextField } from '@/components/ui';
 
@@ -12,6 +13,7 @@ export type DeleteAccountSheetProps = {
 
 /** Asks for the password, then deletes the logged-in user's account for good. */
 export function DeleteAccountSheet({ visible, onClose, onDelete }: DeleteAccountSheetProps) {
+    const { t } = useTranslation();
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
@@ -31,14 +33,13 @@ export function DeleteAccountSheet({ visible, onClose, onDelete }: DeleteAccount
     };
 
     return (
-        <BottomSheet visible={visible} title="Delete account" onClose={close}>
+        <BottomSheet visible={visible} title={t('account.deleteAccount')} onClose={close}>
             <Text className="text-base text-gray-700">
-                Your account, avatar and logins are deleted for good. In past games your name becomes “[deleted]”, so the other
-                players keep their results. This cannot be undone.
+                {t('account.deleteExplanation')}
             </Text>
             <TextField
-                label="Password"
-                placeholder="Your password, to confirm"
+                label={t('auth.password')}
+                placeholder={t('account.deletePasswordPlaceholder')}
                 value={password}
                 onChangeText={text => {
                     setPassword(text);
@@ -53,8 +54,8 @@ export function DeleteAccountSheet({ visible, onClose, onDelete }: DeleteAccount
                 error={error}
                 editable={!deleting}
             />
-            <Button label="Delete my account" variant="red" onPress={handleDelete} disabled={!password} loading={deleting} className="w-full" />
-            <Button label="Keep my account" variant="gray" onPress={close} disabled={deleting} className="w-full" />
+            <Button label={t('account.deleteMyAccount')} variant="red" onPress={handleDelete} disabled={!password} loading={deleting} className="w-full" />
+            <Button label={t('account.keepMyAccount')} variant="gray" onPress={close} disabled={deleting} className="w-full" />
         </BottomSheet>
     );
 }

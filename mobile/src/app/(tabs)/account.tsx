@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { AvatarSection } from '@/components/account/AvatarSection';
+import { LanguageSetting } from '@/components/account/LanguageSetting';
 import { DeleteAccountSheet } from '@/components/account/DeleteAccountSheet';
 import { GuestBadge } from '@/components/auth';
 import { DutchPubLogo } from '@/components/icons';
@@ -15,30 +17,32 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { setToast } from '@/store/generalSlice';
 
 function SignedOut() {
+	const { t } = useTranslation();
 	return (
 		<View className="w-full max-w-md items-center gap-4">
 			<DutchPubLogo size={64} />
 			<Text accessibilityRole="header" className="text-2xl font-bold text-gray-900">
-				You are not logged in
+				{t('account.notLoggedIn')}
 			</Text>
 			<Text className="text-center text-base text-gray-600">
-				Log in or create an account to keep track of your wins.
+				{t('account.notLoggedInText')}
 			</Text>
 			<View className="w-full gap-3">
-				<Button label="Log in" variant="blue" onPress={() => router.push('/login')} className="w-full" />
-				<Button label="Register" variant="green" onPress={() => router.push('/registration')} className="w-full" />
+				<Button label={t('common.logIn')} variant="blue" onPress={() => router.push('/login')} className="w-full" />
+				<Button label={t('common.register')} variant="green" onPress={() => router.push('/registration')} className="w-full" />
 			</View>
 			<View className="mt-4 w-full items-center gap-2 border-t border-gray-200 pt-4">
 				<Text className="text-center text-sm text-gray-500">
-					No account needed to play: you can also join as a guest from the Play tab.
+					{t('account.guestHint')}
 				</Text>
-				<Button label="Play as guest" variant="gray" size="sm" onPress={() => router.navigate('/play')} />
+				<Button label={t('account.playAsGuest')} variant="gray" size="sm" onPress={() => router.navigate('/play')} />
 			</View>
 		</View>
 	);
 }
 
 export default function AccountScreen() {
+	const { t } = useTranslation();
 	const user = useAppSelector((state) => state.user);
 	const dispatch = useAppDispatch();
 	const { logOut, deleteAccount } = useSession();
@@ -51,7 +55,7 @@ export default function AccountScreen() {
 		const result = await deleteAccount(password);
 		if (!result.ok) return result.message;
 		dispatch(
-			setToast({ id: `account-deleted-${Date.now()}`, type: 'info', message: 'Your account has been deleted.', duration: 4000 }),
+			setToast({ id: `account-deleted-${Date.now()}`, type: 'info', message: t('account.deleted'), duration: 4000 }),
 		);
 		return null;
 	};
@@ -64,7 +68,7 @@ export default function AccountScreen() {
 				setToast({
 					id: `logout-success-${Date.now()}`,
 					type: 'success',
-					message: 'You successfully logged out!',
+					message: t('account.loggedOut'),
 					duration: 3000,
 				}),
 			);
@@ -86,18 +90,18 @@ export default function AccountScreen() {
 					{user.isGuest ? <GuestBadge /> : null}
 					{!user.isGuest && user.email ? <Text className="text-base text-gray-600">{user.email}</Text> : null}
 					{user.isGuest ? (
-						<Text className="text-center text-sm text-gray-500">Guest users can only join public rooms.</Text>
+						<Text className="text-center text-sm text-gray-500">{t('account.guestRooms')}</Text>
 					) : null}
 					{/* As on the web (menu hidden in game), no logging out in the middle of a game. */}
 					{user.inGame !== undefined ? (
-						<Text className="mt-2 text-center text-sm text-gray-500">You can log out once your game is over.</Text>
+						<Text className="mt-2 text-center text-sm text-gray-500">{t('account.logOutAfterGame')}</Text>
 					) : (
-						<Button label="Log out" variant="red" onPress={handleLogout} loading={loggingOut} className="mt-2 w-full" />
+						<Button label={t('account.logOut')} variant="red" onPress={handleLogout} loading={loggingOut} className="mt-2 w-full" />
 					)}
 					{!user.isGuest ? (
 						<>
 							<Button
-								label="Delete account"
+								label={t('account.deleteAccount')}
 								variant="gray"
 								size="sm"
 								onPress={() => setDeleting(true)}
@@ -113,21 +117,22 @@ export default function AccountScreen() {
 			{/* Settings of this phone only (not of the account). */}
 			<View className="mt-4 w-full max-w-md rounded-lg border border-gray-200 bg-white px-4 py-2 shadow">
 				<SettingRow
-					label="Sounds"
-					description="Card, pick-up, burn and win sounds in a game (silent when the phone is)"
+					label={t('account.sounds')}
+					description={t('account.soundsDescription')}
 					value={soundsOn}
 					onValueChange={setSoundsOn}
 				/>
 				<SettingRow
-					label="Notifications"
-					description="“Your turn” when Dutch Pub is in the background"
+					label={t('account.notifications')}
+					description={t('account.notificationsDescription')}
 					value={notificationsOn}
 					onValueChange={setNotificationsOn}
 				/>
+				<LanguageSetting />
 			</View>
 			<TextLink
-				label="Privacy policy"
-				hint="Opens in the browser"
+				label={t('common.privacyPolicy')}
+				hint={t('common.opensInBrowser')}
 				onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
 				className="mt-4"
 			/>

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from '@dutch-pub/shared';
 
 import { BottomSheet, Button, SegmentedControl, TextField } from '@/components/ui';
 import type { NewRoom, RoomVisibility } from '@/hooks/useRooms';
-import { RoomSettingsFields, VISIBILITY_OPTIONS } from './RoomSettingsFields';
+import { RoomSettingsFields, useVisibilityOptions } from './RoomSettingsFields';
 
 const SLOT_OPTIONS = [
 	{ label: '2', value: 2 },
@@ -22,6 +23,8 @@ export type CreateRoomModalProps = {
 
 /** Bottom-sheet style modal for creating a room (web `CreateRoomForm`). */
 export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }: CreateRoomModalProps) {
+	const { t } = useTranslation();
+	const visibilityOptions = useVisibilityOptions();
 	const [name, setName] = useState('');
 	const [slots, setSlots] = useState<number>(2);
 	// The web select ends up on "Private" by default.
@@ -45,7 +48,7 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
 	const submit = () => {
 		const trimmed = name.trim();
 		if (!trimmed) {
-			setError('Room name is required.');
+			setError(t('rooms.nameRequired'));
 			return;
 		}
 		onCreate({ name: trimmed, slots, visibility, settings });
@@ -53,12 +56,12 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
 	};
 
 	return (
-		<BottomSheet visible={visible} title="Create room" onClose={close} closeLabel="Cancel creating room">
+		<BottomSheet visible={visible} title={t('play.createRoom')} onClose={close} closeLabel={t('rooms.cancelCreate')}>
 			{/* Scrolls on short (landscape) screens now that the form has a settings section. */}
 			<ScrollView className="shrink" contentContainerClassName="gap-4" keyboardShouldPersistTaps="handled">
 				<TextField
-					label="Room Name"
-					placeholder="Type your room name..."
+					label={t('rooms.name')}
+					placeholder={t('rooms.namePlaceholder')}
 					value={name}
 					onChangeText={(text) => {
 						setName(text);
@@ -72,23 +75,23 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
 				/>
 
 				<View className="gap-1">
-					<Text className="text-sm font-medium text-gray-900">Slots</Text>
-					<SegmentedControl options={SLOT_OPTIONS} value={slots} onChange={setSlots} accessibilityLabel="Slots" />
+					<Text className="text-sm font-medium text-gray-900">{t('rooms.slots')}</Text>
+					<SegmentedControl options={SLOT_OPTIONS} value={slots} onChange={setSlots} accessibilityLabel={t('rooms.slots')} />
 				</View>
 
 				<View className="gap-1">
-					<Text className="text-sm font-medium text-gray-900">Visibility</Text>
+					<Text className="text-sm font-medium text-gray-900">{t('rooms.visibility')}</Text>
 					<SegmentedControl
-						options={VISIBILITY_OPTIONS}
+						options={visibilityOptions}
 						value={visibility}
 						onChange={setVisibility}
-						accessibilityLabel="Visibility"
+						accessibilityLabel={t('rooms.visibility')}
 					/>
 				</View>
 
 				<View className="gap-1">
 					<Text accessibilityRole="header" className="text-sm font-medium text-gray-900">
-						Room settings
+						{t('rooms.settings')}
 					</Text>
 					<RoomSettingsFields
 						value={settings}
@@ -98,8 +101,8 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
 			</ScrollView>
 
 			<View className="flex-row gap-2">
-				<Button label="Cancel" variant="gray" onPress={close} className="flex-1" />
-				<Button label="Create Room" variant="blue" onPress={submit} disabled={disabled} className="flex-1" />
+				<Button label={t('common.cancel')} variant="gray" onPress={close} className="flex-1" />
+				<Button label={t('rooms.create')} variant="blue" onPress={submit} disabled={disabled} className="flex-1" />
 			</View>
 		</BottomSheet>
 	);

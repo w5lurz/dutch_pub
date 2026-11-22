@@ -1,5 +1,8 @@
 import type { TLeaderBoard } from '@dutch-pub/shared';
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import i18n from '@/i18n';
 
 import { Avatar } from '@/components/ui';
 
@@ -25,7 +28,7 @@ export function formatLatestWin(value: string | null | undefined): string {
     if (!value) return '-';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(i18n.language, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /**
@@ -39,28 +42,30 @@ const col = {
 } as const;
 
 export function LeaderBoardHeader() {
+    const { t } = useTranslation();
     return (
         <View
             className="flex-row items-center rounded-t-md bg-blue-300 px-2 py-2"
             accessibilityRole="header"
-            accessibilityLabel="Rank, Username, Favourite friend, Wins, Latest win"
+            accessibilityLabel={[t('leaderboard.rank'), t('auth.username'), t('leaderboard.favouriteFriend'), t('leaderboard.wins'), t('leaderboard.latestWin')].join(', ')}
         >
             <View className={col.rank}>
-                <Text className="text-xs font-semibold uppercase text-gray-700">Rank</Text>
+                <Text className="text-xs font-semibold uppercase text-gray-700">{t('leaderboard.rank')}</Text>
             </View>
             <View className={col.player}>
-                <Text className="text-xs font-semibold uppercase text-gray-700">Username</Text>
-                <Text className="text-xs text-gray-700">Favourite friend</Text>
+                <Text className="text-xs font-semibold uppercase text-gray-700">{t('auth.username')}</Text>
+                <Text className="text-xs text-gray-700">{t('leaderboard.favouriteFriend')}</Text>
             </View>
             <View className={col.wins}>
-                <Text className="text-xs font-semibold uppercase text-gray-700">Wins</Text>
-                <Text className="text-xs text-gray-700">Latest win</Text>
+                <Text className="text-xs font-semibold uppercase text-gray-700">{t('leaderboard.wins')}</Text>
+                <Text className="text-xs text-gray-700">{t('leaderboard.latestWin')}</Text>
             </View>
         </View>
     );
 }
 
 export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
+    const { t } = useTranslation();
     const { rank, winner, wins, favouriteFriend, latestWin, winnerAvatar, favouriteFriendAvatar } = entry;
     const isPodium = rank <= 3;
     const latest = formatLatestWin(latestWin);
@@ -70,7 +75,7 @@ export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
         <View
             className={`flex-row items-center border-b border-gray-200 px-2 py-3 ${isPodium ? 'bg-blue-50' : 'bg-white'}`}
             accessible
-            accessibilityLabel={`Rank ${rank}, ${winner}, ${wins} ${wins === 1 ? 'win' : 'wins'}, favourite friend ${friend}, latest win ${latest}`}
+            accessibilityLabel={t('leaderboard.rowLabel', { rank, name: winner, count: wins, friend, latest })}
         >
             <View className={col.rank}>
                 <View className={`h-9 w-9 items-center justify-center rounded-full border-2 ${rankBadgeClasses[rank] ?? defaultBadgeClasses}`}>

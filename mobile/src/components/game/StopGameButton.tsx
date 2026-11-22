@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import i18n from '@/i18n';
 
 import { StopIcon } from '@/components/icons';
 import { BottomSheet, Button } from '@/components/ui';
@@ -33,8 +34,8 @@ export function StopGameButton({ onStop }: StopGameButtonProps) {
         <>
             <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Stop game"
-                accessibilityHint="Ends the game for all players. Asks first."
+                accessibilityLabel={i18n.t('game.stop.button')}
+                accessibilityHint={i18n.t('game.stop.hint')}
                 onPress={() => setConfirming(true)}
                 hitSlop={8}
                 style={{ backgroundColor: background, borderColor: line }}
@@ -42,13 +43,13 @@ export function StopGameButton({ onStop }: StopGameButtonProps) {
             >
                 <StopIcon size={22} color={line} strokeWidth={2} />
             </Pressable>
-            <BottomSheet visible={confirming} title="Stop the game?" onClose={() => setConfirming(false)} closeLabel="Keep playing">
+            <BottomSheet visible={confirming} title={i18n.t('game.stop.title')} onClose={() => setConfirming(false)} closeLabel={i18n.t('game.stop.keepPlaying')}>
                 <Text className="text-base text-gray-700">
-                    The game ends for all players. Nobody wins, it does not count on the leaderboard, and the room is closed.
+                    {i18n.t('game.stop.text')}
                 </Text>
                 <View className="gap-2">
-                    <Button label="Stop game" variant="red" onPress={stop} testID="confirm-stop-game" />
-                    <Button label="Keep playing" variant="gray" onPress={() => setConfirming(false)} />
+                    <Button label={i18n.t('game.stop.button')} variant="red" onPress={stop} testID="confirm-stop-game" />
+                    <Button label={i18n.t('game.stop.keepPlaying')} variant="gray" onPress={() => setConfirming(false)} />
                 </View>
             </BottomSheet>
         </>

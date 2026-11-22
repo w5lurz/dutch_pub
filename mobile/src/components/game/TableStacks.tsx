@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import i18n from '@/i18n';
 import type { Cards, TCard, TableSpot } from '@dutch-pub/shared';
 
 import { CARD_GAP, useCardSize, type CardSize } from './cardSize';
@@ -97,7 +98,7 @@ export function TableStacks({ faceUp, faceDownCount, spots: dealt, size, faded =
 								style={{ position: 'absolute', left: offset, top: offset }}
 								rotation={downTilt(i)}
 								selected={play.selectedIds.includes(`down-${i}`)}
-								accessibilityHint={play.faceDownPlayable ? undefined : 'Play your other cards first'}
+								accessibilityHint={play.faceDownPlayable ? undefined : i18n.t('game.playOtherCardsFirst')}
 								onSelect={() => play.onSelect(`down-${i}`)}
 								onPlay={() => play.onLayCard(downOrdinal(i), i, play.faceDownPlayable, `down-${i}`)}
 							/>
@@ -121,7 +122,7 @@ export function TableStacks({ faceUp, faceDownCount, spots: dealt, size, faded =
 								rotation={upTilt(spot.faceUp, i)}
 								selected={play.selectedIds.includes(upId(spot.faceUp, i))}
 								dimmed={play.faceUpPlayable && play.dim(spot.faceUp)}
-								accessibilityHint={play.faceUpPlayable ? undefined : 'Play your hand first'}
+								accessibilityHint={play.faceUpPlayable ? undefined : i18n.t('game.playHandFirst')}
 								onSelect={() => play.onSelect(upId(spot.faceUp as TCard, i))}
 								onPlay={() => play.onLayCard(spot.faceUp as TCard, i, play.faceUpPlayable, upId(spot.faceUp as TCard, i))}
 								companions={play.companionsOf?.(upId(spot.faceUp, i))}

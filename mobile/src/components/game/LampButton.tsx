@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import i18n from '@/i18n';
 
 import { LampIcon } from '@/components/icons';
 
@@ -15,9 +16,9 @@ export function LampButton() {
         <Pressable
             accessibilityRole="switch"
             accessibilityState={{ checked: lamp.on }}
-            accessibilityLabel={`Lamp ${lamp.on ? 'on' : 'off'}${lamp.auto ? ', follows the phone' : ''}`}
-            accessibilityHint="Switches the table between day and night. Long press to follow the phone's dark mode."
-            accessibilityActions={[{ name: 'longpress', label: "Follow the phone's dark mode" }]}
+            accessibilityLabel={i18n.t(lamp.on ? (lamp.auto ? 'game.lamp.onAuto' : 'game.lamp.on') : lamp.auto ? 'game.lamp.offAuto' : 'game.lamp.off')}
+            accessibilityHint={i18n.t('game.lamp.hint')}
+            accessibilityActions={[{ name: 'longpress', label: i18n.t('game.lamp.followPhone') }]}
             onAccessibilityAction={event => event.nativeEvent.actionName === 'longpress' && lamp.followPhone()}
             onPress={lamp.toggle}
             onLongPress={lamp.followPhone}

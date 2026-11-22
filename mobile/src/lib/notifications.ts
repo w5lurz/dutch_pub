@@ -4,6 +4,8 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
 
+import i18n from '@/i18n';
+
 import { api } from './api';
 import { getDeviceSetting, setDeviceSetting } from './deviceSettings';
 
@@ -30,8 +32,8 @@ Notifications.setNotificationHandler({
 export async function initNotifications(): Promise<void> {
     if (Platform.OS === 'android') {
         Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-            name: 'Your turn',
-            description: 'When it is your turn and Dutch Pub is in the background',
+            name: i18n.t('notifications.channelName'),
+            description: i18n.t('notifications.channelDescription'),
             importance: AndroidImportance.HIGH,
         }).catch(() => {});
     }

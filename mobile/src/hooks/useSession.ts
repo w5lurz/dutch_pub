@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { AuthResponse } from '@dutch-pub/shared';
 
+import i18n, { serverMessage } from '@/i18n';
 import { api } from '@/lib/api';
 import { clearToken, getToken, setToken } from '@/lib/authToken';
 import { forgetPush } from '@/lib/notifications';
@@ -13,7 +14,7 @@ type Result = { ok: true } | { ok: false; message: string };
 
 const errorMessage = async (res: Response, fallback: string) => {
     try {
-        return ((await res.json()) as { message?: string }).message ?? fallback;
+        return serverMessage(((await res.json()) as { message?: string }).message) ?? fallback;
     } catch {
         return fallback;
     }
@@ -40,11 +41,11 @@ export function useSession() {
         async (username: string, password: string): Promise<Result> => {
             try {
                 const res = await api.loginUser(username, password);
-                if (!res.ok) return { ok: false, message: await errorMessage(res, 'Error while logging in!') };
+                if (!res.ok) return { ok: false, message: await errorMessage(res, i18n.t('errors.loginFailed')) };
                 await startSession((await res.json()) as AuthResponse);
                 return { ok: true };
             } catch {
-                return { ok: false, message: 'Cannot reach the server.' };
+                return { ok: false, message: i18n.t('errors.noServer') };
             }
         },
         [startSession],
@@ -54,10 +55,10 @@ export function useSession() {
     const register = useCallback(async (username: string, email: string, password: string): Promise<Result> => {
         try {
             const res = await api.registration(username, email, password);
-            if (res.status !== 201) return { ok: false, message: await errorMessage(res, 'Error while registration!') };
+            if (res.status !== 201) return { ok: false, message: await errorMessage(res, i18n.t('errors.registrationFailed')) };
             return { ok: true };
         } catch {
-            return { ok: false, message: 'Cannot reach the server.' };
+            return { ok: false, message: i18n.t('errors.noServer') };
         }
     }, []);
 
@@ -65,11 +66,11 @@ export function useSession() {
         async (username: string): Promise<Result> => {
             try {
                 const res = await api.addGuest(username);
-                if (!res.ok) return { ok: false, message: await errorMessage(res, 'Cannot add Guest!') };
+                if (!res.ok) return { ok: false, message: await errorMessage(res, i18n.t('errors.guestFailed')) };
                 await startSession((await res.json()) as AuthResponse);
                 return { ok: true };
             } catch {
-                return { ok: false, message: 'Cannot reach the server.' };
+                return { ok: false, message: i18n.t('errors.noServer') };
             }
         },
         [startSession],
@@ -106,9 +107,9 @@ export function useSession() {
         async (password: string): Promise<Result> => {
             try {
                 const res = await api.deleteAccount(password);
-                if (res.status !== 204) return { ok: false, message: await errorMessage(res, 'Could not delete your account.') };
+                if (res.status !== 204) return { ok: false, message: await errorMessage(res, i18n.t('errors.deleteFailed')) };
             } catch {
-                return { ok: false, message: 'Cannot reach the server.' };
+                return { ok: false, message: i18n.t('errors.noServer') };
             }
             await forgetPush();
             await clearToken();

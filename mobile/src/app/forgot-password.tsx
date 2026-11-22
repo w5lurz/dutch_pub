@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Text } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { emailError as emailRule } from '@dutch-pub/shared';
 
 import { AuthForm } from '@/components/auth';
 import { Button, TextField } from '@/components/ui';
+import { serverMessage } from '@/i18n';
 import { api } from '@/lib/api';
 
 /**
@@ -12,13 +14,14 @@ import { api } from '@/lib/api';
  * opens a page on the server (in the browser), not the app; afterwards the user logs in here.
  */
 export default function ForgotPasswordScreen() {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [touched, setTouched] = useState(false);
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const invalid = emailRule(email);
+    const invalid = serverMessage(emailRule(email));
     const fieldError = error ?? (touched && email.trim() !== '' && invalid ? invalid : null);
 
     const handleSubmit = async () => {
@@ -29,23 +32,23 @@ export default function ForgotPasswordScreen() {
         try {
             const res = await api.requestPasswordReset(email.trim());
             const body = (await res.json().catch(() => ({}))) as { message?: string };
-            if (res.ok) setSent(body.message ?? 'The link is on its way.');
-            else setError(body.message ?? 'Could not send the link. Please try again later.');
+            if (res.ok) setSent(serverMessage(body.message) ?? t('forgot.sent'));
+            else setError(serverMessage(body.message) ?? t('forgot.failed'));
         } catch {
-            setError('Cannot reach the server.');
+            setError(t('errors.noServer'));
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <AuthForm title="Forgot your password?">
+        <AuthForm title={t('forgot.title')}>
             {sent ? (
                 <>
                     <Text className="text-base text-gray-700">{sent}</Text>
-                    <Text className="text-sm text-gray-500">Open the link in the email, choose a new password, then log in with it.</Text>
+                    <Text className="text-sm text-gray-500">{t('forgot.afterSent')}</Text>
                     <Button
-                        label="Back to log in"
+                        label={t('forgot.backToLogIn')}
                         variant="blue"
                         // Opened straight at this address (web, reload): nothing to go back to.
                         onPress={() => (router.canGoBack() ? router.back() : router.replace('/login'))}
@@ -55,10 +58,10 @@ export default function ForgotPasswordScreen() {
             ) : (
                 <>
                     <Text className="text-base text-gray-700">
-                        Enter the email address of your account. We send you a link to set a new password.
+                        {t('forgot.intro')}
                     </Text>
                     <TextField
-                        label="Your email"
+                        label={t('auth.yourEmail')}
                         placeholder="name@domain.com"
                         value={email}
                         onChangeText={text => {
@@ -76,7 +79,7 @@ export default function ForgotPasswordScreen() {
                         onSubmitEditing={handleSubmit}
                         editable={!loading}
                     />
-                    <Button label="Send the link" variant="blue" onPress={handleSubmit} disabled={!email.trim()} loading={loading} className="w-full" />
+                    <Button label={t('forgot.send')} variant="blue" onPress={handleSubmit} disabled={!email.trim()} loading={loading} className="w-full" />
                 </>
             )}
         </AuthForm>

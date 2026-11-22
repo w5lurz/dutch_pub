@@ -1,78 +1,59 @@
 import { Text, View } from 'react-native';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Bullet, BulletList, Paragraph, SectionHeading, Strong, SubHeading } from './Typography';
 
 // Copy ported from the former web app (frontend/src/components/Welcome/Welcome.tsx, removed; see git history), obvious typos fixed.
+// Texts: `home.*` in src/i18n/locales; <b>...</b> in them is shown bold.
+
+const bold = { b: <Strong /> };
 
 export function AboutSection() {
+    const { t } = useTranslation();
     return (
         <View>
-            <SectionHeading className="mt-2">About</SectionHeading>
-            <Paragraph>
-                This App is a socket-based Multiplayer Card Game. You can create rooms, delete it, join them, leave them, start them and
-                play the game. To play a game you do not necessary need to create an account, you can play as a guest too. On the
-                Leaderboard page you can check the most successful players and their favourite friend. After logging in your session will
-                be saved for an hour so don&apos;t forget to Log out! You can even chat with your friends while playing. Play games with
-                even your 3 friends and try to win!
-            </Paragraph>
+            <SectionHeading className="mt-2">{t('home.about.title')}</SectionHeading>
+            <Paragraph>{t('home.about.text')}</Paragraph>
         </View>
     );
 }
 
 export function HowTheGameWorksSection() {
+    const { t } = useTranslation();
     return (
         <View>
-            <SectionHeading>How the game works</SectionHeading>
-            <Paragraph>
-                The game starts as soon as the creator of the room hits the Start button. After that all players in that room will be
-                redirected to the Game page.
-            </Paragraph>
+            <SectionHeading>{t('home.how.title')}</SectionHeading>
+            <Paragraph>{t('home.how.intro')}</Paragraph>
 
-            <SubHeading>Start</SubHeading>
-            <Paragraph>
-                A deck or decks of french card will get randomly sorted (depending on how many of you are playing). When the game starts a
-                random player will be assigned as the first one to lay a card. Everyone will get some cards to start with:
-            </Paragraph>
+            <SubHeading>{t('home.how.startTitle')}</SubHeading>
+            <Paragraph>{t('home.how.start')}</Paragraph>
             <BulletList>
                 <Bullet>
-                    <Strong>Hand</Strong> - 3 cards to your hand
+                    <Trans i18nKey="home.how.hand" components={bold} />
                 </Bullet>
                 <Bullet>
-                    <Strong>Flipped on Table</Strong> - 3 cards onto your Table cards, which everyone can see but cannot be played before
-                    your hand gets empty
+                    <Trans i18nKey="home.how.flipped" components={bold} />
                 </Bullet>
                 <Bullet>
-                    <Strong>Table</Strong> - 3 cards to the desk flipped, which you cannot see or play before your hand and your cards on top
-                    of these are all played
+                    <Trans i18nKey="home.how.table" components={bold} />
                 </Bullet>
             </BulletList>
 
-            <SubHeading>Laying a card</SubHeading>
-            <Paragraph>
-                Every card has a value and some of them are Magic Cards - and there is the Tease card. There are several rules which cards
-                can be placed on which cards but the basic rule is that you must play a card which has at least the minimum value of the
-                latest laid card.
-            </Paragraph>
+            <SubHeading>{t('home.how.layingTitle')}</SubHeading>
+            <Paragraph>{t('home.how.laying')}</Paragraph>
 
-            <SubHeading>Basic rules</SubHeading>
+            <SubHeading>{t('home.how.rulesTitle')}</SubHeading>
             <BulletList>
-                <Bullet>You must always place a card if you can.</Bullet>
+                <Bullet>{t('home.how.ruleMustPlace')}</Bullet>
+                <Bullet>{t('home.how.ruleFourBurn')}</Bullet>
+                <Bullet>{t('home.how.rulePickUp')}</Bullet>
                 <Bullet>
-                    If 4 cards of the same value is placed on laid cards on top of each other all the laid cards will get to the burnt cards
-                    too.
+                    <Trans i18nKey="home.how.ruleFlipped" components={bold} />
                 </Bullet>
                 <Bullet>
-                    If you cannot place any of your cards to the latest laid card you pick all of them up to your hand. Your turn is
-                    skipped, the next player is up.
+                    <Trans i18nKey="home.how.ruleTable" components={bold} />
                 </Bullet>
-                <Bullet>
-                    Your <Strong>Flipped on Table</Strong> cards can only be played after the deck and your hand got empty too!
-                </Bullet>
-                <Bullet>
-                    Your <Strong>Table</Strong> cards can only be played after the deck, your <Strong>Hand</Strong> and your{' '}
-                    <Strong>Flipped on Table</Strong> cards got empty too!
-                </Bullet>
-                <Bullet>The first player to place all of their cards wins the game.</Bullet>
+                <Bullet>{t('home.how.ruleWin')}</Bullet>
             </BulletList>
         </View>
     );
@@ -90,47 +71,41 @@ const simpleCards: readonly { label: string; max: number }[] = [
 ];
 
 export function CardsSection() {
+    const { t } = useTranslation();
     return (
         <View>
-            <SectionHeading>Cards</SectionHeading>
-            <Paragraph>Here you can read the description of the cards of the deck.</Paragraph>
+            <SectionHeading>{t('home.cards.title')}</SectionHeading>
+            <Paragraph>{t('home.cards.intro')}</Paragraph>
 
-            <SubHeading>Magic Cards</SubHeading>
+            <SubHeading>{t('home.cards.magicTitle')}</SubHeading>
             <BulletList>
                 <Bullet>
-                    <Strong>2 - Start Over</Strong> - Can be placed on every Magic Card and every simple card but not on the Tease Card. You
-                    can place any card on it.
+                    <Trans i18nKey="home.cards.startOver" components={bold} />
                 </Bullet>
                 <Bullet>
-                    <Strong>8 - Mirror</Strong> - Can be placed on every Magic Card and every simple card but not on the Tease Card. Its
-                    value will be the latest card&apos;s value. If the latest card was also an 8 then its value is the card placed before
-                    that. The basic rule applies here: you can only place a card on the 8 that has at least the minimum value of its
-                    calculated value.
+                    <Trans i18nKey="home.cards.mirror" components={bold} />
                 </Bullet>
                 <Bullet>
-                    <Strong>10 - Clear All</Strong> - Can be placed on every Magic Card and every simple card but not on the Tease Card.
-                    Clears the laid cards and all of it gets to the burnt cards. Your turn again!
+                    <Trans i18nKey="home.cards.clearAll" components={bold} />
                 </Bullet>
                 <Bullet>
-                    <Strong>Ace (14) - Call Next</Strong> - Can be placed on every Magic Card and every simple card but not on the Tease
-                    Card. The next player must place a Magic Card on it - so you can only place a Magic Card on it.
+                    <Trans i18nKey="home.cards.callNext" components={bold} />
                 </Bullet>
             </BulletList>
 
-            <SubHeading>Tease Card</SubHeading>
+            <SubHeading>{t('home.cards.teaseTitle')}</SubHeading>
             <BulletList>
                 <Bullet>
-                    <Strong>9 - You Lose</Strong> - Can be placed on any card which has a maximum value of 7. You can only place cards with
-                    values between 3 and 7 on it!
+                    <Trans i18nKey="home.cards.youLose" components={bold} />
                 </Bullet>
             </BulletList>
 
-            <SubHeading>Simple Cards</SubHeading>
+            <SubHeading>{t('home.cards.simpleTitle')}</SubHeading>
             <BulletList>
                 {simpleCards.map(card => (
                     <Bullet key={card.label}>
                         <Strong>{card.label}</Strong>
-                        <Text> - Can be placed on any card which has a maximum value of {card.max}.</Text>
+                        <Text>{t('home.cards.simple', { max: card.max })}</Text>
                     </Bullet>
                 ))}
             </BulletList>

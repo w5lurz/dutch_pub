@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+import i18n from '@/i18n';
 import type { Game } from '@dutch-pub/shared';
 
 /** From this many seconds left the countdown turns red. */
@@ -41,7 +42,7 @@ export function TurnCountdown({ seconds, mine = false }: { seconds: number; mine
     return (
         <View
             accessible
-            accessibilityLabel={`${seconds} seconds left${mine ? ' of your turn' : ''}`}
+            accessibilityLabel={i18n.t(mine ? 'game.countdownMine' : 'game.countdown', { count: seconds })}
             accessibilityLiveRegion={hurry ? 'polite' : 'none'}
             testID="turn-countdown"
             style={{

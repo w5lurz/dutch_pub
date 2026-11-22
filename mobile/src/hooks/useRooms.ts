@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { RoomSettings, TRoom, TRooms, User } from '@dutch-pub/shared';
 
+import i18n from '@/i18n';
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setToast } from '@/store/generalSlice';
@@ -90,7 +91,7 @@ export function useRooms() {
         ({ name, slots, visibility, settings }: NewRoom) => {
             if (!user) return;
             socket.emit('create-room', { name, owner: user.username, slots, visibility, settings });
-            toast(`create-room-${name}-success`, `You successfully created Room ${name}!`);
+            toast(`create-room-${name}-success`, i18n.t('rooms.toast.created', { name }));
         },
         [socket, user, toast],
     );
@@ -99,7 +100,7 @@ export function useRooms() {
         (roomId: number, name: string) => {
             if (!user) return;
             socket.emit('join-room', { username: user.username, roomId });
-            toast(`join-room-${roomId}-success`, `You successfully joined Room ${name}!`);
+            toast(`join-room-${roomId}-success`, i18n.t('rooms.toast.joined', { name }));
         },
         [socket, user, toast],
     );
@@ -108,7 +109,7 @@ export function useRooms() {
         (roomId: number, name: string) => {
             if (!user) return;
             socket.emit('leave-room', { username: user.username, roomId });
-            toast(`leave-room-${roomId}-success`, `You successfully left Room ${name}!`);
+            toast(`leave-room-${roomId}-success`, i18n.t('rooms.toast.left', { name }));
         },
         [socket, user, toast],
     );
@@ -116,7 +117,7 @@ export function useRooms() {
     const deleteRoom = useCallback(
         (roomId: number, name: string) => {
             socket.emit('delete-room', roomId);
-            toast(`delete-room-${roomId}-success`, `You successfully deleted Room ${name}!`);
+            toast(`delete-room-${roomId}-success`, i18n.t('rooms.toast.deleted', { name }));
         },
         [socket, toast],
     );
@@ -124,7 +125,7 @@ export function useRooms() {
     const startGame = useCallback(
         (roomId: number, name: string) => {
             socket.emit('start-game', roomId, socket.id);
-            toast(`start-room-${roomId}-success`, `You started game from Room ${name}!`);
+            toast(`start-room-${roomId}-success`, i18n.t('rooms.toast.started', { name }));
         },
         [socket, toast],
     );

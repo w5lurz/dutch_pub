@@ -1,5 +1,6 @@
 import { useState, type ReactNode, type Ref } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
+import i18n from '@/i18n';
 import { canLayCard, type CardRules, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
 
 import type { Companion, ViewRef } from './CardDrag';
@@ -171,7 +172,7 @@ export function PlayerBoard({
 			// On short windows the hand hangs partly off the bottom edge (its corner indices stay
 			// visible), like cards held at the table edge: the piles and seats keep their room.
 			style={{ height: arc.height, marginBottom: -hangOff }}
-			accessibilityLabel={`Your hand, ${hand.length} cards`}
+			accessibilityLabel={i18n.t('game.yourHand', { count: hand.length })}
 		>
 			{hand.map((card, i) => {
 				const id = handIds[i];
@@ -234,7 +235,7 @@ export function PlayerBoard({
 	const you = (
 		<View
 			accessible
-			accessibilityLabel={`You, ${username ?? ''}${active ? ', on turn' : ''}`}
+			accessibilityLabel={[i18n.t('game.you', { name: username ?? '' }), ...(active ? [i18n.t('game.seat.onTurn')] : [])].join(', ')}
 			className="flex-row items-center justify-center"
 		>
 			{/* Just the avatar and the name (measured for the winner's shot glass). */}
@@ -257,7 +258,7 @@ export function PlayerBoard({
 					// Literal colours: the table's palette doesn't follow the app's colours.
 					<View style={{ backgroundColor: '#2563eb', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
 						<Text accessibilityLiveRegion="polite" style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>
-							{groupSize} selected · drag one to lay all
+							{i18n.t('game.selected', { count: groupSize })}
 						</Text>
 					</View>
 				) : null}

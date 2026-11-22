@@ -1,6 +1,7 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { TextInput } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { AuthForm, AuthSwitchLink } from '@/components/auth';
 import { Button, TextField, TextLink } from '@/components/ui';
@@ -9,6 +10,7 @@ import { useAppDispatch } from '@/store';
 import { setToast } from '@/store/generalSlice';
 
 export default function LoginScreen() {
+    const { t } = useTranslation();
     const { logIn } = useSession();
     const dispatch = useAppDispatch();
 
@@ -26,7 +28,7 @@ export default function LoginScreen() {
         setLoading(false);
 
         if (result.ok) {
-            dispatch(setToast({ id: `login-success-${Date.now()}`, type: 'success', message: 'You successfully logged in!', duration: 3000 }));
+            dispatch(setToast({ id: `login-success-${Date.now()}`, type: 'success', message: t('auth.loggedIn'), duration: 3000 }));
             if (router.canGoBack()) router.back();
             else router.replace('/');
         } else {
@@ -36,19 +38,19 @@ export default function LoginScreen() {
 
     return (
         <AuthForm
-            title="Sign in to your account"
+            title={t('auth.signInTitle')}
             footer={
                 <AuthSwitchLink
-                    prompt="Don’t have an account yet?"
-                    label="Sign up"
+                    prompt={t('auth.noAccountYet')}
+                    label={t('auth.signUp')}
                     // Pops back to an existing registration screen instead of stacking a new one.
                     onPress={() => router.dismissTo('/registration')}
                 />
             }
         >
             <TextField
-                label="Username"
-                placeholder="your username"
+                label={t('auth.username')}
+                placeholder={t('auth.usernamePlaceholder')}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -62,7 +64,7 @@ export default function LoginScreen() {
             />
             <TextField
                 ref={passwordRef}
-                label="Password"
+                label={t('auth.password')}
                 placeholder="••••••••"
                 value={password}
                 onChangeText={setPassword}
@@ -75,8 +77,8 @@ export default function LoginScreen() {
                 onSubmitEditing={handleSubmit}
                 editable={!loading}
             />
-            <Button label="Sign in" variant="blue" onPress={handleSubmit} disabled={!canSubmit} loading={loading} className="w-full" />
-            <TextLink label="Forgot password?" onPress={() => router.push('/forgot-password')} className="self-center" />
+            <Button label={t('auth.signIn')} variant="blue" onPress={handleSubmit} disabled={!canSubmit} loading={loading} className="w-full" />
+            <TextLink label={t('auth.forgotPassword')} onPress={() => router.push('/forgot-password')} className="self-center" />
         </AuthForm>
     );
 }

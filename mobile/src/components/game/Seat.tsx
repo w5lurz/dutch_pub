@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import i18n from '@/i18n';
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -135,8 +136,12 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar, compa
     const sideWidth = Math.max(56, stacksHeight + 16);
 
     const summary =
-        `${name}${active ? ', on turn' : ''}${ready ? ', ready' : ''}: ${opponent.hand} in hand, ` +
-        `${opponent.tableFlipped.length} face-up, ${opponent.table} face-down`;
+        i18n.t('game.seat.summary', {
+            name: [name, ...(active ? [i18n.t('game.seat.onTurn')] : []), ...(ready ? [i18n.t('game.seat.ready')] : [])].join(', '),
+            hand: opponent.hand,
+            faceUp: opponent.tableFlipped.length,
+            faceDown: opponent.table,
+        });
     const nameText = (
         <Text
             accessibilityLabel={summary}

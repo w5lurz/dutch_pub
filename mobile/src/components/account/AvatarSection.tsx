@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { AvatarId, User } from '@dutch-pub/shared';
 
 import { Avatar, AvatarPicker, Button, describeAvatar } from '@/components/ui';
+import i18n, { serverMessage } from '@/i18n';
 import { api } from '@/lib/api';
 import { useAppDispatch } from '@/store';
 import { setToast } from '@/store/generalSlice';
@@ -14,9 +16,9 @@ type AvatarSectionProps = {
 
 const errorMessage = async (res: Response) => {
     try {
-        return ((await res.json()) as { message?: string }).message ?? 'Could not save your avatar.';
+        return serverMessage(((await res.json()) as { message?: string }).message) ?? i18n.t('account.avatarFailed');
     } catch {
-        return 'Could not save your avatar.';
+        return i18n.t('account.avatarFailed');
     }
 };
 
@@ -26,6 +28,7 @@ const errorMessage = async (res: Response) => {
  * saving fails); guests see the one generated from their name.
  */
 export function AvatarSection({ user }: AvatarSectionProps) {
+    const { t } = useTranslation();
     const dispatch = useAppDispatch();
     const [picking, setPicking] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -40,7 +43,7 @@ export function AvatarSection({ user }: AvatarSectionProps) {
             const res = await api.setAvatar(avatar);
             if (!res.ok) failure = await errorMessage(res);
         } catch {
-            failure = 'Cannot reach the server.';
+            failure = t('errors.noServer');
         } finally {
             setSaving(false);
         }
@@ -52,15 +55,15 @@ export function AvatarSection({ user }: AvatarSectionProps) {
 
     return (
         <View className="w-full items-center gap-3">
-            <Avatar username={user.username} avatar={chosen} size={96} accessibilityLabel={`Your avatar: ${describeAvatar(user.username, chosen)}`} />
+            <Avatar username={user.username} avatar={chosen} size={96} accessibilityLabel={t('account.yourAvatar', { avatar: describeAvatar(user.username, chosen) })} />
             {user.isGuest ? (
                 <Text className="text-center text-sm text-gray-500">
-                    Your avatar is generated from your name. Logged-in players can choose one.
+                    {t('account.guestAvatar')}
                 </Text>
             ) : (
                 <>
                     <Button
-                        label={picking ? 'Done' : 'Change avatar'}
+                        label={picking ? t('common.done') : t('account.changeAvatar')}
                         variant="blue"
                         size="sm"
                         onPress={() => setPicking(open => !open)}

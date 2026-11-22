@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { normalizeRoomSettings, type TRoom } from '@dutch-pub/shared';
 
 import { Avatar, Button } from '@/components/ui';
@@ -30,6 +31,7 @@ function Badge({ label, className }: { label: string; className: string }) {
 
 /** One room in the lobby list: name, owner, players and the actions allowed for the user. */
 export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoin, onLeave, onDelete, onStart, onSettings }: RoomCardProps) {
+    const { t } = useTranslation();
     const { name, owner, players, slots, inGame = false, visibility = 'private' } = room;
     const { canJoin, canLeave, canDelete, canStart, canViewSettings, canEditSettings } = permissions;
     const hasActions = canJoin || canLeave || canDelete || canStart || canViewSettings;
@@ -38,27 +40,30 @@ export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoi
 
     return (
         <View
-            accessibilityLabel={`Room ${name}, owner ${owner}, ${players.length} of ${slots} players${privateRoom ? ', private' : ', public'}${
-                inGame ? ', in game' : ''
-            }${isCurrent ? ', your room' : ''}`}
+            accessibilityLabel={[
+                t('rooms.card.summary', { name, owner, count: players.length, slots }),
+                t(privateRoom ? 'rooms.card.private' : 'rooms.card.public'),
+                ...(inGame ? [t('rooms.card.inGame')] : []),
+                ...(isCurrent ? [t('rooms.card.yourRoom')] : []),
+            ].join(', ')}
             className={`gap-2 rounded-lg border-2 bg-white p-4 shadow-sm ${isCurrent ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} ${
                 inGame ? 'opacity-70' : ''
             }`}
         >
             <View className="flex-row flex-wrap items-center gap-2">
                 <Text numberOfLines={1} className="flex-shrink text-xl text-gray-900">
-                    Room name: {name}
+                    {t('rooms.card.name', { name })}
                 </Text>
-                <Badge label={privateRoom ? 'Private' : 'Public'} className={privateRoom ? 'bg-gray-200' : 'bg-green-200'} />
-                {inGame ? <Badge label="In game" className="bg-yellow-200" /> : null}
-                {isCurrent ? <Badge label="Your room" className="bg-blue-200" /> : null}
+                <Badge label={t(privateRoom ? 'roomSettings.private' : 'roomSettings.public')} className={privateRoom ? 'bg-gray-200' : 'bg-green-200'} />
+                {inGame ? <Badge label={t('rooms.card.inGameBadge')} className="bg-yellow-200" /> : null}
+                {isCurrent ? <Badge label={t('rooms.card.yourRoomBadge')} className="bg-blue-200" /> : null}
             </View>
             <Text numberOfLines={1} className="text-sm text-gray-700">
-                Owner: {owner}
+                {t('rooms.card.owner', { owner })}
             </Text>
             <View className="gap-1">
                 <Text className="text-base text-gray-900">
-                    Players ({players.length}/{slots}){players.length === 0 ? ': none yet' : ':'}
+                    {players.length === 0 ? t('rooms.card.playersNone', { count: players.length, slots }) : t('rooms.card.players', { count: players.length, slots })}
                 </Text>
                 {players.length > 0 ? (
                     <View className="flex-row flex-wrap gap-2">
@@ -74,50 +79,50 @@ export function RoomCard({ room, isCurrent, permissions, disabled = false, onJoi
                 ) : null}
             </View>
             <Text numberOfLines={1} className="text-sm text-gray-700">
-                Settings: {settingsSummary}
+                {t('rooms.card.settings', { summary: settingsSummary })}
             </Text>
             {hasActions ? (
                 <View className="flex-row flex-wrap gap-2 pt-1">
                     {canJoin ? (
-                        <Button label="Join" variant="green" size="sm" disabled={disabled} onPress={onJoin} accessibilityLabel={`Join room ${name}`} />
+                        <Button label={t('rooms.card.join')} variant="green" size="sm" disabled={disabled} onPress={onJoin} accessibilityLabel={t('rooms.card.joinLabel', { name })} />
                     ) : null}
                     {canLeave ? (
                         <Button
-                            label="Leave"
+                            label={t('rooms.card.leave')}
                             variant="yellow"
                             size="sm"
                             disabled={disabled}
                             onPress={onLeave}
-                            accessibilityLabel={`Leave room ${name}`}
+                            accessibilityLabel={t('rooms.card.leaveLabel', { name })}
                         />
                     ) : null}
                     {canDelete ? (
                         <Button
-                            label="Delete"
+                            label={t('rooms.card.delete')}
                             variant="red"
                             size="sm"
                             disabled={disabled}
                             onPress={onDelete}
-                            accessibilityLabel={`Delete room ${name}`}
+                            accessibilityLabel={t('rooms.card.deleteLabel', { name })}
                         />
                     ) : null}
                     {canViewSettings ? (
                         <Button
-                            label="Settings"
+                            label={t('rooms.card.settingsButton')}
                             variant="gray"
                             size="sm"
                             onPress={onSettings}
-                            accessibilityLabel={`${canEditSettings ? 'Change' : 'View'} settings of room ${name}`}
+                            accessibilityLabel={t(canEditSettings ? 'rooms.card.changeSettingsLabel' : 'rooms.card.viewSettingsLabel', { name })}
                         />
                     ) : null}
                     {canStart ? (
                         <Button
-                            label="Start"
+                            label={t('rooms.card.start')}
                             variant="blue"
                             size="sm"
                             disabled={disabled}
                             onPress={onStart}
-                            accessibilityLabel={`Start game in room ${name}`}
+                            accessibilityLabel={t('rooms.card.startLabel', { name })}
                         />
                     ) : null}
                 </View>

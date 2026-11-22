@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { DutchPubLogo } from '@/components/icons';
 import { Screen } from '@/components/ui';
@@ -13,6 +14,7 @@ import {
 
 /** Home tab: the web's Welcome page (about, how the game works, card rules). */
 export default function HomeScreen() {
+	const { t } = useTranslation();
 	return (
 		<Screen scroll background="gray" contentClassName="pb-8">
 			<View className="my-4 items-center gap-2">
@@ -26,7 +28,7 @@ export default function HomeScreen() {
 			<HowTheGameWorksSection />
 			<CardsSection />
 
-			<SectionHeading className="mt-8">Now you know everything you need to know. Go let&apos;s Play!</SectionHeading>
+			<SectionHeading className="mt-8">{t('home.outro')}</SectionHeading>
 			<WelcomeActions className="mt-4" />
 		</Screen>
 	);

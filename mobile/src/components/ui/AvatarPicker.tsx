@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { AVATAR_IDS, generatedAvatarId, type AvatarId } from '@dutch-pub/shared';
 
 import { Avatar } from './Avatar';
@@ -22,12 +23,13 @@ export type AvatarPickerProps = {
  * avatar is framed and marked.
  */
 export function AvatarPicker({ username, value, onChange, disabled = false, itemSize = 52 }: AvatarPickerProps) {
+    const { t } = useTranslation();
     const generated = generatedAvatarId(username);
     const shown = value ?? generated;
 
     return (
         <View className="w-full gap-3">
-            <View className="flex-row flex-wrap justify-center gap-2" accessibilityRole="radiogroup" accessibilityLabel="Avatars">
+            <View className="flex-row flex-wrap justify-center gap-2" accessibilityRole="radiogroup" accessibilityLabel={t('avatar.avatars')}>
                 {AVATAR_IDS.map(id => {
                     const selected = id === shown;
                     const isGenerated = id === generated;
@@ -35,7 +37,7 @@ export function AvatarPicker({ username, value, onChange, disabled = false, item
                         <Pressable
                             key={id}
                             accessibilityRole="radio"
-                            accessibilityLabel={`${avatarName(id)}${isGenerated ? ', your generated avatar' : ''}`}
+                            accessibilityLabel={isGenerated ? t('avatar.generatedOption', { avatar: avatarName(id) }) : avatarName(id)}
                             accessibilityState={{ selected, disabled }}
                             disabled={disabled}
                             onPress={() => onChange(id)}
@@ -50,7 +52,7 @@ export function AvatarPicker({ username, value, onChange, disabled = false, item
             </View>
             <View className="items-center gap-1">
                 <Button
-                    label="Use my generated one"
+                    label={t('avatar.useGenerated')}
                     variant="gray"
                     size="sm"
                     disabled={disabled || value === null}
@@ -58,8 +60,8 @@ export function AvatarPicker({ username, value, onChange, disabled = false, item
                 />
                 <Text className="text-center text-xs text-gray-500">
                     {value === null
-                        ? `You are using the avatar generated from your name (${avatarName(generated)}).`
-                        : `Generated from your name: ${avatarName(generated)}.`}
+                        ? t('avatar.usingGenerated', { avatar: avatarName(generated) })
+                        : t('avatar.generatedIs', { avatar: avatarName(generated) })}
                 </Text>
             </View>
         </View>

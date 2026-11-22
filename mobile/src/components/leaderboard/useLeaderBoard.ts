@@ -2,6 +2,7 @@ import type { TLeaderBoard } from '@dutch-pub/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '@/lib/api';
+import i18n from '@/i18n';
 import { useAppDispatch } from '@/store';
 import { setToast } from '@/store/generalSlice';
 
@@ -71,7 +72,7 @@ export function useLeaderBoard(): UseLeaderBoardResult {
                     setToast({
                         id: 'fetch-leaderboard-data-failed',
                         type: 'error',
-                        message: 'Cannot get Leaderboard data!',
+                        message: i18n.t('leaderboard.fetchFailed'),
                         duration: 3000,
                     }),
                 );

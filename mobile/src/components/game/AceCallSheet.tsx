@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import i18n from '@/i18n';
 
 import { Avatar, BottomSheet, Button } from '@/components/ui';
 
@@ -20,14 +21,14 @@ export type AceCallSheetProps = {
  */
 export function AceCallSheet({ visible, players, avatars, onCall, onCancel }: AceCallSheetProps) {
     return (
-        <BottomSheet visible={visible} title="Call a player" onClose={onCancel} closeLabel="Keep the Ace">
-            <Text className="text-sm text-gray-700">Who must lay a magic card next? If they can&apos;t, they pick up the pile.</Text>
+        <BottomSheet visible={visible} title={i18n.t('game.ace.title')} onClose={onCancel} closeLabel={i18n.t('game.ace.keep')}>
+            <Text className="text-sm text-gray-700">{i18n.t('game.ace.text')}</Text>
             <View className="gap-2">
                 {players.map(player => (
                     <Pressable
                         key={player}
                         accessibilityRole="button"
-                        accessibilityLabel={`Call ${player}`}
+                        accessibilityLabel={i18n.t('game.ace.callLabel', { name: player })}
                         testID={`call-${player}`}
                         onPress={() => onCall(player)}
                         className="min-h-12 flex-row items-center gap-3 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 active:bg-gray-200"
@@ -37,7 +38,7 @@ export function AceCallSheet({ visible, players, avatars, onCall, onCancel }: Ac
                     </Pressable>
                 ))}
             </View>
-            <Button label="Keep the Ace" variant="gray" onPress={onCancel} />
+            <Button label={i18n.t('game.ace.keep')} variant="gray" onPress={onCancel} />
         </BottomSheet>
     );
 }

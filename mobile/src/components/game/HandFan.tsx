@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import i18n from '@/i18n';
 
 import { useCardSize, type CardSize } from './cardSize';
 import { PlayingCard } from './PlayingCard';
@@ -50,12 +51,12 @@ const FAN_DEG_PER_CARD = 4;
 export function HandFan({ count, size = 'xxs', fit = FAN_FIT, rotate = 0 }: HandFanProps) {
 	const { width: cardWidth, height: cardHeight } = useCardSize(size);
 	const fan = handFanLayout(count, cardWidth, fit);
-	const label = `${count} ${count === 1 ? 'card' : 'cards'} in hand`;
+	const label = i18n.t('game.cardsInHand', { count });
 
 	if (fan.drawn === 0) {
 		return (
 			<Text accessibilityLabel={label} className="text-xs text-gray-500">
-				No cards
+				{i18n.t('game.noCards')}
 			</Text>
 		);
 	}

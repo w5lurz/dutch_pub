@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import i18n from '@/i18n';
+import { cardName } from '@/i18n/cards';
 import type { BlindMiss, Cards, TCard } from '@dutch-pub/shared';
 
 import Animated, {
@@ -143,7 +145,7 @@ function Deck({ count, size }: { count: number; size: CardSize }) {
     const { width, height } = useCardSize(size);
     const edges = Math.min(DECK_EDGES, Math.ceil(count / CARDS_PER_EDGE));
     return (
-        <View accessible accessibilityLabel={`Deck, ${count} cards`} style={{ width, height }}>
+        <View accessible accessibilityLabel={i18n.t('game.pile.deckLabel', { count })} style={{ width, height }}>
             {Array.from({ length: edges }, (_, i) => {
                 // Lower cards sit a little lower-right, so the stack shows its thickness.
                 const depth = edges - 1 - i;
@@ -166,7 +168,7 @@ function BurntHeap({ count, size }: { count: number; size: CardSize }) {
     const { width, height } = useCardSize(size);
     const backs = Math.min(BURNT_BACKS, Math.ceil(count / CARDS_PER_BACK));
     return (
-        <View accessible accessibilityLabel={`Burnt cards, ${count}`} style={{ width, height }}>
+        <View accessible accessibilityLabel={i18n.t('game.pile.burntLabel', { count })} style={{ width, height }}>
             {Array.from({ length: backs }, (_, i) => {
                 const { rotation, dx, dy } = cardJitter(`burnt-${i}`, 18, Math.round(width * 0.08));
                 return (
@@ -232,18 +234,23 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
         };
     }, [burnt, burntCards, still, dropZoneRef, cardWidth, cardHeight, column]);
 
-    const name = (player: string, you: string) => (player === username ? you : player);
     // An Ace's call, while the called player is on turn.
     const calling = !blindMiss && call && (turnOf === null ? call.target === username : turnOf === call.target);
     const turnText = blindMiss
-        ? `${blindMiss.username === username ? 'Your' : `${blindMiss.username}'s`} blind ${blindMiss.card.name} doesn't fit! Picking up…`
+        ? blindMiss.username === username
+            ? i18n.t('game.turn.yourBlindMiss', { card: cardName(blindMiss.card) })
+            : i18n.t('game.turn.blindMiss', { name: blindMiss.username, card: cardName(blindMiss.card) })
         : calling && call
-          ? `${name(call.by, 'You')} called ${name(call.target, 'you')}: a magic card or pick up!`
+          ? call.by === username
+              ? i18n.t('game.turn.youCalled', { target: call.target })
+              : call.target === username
+                ? i18n.t('game.turn.calledYou', { by: call.by })
+                : i18n.t('game.turn.called', { by: call.by, target: call.target })
           : turnOf === null
-          ? 'Your turn'
+          ? i18n.t('game.turn.yours')
           : turnOf
-            ? `${turnOf}'s turn`
-            : 'Waiting…';
+            ? i18n.t('game.turn.player', { name: turnOf })
+            : i18n.t('game.turn.waiting');
     const turnColours = blindMiss ? 'bg-red-200 text-red-900' : calling ? 'bg-amber-200 text-amber-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
 
     return (
@@ -254,31 +261,31 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
                 </Text>
                 {reversed ? (
                     <Text
-                        accessibilityLabel="Turn order reversed"
+                        accessibilityLabel={i18n.t('game.pile.reversedLabel')}
                         testID="turn-reversed"
                         className="rounded-full bg-purple-200 px-2 py-0.5 text-sm font-semibold text-purple-900"
                     >
-                        ↺ Reversed
+                        {`↺ ${i18n.t('game.pile.reversed')}`}
                     </Text>
                 ) : null}
             </View>
             <View className={column ? 'items-center gap-1' : `flex-row items-start justify-center ${tight ? 'gap-1' : 'gap-4'}`}>
-                <Pile title={`Deck (${deck})`} inset>
+                <Pile title={i18n.t('game.pile.deck', { count: deck })} inset>
                     {/* Measured by your hand: drawn cards fly in from here. */}
                     <View ref={deckRef} collapsable={false}>
-                        {deck > 0 ? <Deck count={deck} size={size} /> : <EmptyCardSlot size={size} label="Deck, empty" />}
+                        {deck > 0 ? <Deck count={deck} size={size} /> : <EmptyCardSlot size={size} label={i18n.t('game.pile.deckEmpty')} />}
                     </View>
                 </Pile>
-                <Pile title={`Laid (${laidCards?.length ?? 0})`}>
+                <Pile title={i18n.t('game.pile.laid', { count: laidCards?.length ?? 0 })}>
                     <CardDropZone>
                         {laidCards?.length ? (
                             <LaidPile cards={laidCards} size={size} />
                         ) : (
-                            <EmptyCardSlot size={size} label="Laid cards, empty" />
+                            <EmptyCardSlot size={size} label={i18n.t('game.pile.laidEmpty')} />
                         )}
                     </CardDropZone>
                 </Pile>
-                <Pile title={`Burnt (${burnt})`} inset>
+                <Pile title={i18n.t('game.pile.burnt', { count: burnt })} inset>
                     <View ref={burntRef} collapsable={false}>
                         {burnt > 0 ? (
                             // Stays in place when cards are burnt (the burnt card sweeps onto it); the first heap fades in.
@@ -286,7 +293,7 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
                                 <BurntHeap count={burnt} size={size} />
                             </Animated.View>
                         ) : (
-                            <EmptyCardSlot size={size} label="Burnt cards, empty" />
+                            <EmptyCardSlot size={size} label={i18n.t('game.pile.burntEmpty')} />
                         )}
                     </View>
                 </Pile>

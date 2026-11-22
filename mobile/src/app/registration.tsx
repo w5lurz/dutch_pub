@@ -1,11 +1,13 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Linking, TextInput } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { passwordError as passwordRule, usernameError as usernameRule } from '@dutch-pub/shared';
 
 import { AuthForm, AuthSwitchLink } from '@/components/auth';
 import { Button, TextField, TextLink } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
+import { serverMessage } from '@/i18n';
 import { PRIVACY_URL } from '@/lib/config';
 import { useAppDispatch } from '@/store';
 import { setToast } from '@/store/generalSlice';
@@ -15,6 +17,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type InputRef = ComponentRef<typeof TextInput>;
 
 export default function RegistrationScreen() {
+    const { t } = useTranslation();
     const { register } = useSession();
     const dispatch = useAppDispatch();
 
@@ -34,11 +37,11 @@ export default function RegistrationScreen() {
     const allFilled = username.trim() !== '' && email.trim() !== '' && password !== '' && confirmPassword !== '';
 
     // Email is checked once the field was left (or on submit); the confirmation live, as on the web.
-    const emailError = emailTouched && email.trim() !== '' && !emailValid ? 'Please enter a valid email address' : null;
-    const confirmError = confirmPassword !== '' && !passwordsMatch ? 'Passwords do not match' : null;
+    const emailError = emailTouched && email.trim() !== '' && !emailValid ? t('auth.invalidEmail') : null;
+    const confirmError = confirmPassword !== '' && !passwordsMatch ? t('auth.passwordsDontMatch') : null;
     // The server's rules (packages/shared), shown as soon as something is typed.
-    const usernameError = username.trim() !== '' ? usernameRule(username) : null;
-    const passwordError = password !== '' ? passwordRule(password) : null;
+    const usernameError = username.trim() !== '' ? serverMessage(usernameRule(username)) : null;
+    const passwordError = password !== '' ? serverMessage(passwordRule(password)) : null;
 
     const handleSubmit = async () => {
         if (loading) return;
@@ -54,7 +57,7 @@ export default function RegistrationScreen() {
                 setToast({
                     id: `registration-success-${Date.now()}`,
                     type: 'success',
-                    message: 'You successfully Registered your new user!',
+                    message: t('auth.registered'),
                     duration: 3000,
                 }),
             );
@@ -67,12 +70,12 @@ export default function RegistrationScreen() {
 
     return (
         <AuthForm
-            title="Create an account"
-            footer={<AuthSwitchLink prompt="Already have an account?" label="Login here" onPress={() => router.dismissTo('/login')} />}
+            title={t('auth.createAccount')}
+            footer={<AuthSwitchLink prompt={t('auth.haveAccount')} label={t('auth.logInHere')} onPress={() => router.dismissTo('/login')} />}
         >
             <TextField
-                label="Your preferred username"
-                placeholder="your preferred username"
+                label={t('auth.preferredUsername')}
+                placeholder={t('auth.preferredUsernamePlaceholder')}
                 value={username}
                 onChangeText={setUsername}
                 error={usernameError}
@@ -87,7 +90,7 @@ export default function RegistrationScreen() {
             />
             <TextField
                 ref={emailRef}
-                label="Your email"
+                label={t('auth.yourEmail')}
                 placeholder="name@domain.com"
                 value={email}
                 onChangeText={setEmail}
@@ -105,7 +108,7 @@ export default function RegistrationScreen() {
             />
             <TextField
                 ref={passwordRef}
-                label="Password"
+                label={t('auth.password')}
                 placeholder="••••••••"
                 value={password}
                 onChangeText={setPassword}
@@ -122,7 +125,7 @@ export default function RegistrationScreen() {
             />
             <TextField
                 ref={confirmRef}
-                label="Confirm password"
+                label={t('auth.confirmPassword')}
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -137,7 +140,7 @@ export default function RegistrationScreen() {
                 editable={!loading}
             />
             <Button
-                label="Create an account"
+                label={t('auth.createAccount')}
                 variant="blue"
                 onPress={handleSubmit}
                 disabled={!allFilled || !passwordsMatch || (emailTouched && !emailValid) || !!usernameError || !!passwordError}
@@ -145,8 +148,8 @@ export default function RegistrationScreen() {
                 className="w-full"
             />
             <TextLink
-                label="Privacy policy"
-                hint="Opens in the browser"
+                label={t('common.privacyPolicy')}
+                hint={t('common.opensInBrowser')}
                 onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
                 className="self-center"
             />

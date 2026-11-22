@@ -29,3 +29,8 @@ jest.mock('expo-notifications', () => ({
     dismissAllNotificationsAsync: jest.fn(() => Promise.resolve()),
     AndroidImportance: { HIGH: 6 },
 }));
+
+// The phone's language in Jest: English (the tests check the English texts).
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'en', languageTag: 'en-US' }] }));
+// The app loads the translations in its root layout; components tested on their own need them too.
+require('./src/i18n');

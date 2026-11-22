@@ -1,5 +1,6 @@
 import { useId, useState, type ComponentRef, type Ref } from 'react';
 import { Text, TextInput, View, type TextInputProps } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/lib/theme';
 
 import { IconButton } from './IconButton';
@@ -35,6 +36,7 @@ export function TextField({
     const colors = useTheme();
     const id = useId();
     const [revealed, setRevealed] = useState(false);
+    const { t } = useTranslation();
     const toggle = !!secureTextEntry && revealable;
 
     return (
@@ -60,7 +62,7 @@ export function TextField({
                 {toggle ? (
                     <IconButton
                         icon={revealed ? 'eye-off-outline' : 'eye-outline'}
-                        accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+                        accessibilityLabel={revealed ? t('common.hidePassword') : t('common.showPassword')}
                         onPress={() => setRevealed(current => !current)}
                         disabled={inputProps.editable === false}
                         className="absolute right-0.5"

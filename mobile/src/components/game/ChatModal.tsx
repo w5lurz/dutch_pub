@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, Text, View } from 'react-native';
+import i18n from '@/i18n';
 import type { ChatMessage } from '@dutch-pub/shared';
 
 import { CloseIcon } from '@/components/icons';
@@ -27,7 +28,7 @@ function MessageRow({ message, own, avatar }: { message: ChatMessage; own: boole
 	return (
 		<View
 			accessible
-			accessibilityLabel={`${message.senderName} at ${message.time}: ${message.message}`}
+			accessibilityLabel={i18n.t('game.chat.messageLabel', { name: message.senderName, time: message.time, message: message.message })}
 			className={`mb-2 max-w-[85%] flex-row items-end gap-2 ${own ? 'flex-row-reverse self-end' : 'self-start'}`}
 		>
 			<Avatar username={message.senderName} avatar={avatar} size={CHAT_AVATAR} />
@@ -76,11 +77,11 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 				<KeyboardSpacer>
 					<View className="flex-row items-center justify-between border-b border-gray-200 px-4 py-1">
 						<Text accessibilityRole="header" className="text-lg font-bold text-gray-900">
-							Chat
+							{i18n.t('game.chat.title')}
 						</Text>
 						<Pressable
 							accessibilityRole="button"
-							accessibilityLabel="Hide chat"
+							accessibilityLabel={i18n.t('game.chat.hide')}
 							onPress={onClose}
 							hitSlop={8}
 							className="rounded-md p-1 active:bg-gray-200"
@@ -91,7 +92,7 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 
 					{messages.length === 0 ? (
 						<View className="flex-1 items-center justify-center">
-							<Text className="text-gray-500">No messages yet.</Text>
+							<Text className="text-gray-500">{i18n.t('game.chat.empty')}</Text>
 						</View>
 					) : (
 						<FlatList
@@ -109,8 +110,8 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 
 					<View className="flex-row items-center gap-2 border-t border-gray-200 bg-gray-50 px-4 py-3">
 						<TextField
-							accessibilityLabel="Send a message"
-							placeholder="Type a message…"
+							accessibilityLabel={i18n.t('game.chat.sendAMessage')}
+							placeholder={i18n.t('game.chat.placeholder')}
 							disableFullscreenUI
 							value={text}
 							onChangeText={setText}
@@ -121,11 +122,11 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 							containerClassName="flex-1 w-auto"
 						/>
 						<Button
-							label="Send"
+							label={i18n.t('game.chat.send')}
 							variant="blue"
 							disabled={sendDisabled}
 							onPress={send}
-							accessibilityLabel={canSend ? 'Send' : 'Send, wait a moment'}
+							accessibilityLabel={canSend ? i18n.t('game.chat.send') : i18n.t('game.chat.sendWait')}
 						/>
 					</View>
 				</KeyboardSpacer>

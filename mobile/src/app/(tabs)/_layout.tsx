@@ -3,6 +3,8 @@ import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
 
+import { useTranslation } from 'react-i18next';
+
 import { useTheme } from '@/lib/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -18,6 +20,7 @@ const tabIcon = (name: IoniconName, focusedName: IoniconName) =>
 /** Bottom tabs. Header styled like the root Stack (gray-700, as the web navbar). */
 export default function TabsLayout() {
     const colors = useTheme();
+    const { t } = useTranslation();
     return (
         <Tabs
             screenOptions={{
@@ -31,16 +34,16 @@ export default function TabsLayout() {
         >
             <Tabs.Screen
                 name="index"
-                options={{ title: 'Home', headerTitle: 'Dutch Pub', tabBarIcon: tabIcon('home-outline', 'home') }}
+                options={{ title: t('tabs.home'), headerTitle: 'Dutch Pub', tabBarIcon: tabIcon('home-outline', 'home') }}
             />
-            <Tabs.Screen name="play" options={{ title: 'Play', tabBarIcon: tabIcon('game-controller-outline', 'game-controller') }} />
+            <Tabs.Screen name="play" options={{ title: t('tabs.play'), tabBarIcon: tabIcon('game-controller-outline', 'game-controller') }} />
             <Tabs.Screen
                 name="leaderboard"
-                options={{ title: 'Leaderboard', tabBarIcon: tabIcon('trophy-outline', 'trophy') }}
+                options={{ title: t('tabs.leaderboard'), tabBarIcon: tabIcon('trophy-outline', 'trophy') }}
             />
             <Tabs.Screen
                 name="account"
-                options={{ title: 'Account', tabBarIcon: tabIcon('person-circle-outline', 'person-circle') }}
+                options={{ title: t('tabs.account'), tabBarIcon: tabIcon('person-circle-outline', 'person-circle') }}
             />
         </Tabs>
     );

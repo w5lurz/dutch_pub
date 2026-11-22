@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { normalizeRoomSettings, type TRoom, type TRooms } from '@dutch-pub/shared';
 
 import { CreateRoomModal } from '@/components/rooms/CreateRoomModal';
@@ -15,26 +16,28 @@ type RoomItem = { id: number; room: TRoom };
 const REFRESH_TIMEOUT_MS = 2000;
 
 function NotConnectedHint() {
+    const { t } = useTranslation();
     return (
         <View accessibilityLiveRegion="polite" className="mb-3 rounded-md bg-yellow-100 px-3 py-2">
-            <Text className="text-sm font-medium text-yellow-800">Not connected – actions are disabled until the connection is back.</Text>
+            <Text className="text-sm font-medium text-yellow-800">{t('play.notConnected')}</Text>
         </View>
     );
 }
 
 function EmptyRooms() {
+    const { t } = useTranslation();
     return (
         <View className="items-center gap-2 py-8">
-            <Text className="text-lg text-gray-900">No Room created yet!</Text>
+            <Text className="text-lg text-gray-900">{t('play.emptyTitle')}</Text>
             <Text className="text-center text-base text-gray-700">
-                You can create a new room by clicking on the Create room button - however if you cannot see it you may had not logged in
-                yet.
+                {t('play.emptyText')}
             </Text>
         </View>
     );
 }
 
 export default function PlayScreen() {
+    const { t } = useTranslation();
     const {
         rooms,
         user,
@@ -116,7 +119,7 @@ export default function PlayScreen() {
                 ListFooterComponent={
                     canCreateRoom ? (
                         <Button
-                            label="Create room"
+                            label={t('play.createRoom')}
                             variant="green"
                             disabled={!connected}
                             onPress={() => setCreateVisible(true)}

@@ -2,6 +2,8 @@ import { View } from 'react-native';
 import Svg from 'react-native-svg';
 import { avatarFor } from '@dutch-pub/shared';
 
+import i18n from '@/i18n';
+
 import { AVATAR_ART, avatarName } from './avatars/AvatarArt';
 
 export type AvatarProps = {
@@ -44,7 +46,7 @@ export function Avatar({ username, avatar, size, accessibilityLabel }: AvatarPro
 /** E.g. "Fox avatar" or "Fox avatar (generated from the name)". */
 export const describeAvatar = (username: string, avatar?: string | null) => {
     const look = avatarFor(username, avatar);
-    return `${avatarName(look.id)} avatar${look.generated ? ' (generated from the name)' : ''}`;
+    return i18n.t(look.generated ? 'avatar.describeGenerated' : 'avatar.describe', { avatar: avatarName(look.id) });
 };
 
 export default Avatar;

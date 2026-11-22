@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { BackHandler, Pressable, Text } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import i18n from '@/i18n';
 
 import { GameTable, TableThemeProvider, useAnyOrientationWhileFocused } from '@/components/game';
 import { useGameActions } from '@/hooks/useGameActions';
@@ -59,7 +60,7 @@ export default function GameScreen() {
             if (!running) return;
             const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
                 dispatch(
-                    setToast({ id: 'game-back-blocked', type: 'info', message: 'You cannot leave a running game.', duration: 3000 }),
+                    setToast({ id: 'game-back-blocked', type: 'info', message: i18n.t('server.cannotLeaveGame'), duration: 3000 }),
                 );
                 return true;
             });

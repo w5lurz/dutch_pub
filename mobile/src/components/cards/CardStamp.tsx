@@ -1,29 +1,27 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { isSpecialCard, type TCard } from '@dutch-pub/shared';
 
+import { cardName, shortCardName } from '@/i18n/cards';
+
 import { STAMP_INK } from './palette';
 
-/** Short forms for small cards, by the full (upper-case) stamp text. */
-const SHORT_STAMPS: Record<string, string> = {
-    'CLEAR ALL': 'CLEAR',
-    MIRROR: 'MIRROR',
-    'YOU LOSE': 'LOSE',
-    'START OVER': 'RESET',
-    'CALL NEXT': 'CALL',
-};
+/** The special cards' English names (as the server sends them), for their short stamps. */
+const SPECIAL_NAMES = ['Start Over', 'Mirror', 'You lose', 'Clear all', 'Call Next'];
 
 /** Card width (dp) from which the full text is stamped; below it the short form. */
 const FULL_FROM_WIDTH = 56;
 /** Below this width there is no stamp at all (the index has to stay readable). */
 const SHORT_FROM_WIDTH = 36;
 
-/** The stamp text for a special card ("CLEAR ALL"), `null` for ordinary cards. */
+/** The stamp text for a special card ("CLEAR ALL", in the app's language), `null` for ordinary cards. */
 export function stampText(card: Pick<TCard, 'name' | 'isMagicCard' | 'isTeaseCard'>): string | null {
-    return isSpecialCard(card) ? card.name.toUpperCase() : null;
+    return isSpecialCard(card) ? cardName(card).toUpperCase() : null;
 }
 
+/** The short form of a full stamp text ("CLEAR ALL" -> "CLEAR"); else its first word. */
 export function shortStampText(text: string): string {
-    return SHORT_STAMPS[text] ?? text.split(' ')[0];
+    const name = SPECIAL_NAMES.find(special => cardName({ name: special }).toUpperCase() === text);
+    return (name && shortCardName({ name })?.toUpperCase()) || text.split(' ')[0];
 }
 
 export type CardStampProps = {

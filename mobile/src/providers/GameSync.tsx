@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { ChatMessage, Game, GameState, TRooms } from '@dutch-pub/shared';
 
+import i18n, { serverMessage } from '@/i18n';
 import { useSocket } from '@/providers/SocketProvider';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setMessages } from '@/store/chatSlice';
@@ -74,7 +75,7 @@ export function GameSync() {
                 setToast({
                     id: `game-won-${Date.now()}`,
                     type: 'success',
-                    message: `${winner === usernameRef.current ? 'You' : winner} won the game! Congratulations!`,
+                    message: winner === usernameRef.current ? i18n.t('game.toast.youWon') : i18n.t('game.toast.playerWon', { name: winner }),
                     duration: GAME_WON_DELAY_MS,
                 }),
             );
@@ -99,10 +100,10 @@ export function GameSync() {
                     type: 'info',
                     message:
                         reason === 'owner-left'
-                            ? `The game was stopped: ${owner} (the room owner) was gone for 2 minutes.`
+                            ? i18n.t('game.toast.stoppedOwnerGone', { owner })
                             : owner === usernameRef.current
-                              ? 'You stopped the game.'
-                              : `${owner} stopped the game.`,
+                              ? i18n.t('game.toast.youStopped')
+                              : i18n.t('game.toast.playerStopped', { owner }),
                     duration: reason === 'owner-left' ? 5000 : 3000,
                 }),
             );
@@ -120,14 +121,14 @@ export function GameSync() {
                 setToast({
                     id: `turn-timed-out-${Date.now()}`,
                     type: mine ? 'sad' : 'info',
-                    message: mine ? "Time's up! Your turn was skipped." : `${skipped} ran out of time.`,
+                    message: mine ? i18n.t('game.toast.yourTimeUp') : i18n.t('game.toast.playerTimeUp', { name: skipped }),
                     duration: 3000,
                 }),
             );
             if (mine) haptic(Haptics.NotificationFeedbackType.Warning);
         };
         const onLayCardRejected = (reason: string) => {
-            dispatch(setToast({ id: `lay-card-rejected-${Date.now()}`, type: 'sad', message: reason, duration: 3000 }));
+            dispatch(setToast({ id: `lay-card-rejected-${Date.now()}`, type: 'sad', message: serverMessage(reason), duration: 3000 }));
             playSound('invalid');
             haptic(Haptics.NotificationFeedbackType.Error);
         };

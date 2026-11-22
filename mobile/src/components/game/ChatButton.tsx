@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import i18n from '@/i18n';
 
 import { ChatIcon } from '@/components/icons';
 
@@ -23,7 +24,7 @@ export function ChatButton({ onPress, unread, className = '' }: ChatButtonProps)
     return (
         <Pressable
             accessibilityRole="button"
-            accessibilityLabel={unread > 0 ? `Open chat, ${unread} unread` : 'Open chat'}
+            accessibilityLabel={unread > 0 ? i18n.t('game.chat.openUnread', { count: unread }) : i18n.t('game.chat.open')}
             onPress={onPress}
             hitSlop={8}
             style={{ backgroundColor: background, borderColor: line }}

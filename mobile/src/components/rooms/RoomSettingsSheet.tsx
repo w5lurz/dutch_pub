@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { RoomSettings } from '@dutch-pub/shared';
 
 import { BottomSheet, Button, ChoiceRow } from '@/components/ui';
 import type { RoomVisibility } from '@/hooks/useRooms';
-import { RoomSettingsFields, VISIBILITY_OPTIONS } from './RoomSettingsFields';
+import { RoomSettingsFields, useVisibilityOptions } from './RoomSettingsFields';
 
 /** How long a toggle shows its new value while waiting for the server's broadcast. */
 const PENDING_TIMEOUT_MS = 3000;
@@ -38,6 +39,8 @@ export function RoomSettingsSheet({
     visibility,
     onVisibilityChange,
 }: RoomSettingsSheetProps) {
+    const { t } = useTranslation();
+    const visibilityOptions = useVisibilityOptions();
     // A toggle shows right away. It is dropped as soon as the server's settings change (its
     // broadcast arrived) or after a timeout (e.g. the change was rejected).
     const settingsKey = JSON.stringify(settings);
@@ -75,17 +78,17 @@ export function RoomSettingsSheet({
     };
 
     return (
-        <BottomSheet visible={visible} title="Room settings" onClose={close} closeLabel="Close room settings">
+        <BottomSheet visible={visible} title={t('rooms.settings')} onClose={close} closeLabel={t('rooms.closeSettings')}>
             <Text className="text-sm text-gray-700">
-                {canEdit ? `Players in ${roomName} see these settings before the game starts.` : `Only the owner of ${roomName} can change these.`}
+                {canEdit ? t('rooms.settingsIntroOwner', { room: roomName }) : t('rooms.settingsIntroPlayer', { room: roomName })}
             </Text>
             {/* Scrolls on small phones (the settings plus the house rules are taller than the sheet). */}
             <ScrollView className="shrink">
                 {shownVisibility && onVisibilityChange ? (
                     <ChoiceRow
-                        label="Visibility"
-                        description="Guests can't join private rooms"
-                        options={VISIBILITY_OPTIONS}
+                        label={t('rooms.visibility')}
+                        description={t('rooms.visibilityDescription')}
+                        options={visibilityOptions}
                         value={shownVisibility}
                         onChange={changeVisibility}
                         disabled={!canEdit || disabled}
@@ -93,7 +96,7 @@ export function RoomSettingsSheet({
                 ) : null}
                 <RoomSettingsFields value={shown} onChange={change} disabled={!canEdit || disabled} />
             </ScrollView>
-            <Button label="Done" variant="gray" onPress={close} />
+            <Button label={t('common.done')} variant="gray" onPress={close} />
         </BottomSheet>
     );
 }

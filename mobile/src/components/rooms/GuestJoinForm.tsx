@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Button, TextField } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
@@ -14,6 +15,7 @@ export type GuestJoinFormProps = {
 
 /** Signed-out Play tab: join as a guest (web `LoginAsGuestForm`), or go to login / registration. */
 export function GuestJoinForm({ disabled = false }: GuestJoinFormProps) {
+    const { t } = useTranslation();
     const { joinAsGuest } = useSession();
     const dispatch = useAppDispatch();
     const [username, setUsername] = useState('');
@@ -24,14 +26,14 @@ export function GuestJoinForm({ disabled = false }: GuestJoinFormProps) {
         if (loading) return;
         const trimmed = username.trim();
         if (!trimmed) {
-            setError('Username is required.');
+            setError(t('rooms.guest.usernameRequired'));
             return;
         }
         setLoading(true);
         const result = await joinAsGuest(trimmed);
         setLoading(false);
         if (result.ok) {
-            dispatch(setToast({ id: 'add-guest-success', type: 'success', message: 'Your Guest account added!', duration: 3000 }));
+            dispatch(setToast({ id: 'add-guest-success', type: 'success', message: t('rooms.guest.added'), duration: 3000 }));
         } else {
             dispatch(setToast({ id: 'add-guest-failed', type: 'error', message: result.message, duration: 3000 }));
         }
@@ -42,11 +44,11 @@ export function GuestJoinForm({ disabled = false }: GuestJoinFormProps) {
             <ScrollView contentContainerClassName="grow justify-center p-4" keyboardShouldPersistTaps="handled">
                 <View className="w-full max-w-md gap-4 self-center rounded-lg bg-white p-6 shadow">
                     <Text accessibilityRole="header" className="text-xl font-bold text-gray-900">
-                        Sign in as a Guest
+                        {t('rooms.guest.title')}
                     </Text>
                     <TextField
-                        label="Username"
-                        placeholder="your preferred guest username"
+                        label={t('auth.username')}
+                        placeholder={t('rooms.guest.placeholder')}
                         value={username}
                         onChangeText={text => {
                             setUsername(text);
@@ -60,13 +62,13 @@ export function GuestJoinForm({ disabled = false }: GuestJoinFormProps) {
                         onSubmitEditing={submit}
                         editable={!loading}
                     />
-                    <Button label="Join as guest" variant="blue" onPress={submit} loading={loading} disabled={disabled} className="w-full" />
+                    <Button label={t('rooms.guest.join')} variant="blue" onPress={submit} loading={loading} disabled={disabled} className="w-full" />
                     <Text className="text-sm text-gray-500">
-                        As a Guest you’ll only be able to play in public games. You’d prefer creating a normal account?
+                        {t('rooms.guest.hint')}
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
-                        <Button label="Log in" variant="gray" size="sm" onPress={() => router.push('/login')} className="flex-1" />
-                        <Button label="Register" variant="green" size="sm" onPress={() => router.push('/registration')} className="flex-1" />
+                        <Button label={t('common.logIn')} variant="gray" size="sm" onPress={() => router.push('/login')} className="flex-1" />
+                        <Button label={t('common.register')} variant="green" size="sm" onPress={() => router.push('/registration')} className="flex-1" />
                     </View>
                 </View>
             </ScrollView>

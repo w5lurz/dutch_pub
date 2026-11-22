@@ -7,12 +7,14 @@ import { Stack, ThemeProvider, usePathname, useRootNavigationState, useRouter } 
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Provider } from 'react-redux';
 
 import ConnectionBanner from '@/components/ConnectionBanner';
 import { lockPortrait } from '@/components/game/orientation';
 import Toast from '@/components/Toast';
 import { useSession } from '@/hooks/useSession';
+import { initLanguage } from '@/i18n';
 import { GameSync } from '@/providers/GameSync';
 import { navigationTheme, useTheme } from '@/lib/theme';
 import { initCrashReporting } from '@/lib/crashReporting';
@@ -30,6 +32,7 @@ lockPortrait();
 
 // Crash and error reports (Sentry), in release builds with a DSN only.
 initCrashReporting();
+initLanguage();
 initSounds();
 initNotifications();
 
@@ -66,6 +69,7 @@ function InGameRedirect() {
 
 function RootLayout() {
     const colors = useTheme();
+    const { t } = useTranslation();
     return (
         // Gesture Handler (card drag & drop in the game) needs its root view at the top.
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -88,9 +92,9 @@ function RootLayout() {
                                 }}
                             >
                                 <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Dutch Pub' }} />
-                                <Stack.Screen name="login" options={{ title: 'Log in' }} />
-                                <Stack.Screen name="registration" options={{ title: 'Registration' }} />
-                                <Stack.Screen name="forgot-password" options={{ title: 'Forgot password' }} />
+                                <Stack.Screen name="login" options={{ title: t('screens.login') }} />
+                                <Stack.Screen name="registration" options={{ title: t('screens.registration') }} />
+                                <Stack.Screen name="forgot-password" options={{ title: t('screens.forgotPassword') }} />
                                 {/* Dev-only mock game table (UI work), see src/app/dev/table.tsx. */}
                                 <Stack.Screen name="dev/table" options={{ headerShown: false }} />
                                 <Stack.Screen name="dev/cards" options={{ title: 'Card preview' }} />
@@ -98,7 +102,7 @@ function RootLayout() {
                                 {/* No way back out of a running game: no header (so no back button), no swipe-back. */}
                                 <Stack.Screen
                                     name="game"
-                                    options={{ title: 'Game', headerShown: false, headerBackVisible: false, gestureEnabled: false }}
+                                    options={{ title: t('screens.game'), headerShown: false, headerBackVisible: false, gestureEnabled: false }}
                                 />
                             </Stack>
                         </ThemeProvider>

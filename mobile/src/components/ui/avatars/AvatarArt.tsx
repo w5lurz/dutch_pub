@@ -2,6 +2,8 @@ import type { ReactElement } from 'react';
 import { Circle, Ellipse, G, Path, Polygon, Rect } from 'react-native-svg';
 import type { AvatarId } from '@dutch-pub/shared';
 
+import i18n from '@/i18n';
+
 // Self-made animal faces for the preset avatars (see LICENSE.md next to this file), drawn
 // in a 100 x 100 box; the Avatar component clips them to a circle. Fixed colours: like
 // card faces, avatars look the same in light and dark mode.
@@ -372,4 +374,4 @@ export const AVATAR_ART: Record<AvatarId, () => ReactElement> = {
 };
 
 /** Names for screen readers and the picker, e.g. "Fox". */
-export const avatarName = (id: AvatarId) => id.charAt(0).toUpperCase() + id.slice(1);
+export const avatarName = (id: AvatarId) => i18n.t(`avatar.names.${id}`);

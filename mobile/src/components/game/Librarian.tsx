@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
+import { Trans } from 'react-i18next';
+import i18n from '@/i18n';
 import Animated, {
     Easing,
     interpolate,
@@ -238,14 +240,14 @@ export function Librarian({ name, count, onDone }: LibrarianProps) {
         <Animated.View
             pointerEvents="none"
             accessibilityLiveRegion="polite"
-            accessibilityLabel={`${name} is the librarian now (picked up ${count} cards)`}
+            accessibilityLabel={i18n.t('game.librarian.label', { name, count })}
             style={[{ position: 'absolute', left: 0, right: 0, bottom: window.height * 0.1, alignItems: 'center' }, coming]}
         >
             <View className="mb-1 items-center rounded-2xl px-3 py-1" style={{ backgroundColor: 'rgba(17, 24, 39, 0.85)' }}>
                 <Text numberOfLines={1} style={{ color: '#ffffff', fontSize: 15, fontWeight: '600', maxWidth: window.width * 0.85 }}>
-                    <Text style={{ color: '#fde68a', fontWeight: '800', fontSize: 16 }}>{name}</Text> is the librarian now
+                    <Trans i18nKey="game.librarian.title" values={{ name }} components={{ n: <Text style={{ color: '#fde68a', fontWeight: '800', fontSize: 16 }} /> }} />
                 </Text>
-                <Text style={{ color: '#d1d5db', fontSize: 11, fontWeight: '600' }}>picked up {count} cards</Text>
+                <Text style={{ color: '#d1d5db', fontSize: 11, fontWeight: '600' }}>{i18n.t('game.librarian.pickedUp', { count })}</Text>
             </View>
             <View style={{ width: W * scale, height: H * scale }}>
                 <View style={{ position: 'absolute', left: (W * scale - W) / 2, top: (H * scale - H) / 2, width: W, height: H, transform: [{ scale }] }}>
