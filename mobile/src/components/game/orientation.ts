@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
@@ -20,11 +20,23 @@ export function lockOrientation(lock: ScreenOrientation.OrientationLock): void {
 }
 
 /**
- * The app's resting orientation: portrait, upright. (`PORTRAIT` would also allow upside
- * down, and is rejected on devices that don't support that, e.g. most iPhones.)
+ * A tablet: the screen's shorter side is at least 600 dp (Android's "large screen"). Tablets
+ * turn freely on every screen: they are held either way, iPad apps are expected to support every
+ * orientation, and Android 16 ignores orientation locks on large screens anyway.
+ */
+export const isTablet = () => {
+    const { width, height } = Dimensions.get('screen');
+    return Math.min(width, height) >= 600;
+};
+
+/**
+ * The app's resting orientation: portrait, upright on phones (`PORTRAIT` would also allow
+ * upside down, and is rejected on devices that don't support that, e.g. most iPhones); any
+ * orientation on tablets (`isTablet`).
  */
 export function lockPortrait(): void {
-    lockOrientation(OrientationLock.PORTRAIT_UP);
+    if (isTablet()) unlockOrientation();
+    else lockOrientation(OrientationLock.PORTRAIT_UP);
 }
 
 /** Lets the screen follow the device (any orientation), ignoring failures like `lockOrientation`. */

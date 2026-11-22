@@ -56,6 +56,10 @@ export interface ClientToServerEvents {
     'delete-room': (roomId: number) => void;
     'join-room': (payload: { username: string; roomId: number }) => void;
     'leave-room': (payload: { username: string; roomId: number }) => void;
+    /** Owner only, before the game: a bot takes a free seat (games with a bot are practice, never recorded). */
+    'add-bot': (roomId: number) => void;
+    /** Owner only, before the game: the bot `username` leaves the room. */
+    'remove-bot': (payload: { roomId: number; username: string }) => void;
     'start-game': (roomId: number, socketId?: string) => void;
     /**
      * Owner only, while the game runs: ends it for everyone without a winner (not recorded on

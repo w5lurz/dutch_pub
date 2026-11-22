@@ -101,12 +101,13 @@ describe('RoomSettingsSheet', () => {
         const onChange = jest.fn();
         await render(<RoomSettingsSheet {...props} canEdit={false} onChange={onChange} />);
         expect(screen.getByText('Only the owner of Pub can change these.')).toBeTruthy();
-        expect(powersSwitch()).toBeDisabled();
-        await fireEvent.press(powersSwitch());
-        expect(backOption('Blue')).toBeDisabled();
-        await fireEvent.press(backOption('Blue'));
+        // Plain "label: value" rows instead of controls.
+        expect(screen.queryByRole('switch')).toBeNull();
+        expect(screen.queryByRole('radio')).toBeNull();
+        expect(screen.getByLabelText('Show card powers: On')).toBeTruthy();
+        expect(screen.getByLabelText('Card backs: Red')).toBeTruthy();
+        expect(screen.getByText('House rules')).toBeTruthy();
         expect(onChange).not.toHaveBeenCalled();
-        expect(backOption('Red')).toBeSelected();
     });
 
     it('lets the owner switch the room between private and public', async () => {
@@ -130,8 +131,8 @@ describe('RoomSettingsSheet', () => {
         await render(
             <RoomSettingsSheet {...props} canEdit={false} onChange={jest.fn()} visibility="public" onVisibilityChange={onVisibilityChange} />,
         );
-        expect(screen.getByRole('radio', { name: 'Private' })).toBeDisabled();
-        await fireEvent.press(screen.getByRole('radio', { name: 'Private' }));
+        expect(screen.getByLabelText('Visibility: Public')).toBeTruthy();
+        expect(screen.queryByRole('radio', { name: 'Private' })).toBeNull();
         expect(onVisibilityChange).not.toHaveBeenCalled();
     });
 
@@ -149,8 +150,8 @@ describe('CreateRoomModal', () => {
         await render(<CreateRoomModal visible onClose={jest.fn()} onCreate={onCreate} />);
         expect(screen.getByText('Room settings')).toBeTruthy();
         expect(powersSwitch()).toBeChecked();
-        await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
-        await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
+        await fireEvent.changeText(screen.getByLabelText('Room name'), 'Pub');
+        await fireEvent.press(screen.getByRole('button', { name: 'Create room' }));
         expect(onCreate).toHaveBeenCalledWith({ name: 'Pub', slots: 2, visibility: 'private', settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'red' as const, turnTimer: 30 as const } });
     });
 
@@ -158,8 +159,8 @@ describe('CreateRoomModal', () => {
         const onCreate = jest.fn();
         await render(<CreateRoomModal visible onClose={jest.fn()} onCreate={onCreate} />);
         await fireEvent.press(powersSwitch());
-        await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
-        await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
+        await fireEvent.changeText(screen.getByLabelText('Room name'), 'Pub');
+        await fireEvent.press(screen.getByRole('button', { name: 'Create room' }));
         expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: false, cardBack: 'red' as const, turnTimer: 30 as const } }));
     });
 
@@ -168,8 +169,8 @@ describe('CreateRoomModal', () => {
         await render(<CreateRoomModal visible onClose={jest.fn()} onCreate={onCreate} />);
         expect(backOption('Red')).toBeSelected();
         await fireEvent.press(backOption('Blue'));
-        await fireEvent.changeText(screen.getByLabelText('Room Name'), 'Pub');
-        await fireEvent.press(screen.getByRole('button', { name: 'Create Room' }));
+        await fireEvent.changeText(screen.getByLabelText('Room name'), 'Pub');
+        await fireEvent.press(screen.getByRole('button', { name: 'Create room' }));
         expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ settings: { ...DEFAULT_ROOM_SETTINGS, showCardPowers: true, cardBack: 'blue' as const, turnTimer: 30 as const } }));
     });
 });
@@ -210,7 +211,9 @@ describe('RoomCard', () => {
             { username: 'old', socketId: 's3' }, // older servers send no avatar
         ];
         await render(<RoomCard room={room({ players, slots: 4 })} isCurrent permissions={permissions} {...handlers} onSettings={jest.fn()} />);
-        expect(screen.getByText('Players (3/4):')).toBeTruthy();
+        expect(screen.getByText('Players 3/4')).toBeTruthy();
+        // The owner wears the crown; one seat is free.
+        expect(screen.getByLabelText('owner')).toBeTruthy();
         expect(screen.getByText('Julcsi')).toBeTruthy();
         expect(screen.getByTestId('avatar-owl')).toBeTruthy();
         expect(screen.getAllByTestId(/^avatar-/)).toHaveLength(3);
@@ -232,7 +235,31 @@ describe('RoomCard', () => {
         expect(screen.getByRole('button', { name: 'View settings of room Pub' })).toBeTruthy();
     });
 
-    it('has no settings button for rooms the user is not in', async () => {
+    it('lets the owner add a bot to a free seat and remove it again', async () => {
+        const onAddBot = jest.fn();
+        const onRemoveBot = jest.fn();
+        const players = [
+            { username: 'me', socketId: 's1' },
+            { username: '🤖 Lady Luck', socketId: null, bot: true },
+        ];
+        const view = await render(
+            <RoomCard room={room({ players, slots: 3 })} isCurrent permissions={permissions} {...handlers} onSettings={jest.fn()} onAddBot={onAddBot} onRemoveBot={onRemoveBot} />,
+        );
+        await fireEvent.press(screen.getByTestId('add-bot'));
+        expect(onAddBot).toHaveBeenCalled();
+        await fireEvent.press(screen.getByRole('button', { name: 'Remove 🤖 Lady Luck' }));
+        expect(onRemoveBot).toHaveBeenCalledWith('🤖 Lady Luck');
+        // Full: no more bots; another player's room: no bot controls at all.
+        await view.rerender(<RoomCard room={room({ players, slots: 2 })} isCurrent permissions={permissions} {...handlers} onSettings={jest.fn()} onAddBot={onAddBot} onRemoveBot={onRemoveBot} />);
+        expect(screen.queryByTestId('add-bot')).toBeNull();
+        await view.rerender(
+            <RoomCard room={room({ players, slots: 3 })} isCurrent permissions={{ ...permissions, canDelete: false }} {...handlers} onSettings={jest.fn()} onAddBot={onAddBot} onRemoveBot={onRemoveBot} />,
+        );
+        expect(screen.queryByTestId('add-bot')).toBeNull();
+        expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
+    });
+
+    it('lets anyone see the settings (read-only) before joining', async () => {
         await render(
             <RoomCard
                 room={room()}
@@ -242,7 +269,8 @@ describe('RoomCard', () => {
                 onSettings={jest.fn()}
             />,
         );
-        expect(screen.queryByRole('button', { name: /settings of room/ })).toBeNull();
+        expect(screen.getByRole('button', { name: 'View settings of room Pub' })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
     });
 });
 

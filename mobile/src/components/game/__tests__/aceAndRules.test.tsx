@@ -88,6 +88,9 @@ describe('house rule settings', () => {
     it('offer 9 on a magic card, 6 reverses and the decks', async () => {
         const onChange = jest.fn();
         await render(<RoomSettingsFields value={{ ...DEFAULT_ROOM_SETTINGS }} onChange={onChange} />);
+        // Closed by default: most games use the defaults.
+        expect(screen.queryByRole('switch', { name: '6 reverses' })).toBeNull();
+        await fireEvent.press(screen.getByTestId('house-rules-toggle'));
         await fireEvent(screen.getByRole('switch', { name: '6 reverses' }), 'valueChange', true);
         expect(onChange).toHaveBeenCalledWith({ sixReverses: true });
         await fireEvent(screen.getByRole('switch', { name: '9 on a magic card' }), 'valueChange', false);

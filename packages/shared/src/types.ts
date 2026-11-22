@@ -16,7 +16,8 @@ export type User = {
  * A player in a room. `avatar` is their chosen avatar (null or missing: not chosen, or a
  * guest; show the one generated from the name, see `avatarFor`). Older servers omit it.
  */
-export type Player = { username: string; socketId: string; avatar?: AvatarId | null };
+/** A room player; `bot`: a seat the owner filled with a bot (no socket: `socketId` is null). */
+export type Player = { username: string; socketId: string | null; avatar?: AvatarId | null; bot?: boolean };
 
 /** Colour of the card backs. */
 export type CardBackColor = 'red' | 'blue';

@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { AvatarId, User } from '@dutch-pub/shared';
 
-import { Avatar, AvatarPicker, Button, describeAvatar } from '@/components/ui';
+import { Avatar, AvatarPicker, BottomSheet, Button, describeAvatar } from '@/components/ui';
 import i18n, { serverMessage } from '@/i18n';
 import { api } from '@/lib/api';
 import { useAppDispatch } from '@/store';
@@ -35,6 +35,7 @@ export function AvatarSection({ user }: AvatarSectionProps) {
     const chosen = user.isGuest ? null : (user.avatar ?? null);
 
     const save = async (avatar: AvatarId | null) => {
+        setPicking(false);
         if (avatar === chosen) return;
         dispatch(setAvatar(avatar));
         setSaving(true);
@@ -62,13 +63,11 @@ export function AvatarSection({ user }: AvatarSectionProps) {
                 </Text>
             ) : (
                 <>
-                    <Button
-                        label={picking ? t('common.done') : t('account.changeAvatar')}
-                        variant="blue"
-                        size="sm"
-                        onPress={() => setPicking(open => !open)}
-                    />
-                    {picking ? <AvatarPicker username={user.username} value={chosen} onChange={save} disabled={saving} /> : null}
+                    <Button label={t('account.changeAvatar')} variant="outline" size="sm" onPress={() => setPicking(true)} disabled={saving} />
+                    {/* A sheet, like Language: the page stays still; picking one saves it and closes. */}
+                    <BottomSheet visible={picking} title={t('account.changeAvatar')} onClose={() => setPicking(false)}>
+                        <AvatarPicker username={user.username} value={chosen} onChange={save} disabled={saving} />
+                    </BottomSheet>
                 </>
             )}
         </View>

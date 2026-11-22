@@ -81,6 +81,17 @@ describe('auth API', () => {
         assert.deepEqual(await unknown.json(), await wrong.json());
     });
 
+    test('a guest who logs out frees the name at once; their old tokens stop working', async () => {
+        const name = `e2e_mate_${stamp}`;
+        const first = await (await request('/api/auth/add-guest', { method: 'POST', body: { username: name } })).json();
+        assert.equal((await request('/api/auth/add-guest', { method: 'POST', body: { username: name } })).status, 403, 'taken while logged in');
+        assert.equal((await request('/api/auth/logout', { method: 'POST', body: { refreshToken: first.refreshToken } })).status, 204);
+        const again = await request('/api/auth/add-guest', { method: 'POST', body: { username: name } });
+        assert.equal(again.status, 200, 'free again after logging out');
+        assert.equal((await request('/api/auth/refresh', { method: 'POST', body: { refreshToken: first.refreshToken } })).status, 401);
+        await request('/api/auth/logout', { method: 'POST', body: { refreshToken: (await again.json()).refreshToken } });
+    });
+
     test('logs in with the email too', async () => {
         const res = await request('/api/auth/login', { method: 'POST', body: { username: user.email.toUpperCase(), password: user.password } });
         assert.equal(res.status, 200);
@@ -883,6 +894,108 @@ function botMove(view) {
     return { event: 'lay-card', payload: { card: 0, cardIndex: 0 } };
 }
 
+
+describe('bots', () => {
+    // Its own server: bots think 5-15 ms instead of about a second; a missed blind card shows briefly.
+    let botServer;
+    let a; // the registered user, room owner
+    let b; // the guest
+    const roomName = `bots_${stamp}`;
+    const connectBots = async token => {
+        const socket = io(botServer.baseUrl, { transports: ['websocket'], reconnection: false, auth: { token } });
+        await new Promise((resolve, reject) => {
+            socket.once('connect', resolve);
+            socket.once('connect_error', reject);
+        });
+        return socket;
+    };
+    const lists = ['rooms-listed', 'joined-room', 'left-room', 'room-deleted'];
+    const nextList = socket =>
+        new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('no room list')), 5000);
+            const handlers = lists.map(event => [event, rooms => { clearTimeout(timer); handlers.forEach(([e, h]) => socket.off(e, h)); resolve(rooms); }]);
+            handlers.forEach(([event, handler]) => socket.on(event, handler));
+        });
+    let roomId;
+
+    before(async () => {
+        botServer = await startServer({ BOT_THINK_MIN_MS: '5', BOT_THINK_MAX_MS: '15' });
+        a = await connectBots(userToken);
+        b = await connectBots(guestToken);
+    });
+
+    after(async () => {
+        a?.close();
+        b?.close();
+        await botServer?.stop();
+    });
+
+    test('only the owner adds bots, to free seats, before the game', async () => {
+        const created = nextList(a);
+        a.emit('create-room', { name: roomName, owner: user.username, slots: 3, visibility: 'public' });
+        const rooms = await created;
+        roomId = Number(Object.keys(rooms).find(key => rooms[key].name === roomName));
+
+        b.emit('add-bot', roomId);
+        assert.equal((await waitFor(b, 'action-rejected'))[0], 'Only the room owner can do that.');
+
+        let list = nextList(a);
+        a.emit('add-bot', roomId);
+        let players = (await list)[roomId].players;
+        assert.equal(players.length, 2);
+        assert.equal(players[1].bot, true);
+        assert.match(players[1].username, /^🤖 /);
+
+        list = nextList(a);
+        a.emit('add-bot', roomId);
+        players = (await list)[roomId].players;
+        assert.equal(players.length, 3);
+        assert.notEqual(players[1].username, players[2].username, 'every bot has its own name');
+
+        a.emit('add-bot', roomId);
+        assert.equal((await waitFor(a, 'action-rejected'))[0], 'This room is full.');
+
+        list = nextList(a);
+        a.emit('remove-bot', { roomId, username: players[2].username });
+        assert.equal((await list)[roomId].players.length, 2);
+        list = nextList(a);
+        a.emit('add-bot', roomId);
+        await list;
+    });
+
+    test('bots get ready and play a whole game; it is not recorded', { timeout: 90000 }, async () => {
+        const { Op } = db.Sequelize;
+        const before = await db.played_game.count({ where: { players: { [Op.like]: `%${user.username}%` } } });
+        let view;
+        let finished = false;
+        let moves = 0;
+        const won = waitFor(a, 'game-won', 80000);
+        const act = () => {
+            if (finished || !view || view.phase === 'swap' || !view.active || view.blindMiss) return;
+            if (++moves > 5000) return;
+            const move = botMove(view);
+            a.emit(move.event, { ...move.payload, roomId, username: user.username });
+        };
+        for (const event of ['game-started', 'card-laid', 'cards-drawn', 'game-updated']) {
+            a.on(event, next => {
+                view = next;
+                act();
+            });
+        }
+        const started = waitFor(a, 'game-started');
+        a.emit('start-game', roomId);
+        await started;
+        // The bots get ready by themselves; the game starts once the owner is ready too.
+        a.emit('player-ready', { roomId, username: user.username });
+        const [winner, rooms] = await won;
+        finished = true;
+        assert.ok(winner === user.username || winner.startsWith('🤖 '), winner);
+        assert.equal(rooms[roomId], undefined, 'the room is gone');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        assert.equal(await db.played_game.count({ where: { players: { [Op.like]: `%${user.username}%` } } }), before, 'practice: not recorded');
+        assert.equal(await db.played_game.count({ where: { players: { [Op.like]: '%🤖%' } } }), 0);
+    });
+});
 
 describe('push notifications', () => {
     // Its own server: notifications go to a fake push service, turns time out fast (300 ms) so

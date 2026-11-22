@@ -93,3 +93,11 @@ Run before a release, with the backend reachable from all devices. Mix platforms
 - [ ] Swap phase with the phone sideways: the swap panel is one compact strip (text left, the count and Ready right), Ready is easy to tap, your avatar and name sit left of your face-up cards, and your hand is fully visible below. Dev preview: /dev/table?swap=1&hand=1.
 - [ ] Called by an Ace: when someone calls you, the turn line becomes a red banner with a yellow border and 📣 that gently pulses, and the phone buzzes once; in portrait it stays within the screen (wraps onto two lines). "You called X" / "X called Y" stay the usual amber pill.
 - [ ] Winning: the shot glass slides to the winner with its flame streaming behind; as it stops beside the winner the flame goes out (and the glow on the table with it): the glass just stands there.
+- [ ] Guest: log in as a guest, log out, log in as a guest again with the same name: it works at once.
+- [ ] Tab screens have no title bar (a dark strip behind the status bar only); login / registration still have their header with the back arrow.
+- [ ] Tablet: every screen turns with the device; phone: only the game turns.
+- [ ] A big hand (15+ cards): moves stay smooth.
+- [ ] Home starts with the yellow "made for playing with your friends" note.
+- [ ] Bots: as a room owner, "+ Add a bot" fills a free seat (a 🤖 name), × removes it; start: the bots swap and get ready by themselves, play their turns after a short pause, call with an Ace, and the game can be won by you or a bot. Afterwards the leaderboard is unchanged. Others don't see the bot buttons.
+- [ ] Create room: the house rules are closed until tapped.
+- [ ] Leaderboard: the top three stand on a podium (gold in the middle), the list goes on from #4.

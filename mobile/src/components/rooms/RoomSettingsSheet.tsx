@@ -5,7 +5,7 @@ import type { RoomSettings } from '@dutch-pub/shared';
 
 import { BottomSheet, Button, ChoiceRow } from '@/components/ui';
 import type { RoomVisibility } from '@/hooks/useRooms';
-import { RoomSettingsFields, useVisibilityOptions } from './RoomSettingsFields';
+import { ReadOnlySetting, RoomSettingsFields, useVisibilityOptions } from './RoomSettingsFields';
 
 /** How long a toggle shows its new value while waiting for the server's broadcast. */
 const PENDING_TIMEOUT_MS = 3000;
@@ -84,7 +84,12 @@ export function RoomSettingsSheet({
             </Text>
             {/* Scrolls on small phones (the settings plus the house rules are taller than the sheet). */}
             <ScrollView className="shrink">
-                {shownVisibility && onVisibilityChange ? (
+                {shownVisibility && !canEdit ? (
+                    <ReadOnlySetting
+                        label={t('rooms.visibility')}
+                        value={visibilityOptions.find(option => option.value === shownVisibility)?.label ?? shownVisibility}
+                    />
+                ) : shownVisibility && onVisibilityChange ? (
                     <ChoiceRow
                         label={t('rooms.visibility')}
                         description={t('rooms.visibilityDescription')}

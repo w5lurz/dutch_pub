@@ -1,11 +1,11 @@
-import { useRef, useState, type ComponentRef } from 'react';
-import { Linking, TextInput } from 'react-native';
+import { useRef, useState, type ComponentRef, type ReactNode } from 'react';
+import { Linking, Text, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { passwordError as passwordRule, usernameError as usernameRule } from '@dutch-pub/shared';
 
 import { AuthForm, AuthSwitchLink } from '@/components/auth';
-import { Button, TextField, TextLink } from '@/components/ui';
+import { Button, TextField } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
 import { serverMessage } from '@/i18n';
 import { PRIVACY_URL } from '@/lib/config';
@@ -16,9 +16,24 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type InputRef = ComponentRef<typeof TextInput>;
 
+/** The privacy policy link inside the agreement sentence (a component, so its style survives `Trans`). */
+function PrivacyLink({ children }: { children?: ReactNode }) {
+    const { t } = useTranslation();
+    return (
+        <Text
+            accessibilityRole="link"
+            accessibilityHint={t('common.opensInBrowser')}
+            onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
+            className="font-medium text-blue-600 underline"
+        >
+            {children}
+        </Text>
+    );
+}
+
 export default function RegistrationScreen() {
     const { t } = useTranslation();
-    const { register } = useSession();
+    const { register, logIn } = useSession();
     const dispatch = useAppDispatch();
 
     const [username, setUsername] = useState('');
@@ -53,16 +68,21 @@ export default function RegistrationScreen() {
         setLoading(false);
 
         if (result.ok) {
+            // Logged in right away (no typing it all again on the login screen).
+            setLoading(true);
+            const session = await logIn(username.trim(), password);
+            setLoading(false);
             dispatch(
                 setToast({
                     id: `registration-success-${Date.now()}`,
                     type: 'success',
-                    message: t('auth.registered'),
+                    message: session.ok ? t('auth.welcome', { name: username.trim() }) : t('auth.registered'),
                     duration: 3000,
                 }),
             );
-            // Back to an existing login screen if we came from there, otherwise replace this one.
-            router.dismissTo('/login');
+            if (!session.ok) router.dismissTo('/login');
+            else if (router.canDismiss()) router.dismissAll();
+            else router.replace('/');
         } else {
             dispatch(setToast({ id: `registration-failed-${Date.now()}`, type: 'error', message: result.message, duration: 3000 }));
         }
@@ -75,7 +95,7 @@ export default function RegistrationScreen() {
         >
             <TextField
                 label={t('auth.preferredUsername')}
-                placeholder={t('auth.preferredUsernamePlaceholder')}
+                helper={t('auth.usernameRules')}
                 value={username}
                 onChangeText={setUsername}
                 error={usernameError}
@@ -109,7 +129,7 @@ export default function RegistrationScreen() {
             <TextField
                 ref={passwordRef}
                 label={t('auth.password')}
-                placeholder="••••••••"
+                helper={t('auth.passwordRules')}
                 value={password}
                 onChangeText={setPassword}
                 error={passwordError}
@@ -126,7 +146,6 @@ export default function RegistrationScreen() {
             <TextField
                 ref={confirmRef}
                 label={t('auth.confirmPassword')}
-                placeholder="••••••••"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 error={confirmError}
@@ -140,19 +159,19 @@ export default function RegistrationScreen() {
                 editable={!loading}
             />
             <Button
-                label={t('auth.createAccount')}
+                label={t('common.register')}
                 variant="blue"
                 onPress={handleSubmit}
                 disabled={!allFilled || !passwordsMatch || (emailTouched && !emailValid) || !!usernameError || !!passwordError}
                 loading={loading}
                 className="w-full"
             />
-            <TextLink
-                label={t('common.privacyPolicy')}
-                hint={t('common.opensInBrowser')}
-                onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
-                className="self-center"
-            />
+            <Text className="text-center text-sm text-gray-600">
+                <Trans
+                    i18nKey="auth.agreePrivacy"
+                    components={{ link: <PrivacyLink /> }}
+                />
+            </Text>
         </AuthForm>
     );
 }

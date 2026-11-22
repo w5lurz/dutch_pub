@@ -58,7 +58,10 @@ export function LanguageSetting() {
                                 testID={`language-${option.value}`}
                                 className={`rounded-lg border-2 px-4 py-3 active:opacity-70 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}
                             >
-                                <Text className="text-base text-gray-900">{option.label}</Text>
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="text-base text-gray-900">{option.label}</Text>
+                                    {selected ? <Text className="text-lg font-bold text-blue-600">✓</Text> : null}
+                                </View>
                             </Pressable>
                         );
                     })}

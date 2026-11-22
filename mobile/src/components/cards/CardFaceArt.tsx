@@ -152,7 +152,28 @@ export const CardFaceArt = memo(function CardFaceArt({
             {stamp ? <CardStamp text={stamp} cardWidth={width} cardHeight={height} /> : null}
         </View>
     );
-});
+}, sameCardArt);
+
+/**
+ * Whether two renders draw the same card. Cards arrive as new objects with every game update
+ * (fresh JSON), so comparing them by identity redrew every card's SVG on every move (laggy with
+ * a big hand): compare what the card is instead.
+ */
+function sameCardArt(a: CardFaceArtProps, b: CardFaceArtProps): boolean {
+    const sameCard =
+        a.card && b.card
+            ? a.card.name === b.card.name && a.card.value === b.card.value && a.card.color === b.card.color && !!a.card.isMagicCard === !!b.card.isMagicCard && !!a.card.isTeaseCard === !!b.card.isTeaseCard
+            : a.card === b.card && a.rank === b.rank && a.suit === b.suit;
+    return (
+        sameCard &&
+        a.width === b.width &&
+        a.height === b.height &&
+        a.variant === b.variant &&
+        a.showStamp === b.showStamp &&
+        a.edge === b.edge &&
+        a.accessibilityLabel === b.accessibilityLabel
+    );
+}
 
 /** The wrapping View is only a box: the Svg carries the label (or hides the art). */
 function viewA11y(accessibilityLabel?: string) {

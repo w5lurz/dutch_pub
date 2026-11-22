@@ -9,6 +9,8 @@ export type TextFieldProps = TextInputProps & {
     label?: string;
     /** Shown in red under the input; also turns the border red. */
     error?: string | null;
+    /** A hint under the input (e.g. the rules), until there is an error. */
+    helper?: string;
     /** Classes for the wrapping View (label + input + error). */
     containerClassName?: string;
     ref?: Ref<ComponentRef<typeof TextInput>>;
@@ -26,6 +28,7 @@ export type TextFieldProps = TextInputProps & {
 export function TextField({
     label,
     error,
+    helper,
     containerClassName = '',
     className = '',
     ref,
@@ -73,6 +76,8 @@ export function TextField({
                 <Text accessibilityLiveRegion="polite" className="text-sm text-red-600">
                     {error}
                 </Text>
+            ) : helper ? (
+                <Text className="text-xs text-gray-500">{helper}</Text>
             ) : null}
         </View>
     );

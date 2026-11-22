@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { AvatarSection } from '@/components/account/AvatarSection';
+import { useMyStats } from '@/components/account/useMyStats';
 import { LanguageSetting } from '@/components/account/LanguageSetting';
 import { DeleteAccountSheet } from '@/components/account/DeleteAccountSheet';
 import { GuestBadge } from '@/components/auth';
@@ -50,6 +51,7 @@ export default function AccountScreen() {
 	const [deleting, setDeleting] = useState(false);
 	const soundsOn = useSoundsOn();
 	const notificationsOn = useNotificationsOn();
+	const { stats, loaded: statsLoaded } = useMyStats(user && !user.isGuest ? user.username : undefined);
 
 	const handleDelete = async (password: string) => {
 		const result = await deleteAccount(password);
@@ -89,6 +91,11 @@ export default function AccountScreen() {
 					<AvatarSection user={user} />
 					{user.isGuest ? <GuestBadge /> : null}
 					{!user.isGuest && user.email ? <Text className="text-base text-gray-600">{user.email}</Text> : null}
+					{!user.isGuest && statsLoaded ? (
+						<Text className="text-base font-semibold text-gray-900">
+							{stats ? t('account.stats', { count: stats.wins, rank: stats.rank }) : t('account.noWins')}
+						</Text>
+					) : null}
 					{user.isGuest ? (
 						<Text className="text-center text-sm text-gray-500">{t('account.guestRooms')}</Text>
 					) : null}
@@ -96,17 +103,11 @@ export default function AccountScreen() {
 					{user.inGame !== undefined ? (
 						<Text className="mt-2 text-center text-sm text-gray-500">{t('account.logOutAfterGame')}</Text>
 					) : (
-						<Button label={t('account.logOut')} variant="red" onPress={handleLogout} loading={loggingOut} className="mt-2 w-full" />
+						<Button label={t('account.logOut')} variant="outline" onPress={handleLogout} loading={loggingOut} className="mt-2 w-full" />
 					)}
 					{!user.isGuest ? (
 						<>
-							<Button
-								label={t('account.deleteAccount')}
-								variant="gray"
-								size="sm"
-								onPress={() => setDeleting(true)}
-								className="mt-2"
-							/>
+							<TextLink label={t('account.deleteAccount')} tone="danger" role="button" onPress={() => setDeleting(true)} className="mt-3" />
 							<DeleteAccountSheet visible={deleting} onClose={() => setDeleting(false)} onDelete={handleDelete} />
 						</>
 					) : null}
@@ -116,6 +117,9 @@ export default function AccountScreen() {
 			)}
 			{/* Settings of this phone only (not of the account). */}
 			<View className="mt-4 w-full max-w-md rounded-lg border border-gray-200 bg-white px-4 py-2 shadow">
+				<Text accessibilityRole="header" className="pt-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+					{t('account.thisPhone')}
+				</Text>
 				<SettingRow
 					label={t('account.sounds')}
 					description={t('account.soundsDescription')}

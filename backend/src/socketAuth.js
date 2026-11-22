@@ -1,4 +1,4 @@
-import { guestsList, isUsernameAvailable, modifyGuestsList } from './controllers/auth.controller.js';
+import { guestsList, isGuestLoggedOut, isUsernameAvailable, modifyGuestsList } from './controllers/auth.controller.js';
 import { getAvatarSafe } from './avatars.js';
 import { verifyAccessToken } from './middleware/authJwt.js';
 import db from './models/index.js';
@@ -21,6 +21,8 @@ export const socketAuth = io => {
 
         try {
             if (decoded.guest) {
+                // Logged out: the old token must not take the name back.
+                if (isGuestLoggedOut(decoded.id)) return next(new Error('unauthorized'));
                 if (!(await isUsernameAvailable(decoded.username, decoded.id))) {
                     return next(new Error('username taken'));
                 }

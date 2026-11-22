@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { View } from 'react-native';
 import i18n from '@/i18n';
 import type { Cards, TCard, TableSpot } from '@dutch-pub/shared';
@@ -79,8 +80,14 @@ export function TableStacks({ faceUp, faceDownCount, spots: dealt, size, faded =
 	const { width, height } = useCardSize(size);
 	const offset = stackOffset(width);
 	const spots = tableSpots(faceUp, faceDownCount, dealt);
+	// The latest spots and play actions, for the cards' callbacks (a card that didn't change keeps the
+	// callbacks of its last render: DraggableCard is memoized).
+	const live = useRef({ spots, play });
+	useLayoutEffect(() => {
+		live.current = { spots, play };
+	});
 	// A face-down card is played by its place among the face-down cards still there (as the server expects).
-	const downOrdinal = (spot: number) => spots.slice(0, spot).filter((other) => other.faceDown).length;
+	const downOrdinal = (spot: number) => live.current.spots.slice(0, spot).filter((other) => other.faceDown).length;
 	if (spots.length === 0) return null;
 
 	return (
@@ -99,8 +106,8 @@ export function TableStacks({ faceUp, faceDownCount, spots: dealt, size, faded =
 								rotation={downTilt(i)}
 								selected={play.selectedIds.includes(`down-${i}`)}
 								accessibilityHint={play.faceDownPlayable ? undefined : i18n.t('game.playOtherCardsFirst')}
-								onSelect={() => play.onSelect(`down-${i}`)}
-								onPlay={() => play.onLayCard(downOrdinal(i), i, play.faceDownPlayable, `down-${i}`)}
+								onSelect={() => live.current.play?.onSelect(`down-${i}`)}
+								onPlay={() => !!live.current.play?.onLayCard(downOrdinal(i), i, live.current.play.faceDownPlayable, `down-${i}`)}
 							/>
 						) : (
 							<PlayingCard
@@ -123,8 +130,8 @@ export function TableStacks({ faceUp, faceDownCount, spots: dealt, size, faded =
 								selected={play.selectedIds.includes(upId(spot.faceUp, i))}
 								dimmed={play.faceUpPlayable && play.dim(spot.faceUp)}
 								accessibilityHint={play.faceUpPlayable ? undefined : i18n.t('game.playHandFirst')}
-								onSelect={() => play.onSelect(upId(spot.faceUp as TCard, i))}
-								onPlay={() => play.onLayCard(spot.faceUp as TCard, i, play.faceUpPlayable, upId(spot.faceUp as TCard, i))}
+								onSelect={() => live.current.play?.onSelect(upId(spot.faceUp as TCard, i))}
+								onPlay={() => !!live.current.play?.onLayCard(spot.faceUp as TCard, i, live.current.play.faceUpPlayable, upId(spot.faceUp as TCard, i))}
 								companions={play.companionsOf?.(upId(spot.faceUp, i))}
 							/>
 						) : (

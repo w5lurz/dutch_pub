@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type Ref } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Text, useWindowDimensions, View } from 'react-native';
 import i18n from '@/i18n';
@@ -166,6 +166,21 @@ export function PlayerBoard({
 		if (played) setSelection([]);
 		return played;
 	};
+	// The cards' callbacks call these, the latest of them: a card that didn't change doesn't render
+	// again (DraggableCard is memoized), so the callbacks it holds must not close over old state.
+	const live = useRef({ toggleSelected, play, startSpread, playHandCard: (_id: string) => false as boolean });
+	useLayoutEffect(() => {
+		live.current = {
+			toggleSelected,
+			play,
+			startSpread,
+			// By id, at the time of the drop (its index may have changed since the card last rendered).
+			playHandCard: (id: string) => {
+				const index = handIds.indexOf(id);
+				return index >= 0 ? play(hand[index], index, true, id) : false;
+			},
+		};
+	});
 	const groupSize = selectedIds.filter((id) => cardsById.has(id)).length;
 	// The other selected cards, carried along when card `id` is dragged (it is part of a selection of several).
 	const companionsOf = (id: string): Companion[] | undefined =>
@@ -210,10 +225,10 @@ export function PlayerBoard({
 						// Later cards lie on top, so each card's top-left corner index stays visible.
 						style={{ position: 'absolute', left: handPadding + place.left, top: place.top, zIndex: i }}
 						enterFrom={enterFrom}
-						onSelect={() => toggleSelected(id)}
-						onPlay={() => play(card, i, true, id)}
+						onSelect={() => live.current.toggleSelected(id)}
+						onPlay={() => live.current.playHandCard(id)}
 						companions={companionsOf(id)}
-						onHold={canSpread ? startSpread : undefined}
+						onHold={canSpread ? () => live.current.startSpread() : undefined}
 						onHoldEnd={() => setSpread(false)}
 					/>
 				);
@@ -241,7 +256,15 @@ export function PlayerBoard({
 				spots={spots}
 				size={stacksSmall ? 'sm' : 'md'}
 				faded={stacksSmall}
-				play={{ faceUpPlayable, faceDownPlayable, dim, onLayCard: play, selectedIds, onSelect: toggleSelected, companionsOf }}
+				play={{
+					faceUpPlayable,
+					faceDownPlayable,
+					dim,
+					onLayCard: (card, cardIndex, touchable, id) => live.current.play(card, cardIndex, touchable, id),
+					selectedIds,
+					onSelect: (id) => live.current.toggleSelected(id),
+					companionsOf,
+				}}
 			/>
 		</View>
 	) : null;

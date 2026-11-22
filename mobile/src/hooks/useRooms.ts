@@ -114,6 +114,10 @@ export function useRooms() {
         [socket, user, toast],
     );
 
+    // A bot takes a free seat / leaves (the owner, before the game; the server checks).
+    const addBot = useCallback((roomId: number) => socket.emit('add-bot', roomId), [socket]);
+    const removeBot = useCallback((roomId: number, username: string) => socket.emit('remove-bot', { roomId, username }), [socket]);
+
     const deleteRoom = useCallback(
         (roomId: number, name: string) => {
             socket.emit('delete-room', roomId);
@@ -167,6 +171,8 @@ export function useRooms() {
         createRoom,
         joinRoom,
         leaveRoom,
+        addBot,
+        removeBot,
         deleteRoom,
         startGame,
         updateRoomSettings,

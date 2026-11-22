@@ -119,6 +119,19 @@ const dropExpiredGuests = () => {
     }
 };
 
+/**
+ * Guests who logged out (guest id → when their last token runs out). Their name is free at once,
+ * and their tokens (signed, so they can't be deleted) no longer count: no refresh, no socket.
+ */
+const loggedOutGuests = new Map();
+
+/** Whether guest `id` logged out (their tokens are void). */
+export const isGuestLoggedOut = id => {
+    const now = Date.now();
+    loggedOutGuests.forEach((until, guestId) => until <= now && loggedOutGuests.delete(guestId));
+    return loggedOutGuests.has(id);
+};
+
 /** Whether `username` is free: no registered user has it and no other guest (`guestId`) holds it. */
 export const isUsernameAvailable = async (username, guestId) => {
     dropExpiredGuests();
@@ -169,6 +182,9 @@ export const refreshSession = async (req, res) => {
     try {
         const guest = verifyGuestRefreshToken(refreshToken);
         if (guest) {
+            if (isGuestLoggedOut(guest.id)) {
+                return res.status(401).send({ message: 'Your session has expired. Please log in again.' });
+            }
             // The name is reserved only while the guest's access token is valid; it may be taken by now.
             if (!(await isUsernameAvailable(guest.username, guest.id))) {
                 return res.status(403).send({ message: 'This username is already taken!' });
@@ -207,13 +223,17 @@ export const refreshSession = async (req, res) => {
 
 /**
  * `POST /logout` with `{ refreshToken, pushToken? }`: revokes it (and the phone gets no more notifications) (a registered user's), so it can't be used
- * again. Always 204: logging out works even if the token is already gone. (A guest's refresh
- * token can't be revoked; it simply runs out.)
+ * again. Always 204: logging out works even if the token is already gone. A guest's name is
+ * freed at once (anyone, also they themselves, can take it again) and their tokens stop counting.
  */
 export const logOut = async (req, res) => {
     const refreshToken = req.body?.refreshToken;
     try {
-        if (typeof refreshToken === 'string' && refreshToken) {
+        const guest = typeof refreshToken === 'string' ? verifyGuestRefreshToken(refreshToken) : null;
+        if (guest) {
+            guestsList = guestsList.filter(other => other.id !== guest.id);
+            loggedOutGuests.set(guest.id, guest.exp * 1000);
+        } else if (typeof refreshToken === 'string' && refreshToken) {
             await RefreshToken.destroy({ where: { token_hash: hashToken(refreshToken) } });
         }
         if (isExpoPushToken(req.body?.pushToken)) await forgetPushToken(req.body.pushToken);

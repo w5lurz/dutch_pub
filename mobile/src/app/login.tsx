@@ -50,7 +50,6 @@ export default function LoginScreen() {
         >
             <TextField
                 label={t('auth.usernameOrEmail')}
-                placeholder={t('auth.usernameOrEmailPlaceholder')}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -65,7 +64,6 @@ export default function LoginScreen() {
             <TextField
                 ref={passwordRef}
                 label={t('auth.password')}
-                placeholder="••••••••"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -78,7 +76,12 @@ export default function LoginScreen() {
                 editable={!loading}
             />
             <Button label={t('auth.signIn')} variant="blue" onPress={handleSubmit} disabled={!canSubmit} loading={loading} className="w-full" />
-            <TextLink label={t('auth.forgotPassword')} onPress={() => router.push('/forgot-password')} className="self-center" />
+            <TextLink
+                label={t('auth.forgotPassword')}
+                // An email typed in the login field carries over (no typing it twice).
+                onPress={() => router.push(username.includes('@') ? { pathname: '/forgot-password', params: { email: username.trim() } } : '/forgot-password')}
+                className="self-center"
+            />
         </AuthForm>
     );
 }

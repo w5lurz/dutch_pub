@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Pressable, Text } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,7 +19,6 @@ const colors: Record<ToastType, string> = {
 
 /** Global toast host, driven by `general.toast` in the store. Mount once in the root layout. */
 export default function Toast() {
-    const { t } = useTranslation();
     const toast = useAppSelector(state => state.general.toast);
     const dispatch = useAppDispatch();
     const insets = useSafeAreaInsets();
@@ -49,7 +47,7 @@ export default function Toast() {
                 className={`w-full max-w-sm rounded-md border p-4 shadow-lg ${colors[toast.type]}`}
             >
                 <Text className="text-base text-gray-900">
-                    <Text className="font-semibold">{`${icons[toast.type]} ${t(`toast.${toast.type}`)}`}</Text> {toast.message}
+                    {`${icons[toast.type]}  ${toast.message}`}
                 </Text>
             </Pressable>
         </Animated.View>

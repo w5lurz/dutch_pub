@@ -50,6 +50,7 @@ const EXACT: Record<string, ServerKey> = {
     'This game does not exist.': 'noSuchGame',
     'This room does not exist.': 'noSuchRoom',
     'This room is full.': 'roomFull',
+    'This room has enough bots.': 'enoughBots',
     'This username is already taken!': 'usernameTaken',
     'Too many attempts. Please wait a few minutes and try again.': 'tooManyAttempts',
     'Unauthorized!': 'unauthorized',

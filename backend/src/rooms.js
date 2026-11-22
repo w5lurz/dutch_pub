@@ -3,6 +3,7 @@ import { normalizeRoomSettings } from '@dutch-pub/shared';
 import { modifyRoomMessages, roomMessages } from './chat.js';
 import { clearTurnClock, deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
 import { identityError } from './socketAuth.js';
+import { isBot, MAX_BOTS, newBot, readyBots } from './bots.js';
 
 /** Emits `action-rejected` and returns true when `error` is set. */
 const rejected = (socket, error) => {
@@ -57,6 +58,27 @@ export const createRoomError = (socket, { name, owner, slots, visibility } = {})
 const maxRooms = () => {
     const max = Number(process.env.MAX_ROOMS);
     return Number.isInteger(max) && max > 0 ? max : 300;
+};
+
+/** Checks an `add-bot` request: the owner, before the game, a free seat, at most `MAX_BOTS`. Error or null. */
+export const addBotError = (socket, roomId) => {
+    const error = identityError(socket) ?? roomError(socket, roomId, { ownerOnly: true });
+    if (error) return error;
+    const room = roomsList[roomId];
+    if (room.inGame) return 'The game has started already.';
+    if (room.players.length >= room.slots) return 'This room is full.';
+    if (room.players.filter(player => player.bot).length >= MAX_BOTS) return 'This room has enough bots.';
+    return null;
+};
+
+/** Checks a `remove-bot` request: the owner, before the game, and `username` is a bot of the room. */
+export const removeBotError = (socket, { roomId, username } = {}) => {
+    const error = identityError(socket) ?? roomError(socket, roomId, { ownerOnly: true });
+    if (error) return error;
+    const room = roomsList[roomId];
+    if (room.inGame) return 'The game has started already.';
+    if (!isBot(room, username)) return 'You are not in this room.';
+    return null;
 };
 
 /** Checks a `join-room` request (as the app's Join button): returns the error message, or null. */
@@ -420,6 +442,22 @@ export const rooms = io => {
             broadcastRooms(io, 'joined-room');
         });
 
+        // The owner fills a free seat with a bot (practice: such games are not recorded), or removes one.
+        socket.on('add-bot', roomId => {
+            if (rejected(socket, addBotError(socket, roomId))) return;
+            const room = roomsList[roomId];
+            roomsList = { ...roomsList, [roomId]: { ...room, players: [...room.players, newBot(room)] } };
+            broadcastRooms(io, 'joined-room');
+        });
+
+        socket.on('remove-bot', payload => {
+            if (rejected(socket, removeBotError(socket, payload ?? {}))) return;
+            const { roomId, username } = payload;
+            const room = roomsList[roomId];
+            roomsList = { ...roomsList, [roomId]: { ...room, players: room.players.filter(player => player.username !== username) } };
+            broadcastRooms(io, 'left-room');
+        });
+
         socket.on('leave-room', payload => {
             const { username, roomId } = payload ?? {};
             if (rejected(socket, leaveRoomError(socket, { username, roomId }))) return;
@@ -483,6 +521,8 @@ export const rooms = io => {
 
             // Send new game data to sockets
             sendUiDataToSocket(io, newRoom, newGame, 'game-started', roomId);
+            // Bots swap their cards and get ready by themselves.
+            readyBots(io, roomId, newGame);
         });
     });
 };

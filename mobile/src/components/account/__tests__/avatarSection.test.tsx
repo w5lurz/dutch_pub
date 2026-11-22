@@ -10,6 +10,8 @@ import userReducer, { setUser } from '@/store/userSlice';
 import { AvatarSection } from '../AvatarSection';
 
 jest.mock('@/lib/api', () => ({ api: { setAvatar: jest.fn() } }));
+// The picker opens in a bottom sheet (it reads the safe area).
+jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
 const setAvatarApi = api.setAvatar as jest.Mock;
 
 /** The section for the store's user (re-rendered as the store changes). */

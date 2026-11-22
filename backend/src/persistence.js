@@ -7,6 +7,7 @@
 // Privacy: the snapshots hold usernames, cards and the room's chat, only while the room exists
 // (a game ends -> its row is deleted). Mention this in the privacy policy.
 import { modifyRoomMessages, roomMessages } from './chat.js';
+import { readyBots } from './bots.js';
 import { finishBlindMiss, startTurnClock } from './game.js';
 import db from './models/index.js';
 import { games, modifyRooms, roomsList, watchOwnersAfterRestart } from './rooms.js';
@@ -59,6 +60,8 @@ export const resumeClocks = io => {
         game.turnTime = null;
         if (game.blindMiss) finishBlindMiss(io, roomId, game);
         else startTurnClock(io, roomId, game);
+        // Bots that weren't ready yet when the server stopped.
+        if (game.phase === 'swap') readyBots(io, roomId, game);
     });
     watchOwnersAfterRestart(io);
 };

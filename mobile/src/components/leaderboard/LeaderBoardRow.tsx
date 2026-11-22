@@ -10,6 +10,8 @@ export type LeaderBoardEntry = TLeaderBoard[number];
 
 export type LeaderBoardRowProps = {
     entry: LeaderBoardEntry;
+    /** The signed-in player's own row: marked "You". */
+    isYou?: boolean;
 };
 
 // Gold / silver / bronze badges for the podium; plain badge for everyone else.
@@ -64,7 +66,7 @@ export function LeaderBoardHeader() {
     );
 }
 
-export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
+export function LeaderBoardRow({ entry, isYou = false }: LeaderBoardRowProps) {
     const { t } = useTranslation();
     const { rank, winner, wins, favouriteFriend, latestWin, winnerAvatar, favouriteFriendAvatar } = entry;
     const isPodium = rank <= 3;
@@ -73,7 +75,7 @@ export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
 
     return (
         <View
-            className={`flex-row items-center border-b border-gray-200 px-2 py-3 ${isPodium ? 'bg-blue-50' : 'bg-white'}`}
+            className={`flex-row items-center border-b border-l-4 border-b-gray-200 px-2 py-3 ${isYou ? 'border-l-green-500' : 'border-l-transparent'} ${isPodium ? 'bg-blue-50' : 'bg-white'}`}
             accessible
             accessibilityLabel={t('leaderboard.rowLabel', { rank, name: winner, count: wins, friend, latest })}
         >
@@ -85,9 +87,16 @@ export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
             <View className={`${col.player} flex-row items-center gap-2`}>
                 <Avatar username={winner} avatar={winnerAvatar} size={36} />
                 <View className="min-w-0 flex-1">
-                    <Text numberOfLines={1} className={`text-base text-gray-900 ${isPodium ? 'font-bold' : 'font-medium'}`}>
-                        {winner}
-                    </Text>
+                    <View className="flex-row items-center gap-1.5">
+                        <Text numberOfLines={1} className={`flex-shrink text-base text-gray-900 ${isPodium ? 'font-bold' : 'font-medium'}`}>
+                            {winner}
+                        </Text>
+                        {isYou ? (
+                            <View className="rounded-full bg-green-200 px-1.5">
+                                <Text className="text-xs font-semibold text-green-900">{t('leaderboard.you')}</Text>
+                            </View>
+                        ) : null}
+                    </View>
                     <View className="flex-row items-center gap-1">
                         {favouriteFriend ? <Avatar username={favouriteFriend} avatar={favouriteFriendAvatar} size={16} /> : null}
                         <Text numberOfLines={1} className="flex-shrink text-sm text-gray-500">
@@ -98,9 +107,12 @@ export function LeaderBoardRow({ entry }: LeaderBoardRowProps) {
             </View>
             <View className={col.wins}>
                 <Text className="text-base font-semibold text-gray-900">{wins}</Text>
-                <Text numberOfLines={1} className="text-xs text-gray-500">
-                    {latest}
-                </Text>
+                {/* Older rows have no date: nothing instead of a dash. */}
+                {latestWin ? (
+                    <Text numberOfLines={1} className="text-xs text-gray-500">
+                        {latest}
+                    </Text>
+                ) : null}
             </View>
         </View>
     );

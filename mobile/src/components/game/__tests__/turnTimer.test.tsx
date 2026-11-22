@@ -59,6 +59,7 @@ describe('turn timer room setting', () => {
     it('offers Off, 15s, 30s and 1m and reports the choice', async () => {
         const onChange = jest.fn();
         await render(<RoomSettingsFields value={{ ...DEFAULT_ROOM_SETTINGS }} onChange={onChange} />);
+        await fireEvent.press(screen.getByTestId('house-rules-toggle'));
         expect(screen.getByText('Turn timer')).toBeTruthy();
         expect(screen.getByRole('radio', { name: '30s' })).toBeSelected();
         await fireEvent.press(screen.getByRole('radio', { name: '1m' }));

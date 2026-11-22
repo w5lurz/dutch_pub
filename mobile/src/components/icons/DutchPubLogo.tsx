@@ -1,14 +1,18 @@
 import Svg, { Line, Polyline, Rect } from 'react-native-svg';
 
+import { useTheme } from '@/lib/theme';
+
 import { iconA11y, iconSize, type IconProps } from './types';
 
 /**
  * The Dutch Pub logo (copied from the web). Default 40x40 (h-10 w-10), `color` is the
- * stroke (default blue-300, as on the web).
+ * stroke (default: the accent blue, readable on the light background; the web's blue-300 was faint).
  */
-export function DutchPubLogo({ color = '#93c5fd', accessibilityLabel = 'Dutch Pub', ...props }: IconProps) {
-    const thick = { stroke: color, strokeWidth: 16, fill: 'none', strokeMiterlimit: 10 };
-    const thin = { stroke: color, strokeWidth: 12, fill: 'none', strokeMiterlimit: 10 };
+export function DutchPubLogo({ color, accessibilityLabel = 'Dutch Pub', ...props }: IconProps) {
+    const { accent } = useTheme();
+    const stroke = color ?? accent;
+    const thick = { stroke, strokeWidth: 16, fill: 'none', strokeMiterlimit: 10 };
+    const thin = { stroke, strokeWidth: 12, fill: 'none', strokeMiterlimit: 10 };
 
     return (
         <Svg viewBox="0 0 564.41 459.03" {...iconSize(props, 40)} {...iconA11y(accessibilityLabel)}>

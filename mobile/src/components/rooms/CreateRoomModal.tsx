@@ -19,13 +19,19 @@ export type CreateRoomModalProps = {
 	/** Called with a validated room; the caller emits it and closes the modal. */
 	onCreate: (room: NewRoom) => void;
 	disabled?: boolean;
+	/** The creator's name, for the prefilled room name ("Anna's table"). */
+	ownerName?: string;
 };
 
 /** Bottom-sheet style modal for creating a room (web `CreateRoomForm`). */
-export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }: CreateRoomModalProps) {
+export function CreateRoomModal({ visible, onClose, onCreate, disabled = false, ownerName }: CreateRoomModalProps) {
 	const { t } = useTranslation();
 	const visibilityOptions = useVisibilityOptions();
-	const [name, setName] = useState('');
+	// Prefilled ("Anna's table"): creating a room is one tap; the name can still be changed.
+	const defaultName = ownerName ? t('rooms.defaultName', { name: ownerName }).slice(0, 40) : '';
+	// What was typed; until then the default (known only once the session is restored).
+	const [typed, setTyped] = useState<string | null>(null);
+	const name = typed ?? defaultName;
 	const [slots, setSlots] = useState<number>(2);
 	// The web select ends up on "Private" by default.
 	const [visibility, setVisibility] = useState<RoomVisibility>('private');
@@ -33,7 +39,7 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
 	const [error, setError] = useState<string | null>(null);
 
 	const reset = () => {
-		setName('');
+		setTyped(null);
 		setSlots(2);
 		setVisibility('private');
 		setSettings({ ...DEFAULT_ROOM_SETTINGS });
@@ -64,7 +70,7 @@ export function CreateRoomModal({ visible, onClose, onCreate, disabled = false }
 					placeholder={t('rooms.namePlaceholder')}
 					value={name}
 					onChangeText={(text) => {
-						setName(text);
+						setTyped(text);
 						if (error) setError(null);
 					}}
 					error={error}

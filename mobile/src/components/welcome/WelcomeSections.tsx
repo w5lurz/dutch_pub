@@ -1,18 +1,73 @@
-import { Text, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { Trans, useTranslation } from 'react-i18next';
+import type { TCard } from '@dutch-pub/shared';
 
+import { CardFaceArt } from '@/components/cards';
 import { Bullet, BulletList, Paragraph, SectionHeading, Strong, SubHeading } from './Typography';
 
-// Copy ported from the former web app (frontend/src/components/Welcome/Welcome.tsx, removed; see git history), obvious typos fixed.
-// Texts: `home.*` in src/i18n/locales; <b>...</b> in them is shown bold.
+// Home tab texts: `home.*` in src/i18n/locales; <b>...</b> in them is shown bold.
 
 const bold = { b: <Strong /> };
+
+/** The small card pictures next to the special cards (any suit; the art draws the rank). */
+const CARD_PICTURE = { width: 40, height: 58 };
+const START_OVER: TCard = { name: 'Start Over', value: 2, color: 'hearts', isMagicCard: true };
+const MIRROR: TCard = { name: 'Mirror', value: 0, color: 'spades', isMagicCard: true };
+const CLEAR_ALL: TCard = { name: 'Clear all', value: 10, color: 'diamonds', isMagicCard: true };
+const CALL_NEXT: TCard = { name: 'Call Next', value: 14, color: 'clubs', isMagicCard: true };
+const YOU_LOSE: TCard = { name: 'You lose', value: 9, color: 'hearts', isTeaseCard: true };
+
+/** A section that opens and closes with its heading (closed by default: the home page stays short). */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+    const { t } = useTranslation();
+    const [open, setOpen] = useState(false);
+    return (
+        <View className="mt-4 rounded-lg border border-gray-200 bg-white px-4">
+            <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: open }}
+                accessibilityHint={t('home.toggleHint')}
+                onPress={() => setOpen(current => !current)}
+                className="flex-row items-center justify-between py-3 active:opacity-60"
+            >
+                <Text accessibilityRole="header" className="text-xl font-semibold text-gray-800">
+                    {title}
+                </Text>
+                <Text className="text-xl text-gray-500">{open ? '▾' : '▸'}</Text>
+            </Pressable>
+            {open ? <View className="pb-3">{children}</View> : null}
+        </View>
+    );
+}
+
+/** A special card's rule with its picture beside it. */
+function CardRule({ card, i18nKey }: { card: TCard; i18nKey: string }) {
+    return (
+        <View className="flex-row items-start gap-3">
+            <CardFaceArt card={card} width={CARD_PICTURE.width} height={CARD_PICTURE.height} showStamp={false} />
+            <Text className="flex-1 text-base leading-6 text-gray-800">
+                <Trans i18nKey={i18nKey as never} components={bold} />
+            </Text>
+        </View>
+    );
+}
 
 export function AboutSection() {
     const { t } = useTranslation();
     return (
         <View>
-            <SectionHeading className="mt-2">{t('home.about.title')}</SectionHeading>
+            {/* What the game is for, before anything else. */}
+            <View accessibilityRole="summary" className="mt-2 flex-row items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-100 px-4 py-3">
+                <Text className="text-2xl" importantForAccessibility="no" accessibilityElementsHidden>
+                    🍻
+                </Text>
+                <View className="flex-1 gap-1">
+                    <Text className="text-base font-semibold text-gray-900">{t('home.friendsNote')}</Text>
+                    <Text className="text-sm text-gray-700">{t('home.botsNote')}</Text>
+                </View>
+            </View>
+            <SectionHeading className="mt-4">{t('home.about.title')}</SectionHeading>
             <Paragraph>{t('home.about.text')}</Paragraph>
         </View>
     );
@@ -21,8 +76,7 @@ export function AboutSection() {
 export function HowTheGameWorksSection() {
     const { t } = useTranslation();
     return (
-        <View>
-            <SectionHeading>{t('home.how.title')}</SectionHeading>
+        <Section title={t('home.how.title')}>
             <Paragraph>{t('home.how.intro')}</Paragraph>
 
             <SubHeading>{t('home.how.startTitle')}</SubHeading>
@@ -55,60 +109,33 @@ export function HowTheGameWorksSection() {
                 </Bullet>
                 <Bullet>{t('home.how.ruleWin')}</Bullet>
             </BulletList>
-        </View>
+        </Section>
     );
 }
-
-const simpleCards: readonly { label: string; max: number }[] = [
-    { label: '3', max: 3 },
-    { label: '4', max: 4 },
-    { label: '5', max: 5 },
-    { label: '6', max: 6 },
-    { label: '7', max: 7 },
-    { label: 'J (11)', max: 11 },
-    { label: 'Q (12)', max: 12 },
-    { label: 'K (13)', max: 13 },
-];
 
 export function CardsSection() {
     const { t } = useTranslation();
     return (
-        <View>
-            <SectionHeading>{t('home.cards.title')}</SectionHeading>
+        <Section title={t('home.cards.title')}>
             <Paragraph>{t('home.cards.intro')}</Paragraph>
 
             <SubHeading>{t('home.cards.magicTitle')}</SubHeading>
-            <BulletList>
-                <Bullet>
-                    <Trans i18nKey="home.cards.startOver" components={bold} />
-                </Bullet>
-                <Bullet>
-                    <Trans i18nKey="home.cards.mirror" components={bold} />
-                </Bullet>
-                <Bullet>
-                    <Trans i18nKey="home.cards.clearAll" components={bold} />
-                </Bullet>
-                <Bullet>
-                    <Trans i18nKey="home.cards.callNext" components={bold} />
-                </Bullet>
-            </BulletList>
+            <View className="my-3 gap-4">
+                <CardRule card={START_OVER} i18nKey="home.cards.startOver" />
+                <CardRule card={MIRROR} i18nKey="home.cards.mirror" />
+                <CardRule card={CLEAR_ALL} i18nKey="home.cards.clearAll" />
+                <CardRule card={CALL_NEXT} i18nKey="home.cards.callNext" />
+            </View>
 
             <SubHeading>{t('home.cards.teaseTitle')}</SubHeading>
-            <BulletList>
-                <Bullet>
-                    <Trans i18nKey="home.cards.youLose" components={bold} />
-                </Bullet>
-            </BulletList>
+            <View className="my-3">
+                <CardRule card={YOU_LOSE} i18nKey="home.cards.youLose" />
+            </View>
 
             <SubHeading>{t('home.cards.simpleTitle')}</SubHeading>
-            <BulletList>
-                {simpleCards.map(card => (
-                    <Bullet key={card.label}>
-                        <Strong>{card.label}</Strong>
-                        <Text>{t('home.cards.simple', { max: card.max })}</Text>
-                    </Bullet>
-                ))}
-            </BulletList>
-        </View>
+            <Paragraph>
+                <Trans i18nKey="home.cards.simple" components={bold} />
+            </Paragraph>
+        </Section>
     );
 }

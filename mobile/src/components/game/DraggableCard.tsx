@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { memo, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import i18n from '@/i18n';
 import Animated, {
 	Easing,
@@ -68,7 +68,7 @@ type DraggableCardProps = {
  * Cards slide in when they arrive, fade out when played, and the rest glide into place
  * (so keep the React `key` tied to the card, not its position).
  */
-export function DraggableCard({
+function DraggableCardView({
 	id,
 	card,
 	size,
@@ -175,5 +175,44 @@ export function DraggableCard({
 		</Animated.View>
 	);
 }
+
+type Card = TCard | null;
+const sameCard = (a: Card, b: Card) => a === b || (!!a && !!b && a.name === b.name && a.value === b.value && a.color === b.color);
+const sameStyle = (a: StyleProp<ViewStyle>, b: StyleProp<ViewStyle>) => {
+    if (a === b) return true;
+    const x = (StyleSheet.flatten(a) ?? {}) as Record<string, unknown>;
+    const y = (StyleSheet.flatten(b) ?? {}) as Record<string, unknown>;
+    const keys = new Set([...Object.keys(x), ...Object.keys(y)]);
+    return [...keys].every(key => x[key] === y[key]);
+};
+const sameCompanions = (a?: readonly Companion[], b?: readonly Companion[]) =>
+    a === b || (!!a && !!b && a.length === b.length && a.every((companion, i) => companion.id === b[i].id && sameCard(companion.card, b[i].card)));
+const sameFlight = (a?: EnterFrom, b?: EnterFrom) => a === b || (!!a && !!b && a.dx === b.dx && a.dy === b.dy && a.scale === b.scale && a.delay === b.delay);
+
+/**
+ * Whether a card would look and behave the same: then it doesn't render again. Game updates bring
+ * new objects (and the board new callbacks) every move, so without this every card in a big hand
+ * rebuilt its gestures and animations on every move (laggy). The callbacks are not compared: the
+ * board gives cards callbacks that read its latest state when called (`useLive` in PlayerBoard).
+ */
+function sameDraggable(a: DraggableCardProps, b: DraggableCardProps): boolean {
+    return (
+        a.id === b.id &&
+        sameCard(a.card, b.card) &&
+        a.size === b.size &&
+        !!a.selected === !!b.selected &&
+        !!a.dimmed === !!b.dimmed &&
+        !!a.faded === !!b.faded &&
+        (a.rotation ?? 0) === (b.rotation ?? 0) &&
+        a.lift === b.lift &&
+        a.accessibilityHint === b.accessibilityHint &&
+        !!a.onHold === !!b.onHold &&
+        sameStyle(a.style, b.style) &&
+        sameFlight(a.enterFrom, b.enterFrom) &&
+        sameCompanions(a.companions, b.companions)
+    );
+}
+
+export const DraggableCard = memo(DraggableCardView, sameDraggable);
 
 export default DraggableCard;

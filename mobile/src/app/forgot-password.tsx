@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Text } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { emailError as emailRule } from '@dutch-pub/shared';
 
@@ -15,7 +15,9 @@ import { api } from '@/lib/api';
  */
 export default function ForgotPasswordScreen() {
     const { t } = useTranslation();
-    const [email, setEmail] = useState('');
+    // From the login screen, when an email was typed there.
+    const params = useLocalSearchParams<{ email?: string }>();
+    const [email, setEmail] = useState(typeof params.email === 'string' ? params.email : '');
     const [touched, setTouched] = useState(false);
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState<string | null>(null);

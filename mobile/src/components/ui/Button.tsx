@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, Text } from 'react-native';
 
 import { useTheme } from '@/lib/theme';
 
-export type ButtonVariant = 'green' | 'blue' | 'yellow' | 'red' | 'gray';
+export type ButtonVariant = 'green' | 'blue' | 'yellow' | 'red' | 'gray' | 'outline';
 export type ButtonSize = 'sm' | 'md';
 
 export type ButtonProps = {
@@ -20,16 +20,25 @@ export type ButtonProps = {
     testID?: string;
 };
 
-// Same palette as the web button: light fill + darker border, swapped while pressed.
+// Green / blue: the main action of a screen (strong fill, white text); red: deleting; yellow:
+// leaving; gray / outline: everything else. (The palette flips in dark mode, see global.css.)
 const variantClasses: Record<ButtonVariant, string> = {
-    green: 'bg-green-300 border-green-500 active:bg-green-500 active:border-green-300',
-    blue: 'bg-blue-300 border-blue-500 active:bg-blue-500 active:border-blue-300',
+    green: 'bg-green-600 border-green-600 active:bg-green-700 active:border-green-700',
+    blue: 'bg-blue-600 border-blue-600 active:bg-blue-700 active:border-blue-700',
     yellow: 'bg-yellow-300 border-yellow-500 active:bg-yellow-500 active:border-yellow-300',
-    red: 'bg-red-300 border-red-500 active:bg-red-500 active:border-red-300',
+    red: 'bg-red-600 border-red-600 active:bg-red-700 active:border-red-700',
     gray: 'bg-gray-200 border-gray-400 active:bg-gray-400 active:border-gray-200',
+    outline: 'bg-white border-gray-300 active:bg-gray-100',
 };
 
-const disabledClasses = 'bg-gray-300 border-gray-500 opacity-60';
+const textClasses: Record<ButtonVariant, string> = {
+    green: 'text-white',
+    blue: 'text-white',
+    yellow: 'text-gray-900',
+    red: 'text-white',
+    gray: 'text-gray-900',
+    outline: 'text-gray-900',
+};
 
 const sizeClasses: Record<ButtonSize, { container: string; text: string }> = {
     sm: { container: 'min-h-8 px-2 py-1', text: 'text-sm' },
@@ -59,14 +68,13 @@ export function Button({
             disabled={inactive}
             onPress={onPress}
             testID={testID}
-            className={`flex-row items-center justify-center rounded-md border-2 ${sizes.container} ${
-                disabled ? disabledClasses : variantClasses[variant]
-            } ${className}`}
+            // Disabled: its own colour, faded (not gray, which looks like a secondary button).
+            className={`flex-row items-center justify-center rounded-md border-2 ${sizes.container} ${variantClasses[variant]} ${disabled ? 'opacity-40' : ''} ${className}`}
         >
             {loading ? (
                 <ActivityIndicator size="small" color={text} />
             ) : (
-                <Text className={`font-medium text-gray-900 ${sizes.text}`}>{label}</Text>
+                <Text className={`font-semibold ${textClasses[variant]} ${sizes.text}`}>{label}</Text>
             )}
         </Pressable>
     );

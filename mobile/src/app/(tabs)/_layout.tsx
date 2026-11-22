@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
-import type { ColorValue } from 'react-native';
+import { View, type ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTranslation } from 'react-i18next';
 
@@ -17,15 +18,19 @@ const tabIcon = (name: IoniconName, focusedName: IoniconName) =>
         return <Ionicons name={focused ? focusedName : name} color={typeof color === 'string' ? color : undefined} size={size} />;
     };
 
-/** Bottom tabs. Header styled like the root Stack (gray-700, as the web navbar). */
+/**
+ * Bottom tabs. No title bar: the highlighted tab already says where you are. Only a dark strip
+ * behind the status bar stays (gray-700, as the root Stack's header), so its light icons stay
+ * readable and the screens keep the app's look.
+ */
 export default function TabsLayout() {
     const colors = useTheme();
     const { t } = useTranslation();
+    const insets = useSafeAreaInsets();
     return (
         <Tabs
             screenOptions={{
-                headerStyle: { backgroundColor: '#374151' },
-                headerTintColor: '#ffffff',
+                header: () => <View style={{ height: insets.top, backgroundColor: '#374151' }} />,
                 tabBarActiveTintColor: colors.accent,
                 tabBarInactiveTintColor: '#6b7280', // gray-500, the middle of the scale: readable in both schemes
                 tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
@@ -34,7 +39,7 @@ export default function TabsLayout() {
         >
             <Tabs.Screen
                 name="index"
-                options={{ title: t('tabs.home'), headerTitle: 'Dutch Pub', tabBarIcon: tabIcon('home-outline', 'home') }}
+                options={{ title: t('tabs.home'), tabBarIcon: tabIcon('home-outline', 'home') }}
             />
             <Tabs.Screen name="play" options={{ title: t('tabs.play'), tabBarIcon: tabIcon('game-controller-outline', 'game-controller') }} />
             <Tabs.Screen
