@@ -508,6 +508,7 @@ const fr: Translation = {
         roomName: 'Donne un nom à la salle ({{max}} caractères au maximum).',
         resetSent: 'Si un compte utilise cet e-mail, un lien pour choisir un nouveau mot de passe est en route. Il est valable {{minutes}} minutes.',
         registrationFailed: 'Inscription échouée ! {{reason}}',
+        leaveRoomFirst: 'Quitte d’abord la salle « {{room}} », puis supprime ton compte.',
     },
 };
 

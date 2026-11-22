@@ -6,7 +6,7 @@ import { emailError as emailRule } from '@dutch-pub/shared';
 
 import { AuthForm } from '@/components/auth';
 import { Button, TextField } from '@/components/ui';
-import { serverMessage } from '@/i18n';
+import i18n, { serverMessage } from '@/i18n';
 import { api } from '@/lib/api';
 
 /**
@@ -30,7 +30,7 @@ export default function ForgotPasswordScreen() {
         setLoading(true);
         setError(null);
         try {
-            const res = await api.requestPasswordReset(email.trim());
+            const res = await api.requestPasswordReset(email.trim(), i18n.language);
             const body = (await res.json().catch(() => ({}))) as { message?: string };
             if (res.ok) setSent(serverMessage(body.message) ?? t('forgot.sent'));
             else setError(serverMessage(body.message) ?? t('forgot.failed'));

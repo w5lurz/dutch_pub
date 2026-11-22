@@ -28,15 +28,25 @@ Notifications.setNotificationHandler({
     handleNotification: async () => ({ shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false }),
 });
 
+/** The Android channel (its name shows in the phone's settings, in the app's language). */
+function createChannel(): void {
+    if (Platform.OS !== 'android') return;
+    Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+        name: i18n.t('notifications.channelName'),
+        description: i18n.t('notifications.channelDescription'),
+        importance: AndroidImportance.HIGH,
+    }).catch(() => {});
+}
+
+// Another language: the channel's name follows, and the server learns it (notifications come in it).
+i18n.on('languageChanged', () => {
+    createChannel();
+    if (registeredToken) registerForPush();
+});
+
 /** On app start: the Android channel, and whether this phone has notifications turned off. */
 export async function initNotifications(): Promise<void> {
-    if (Platform.OS === 'android') {
-        Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-            name: i18n.t('notifications.channelName'),
-            description: i18n.t('notifications.channelDescription'),
-            importance: AndroidImportance.HIGH,
-        }).catch(() => {});
-    }
+    createChannel();
     on = (await getDeviceSetting(SETTING)) !== 'off';
     listeners.forEach(listener => listener());
 }
@@ -54,7 +64,7 @@ export async function registerForPush({ ask = false } = {}): Promise<void> {
         if (status !== 'granted') return;
         const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
         const { data: token } = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-        const res = await api.setPushToken(token);
+        const res = await api.setPushToken(token, i18n.language);
         if (res.ok) registeredToken = token;
     } catch {
         // No push service (e.g. no Firebase setup in this build, an emulator without Google Play): no notifications.

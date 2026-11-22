@@ -17,6 +17,12 @@ export default function (sequelize) {
                 type: DataTypes.INTEGER,
                 allowNull: false,
             },
+            // The app's language on that phone ("hu", ...): its notifications come in it.
+            // Added after the table: older databases get it from models/upgrade.js.
+            language: {
+                type: DataTypes.STRING(8),
+                allowNull: true,
+            },
         },
         { timestamps: true, indexes: [{ fields: ['user_id'] }] },
     );

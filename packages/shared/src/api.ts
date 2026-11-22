@@ -62,16 +62,17 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
     const logOut = (refreshToken: string) => postAnonymous('/api/auth/logout', { refreshToken });
 
     /**
-     * "Forgot password?": emails a link to set a new password, if an account uses `email`. 200 +
-     * `{ message }` either way; 400 not an email; 429 too many; 503 not set up on the server.
+     * "Forgot password?": emails a link to set a new password, if an account uses `email` (the email
+     * and the page in `language`, the app's). 200 + `{ message }` either way; 400 not an email; 429
+     * too many; 503 not set up on the server.
      */
-    const requestPasswordReset = (email: string) => postAnonymous('/api/auth/forgot-password', { email });
+    const requestPasswordReset = (email: string, language?: string) => postAnonymous('/api/auth/forgot-password', { email, language });
 
     /** Deletes the logged-in user's account. 204; 401 wrong password; 403 guest; 409 in a room (`{ message }`). */
     const deleteAccount = (password: string) => send('DELETE', '/api/users/me', { password });
 
-    /** "Your turn" notifications go to this phone (an Expo push token). 204; 400 not a push token. */
-    const setPushToken = (token: string) => send('PUT', '/api/users/me/push-token', { token });
+    /** "Your turn" notifications go to this phone (an Expo push token), in `language` (the app's). 204; 400 not a push token. */
+    const setPushToken = (token: string, language?: string) => send('PUT', '/api/users/me/push-token', { token, language });
 
     /** No more notifications to this phone. Always 204. */
     const deletePushToken = (token: string) => sendAnonymous('DELETE', '/api/users/me/push-token', { token });

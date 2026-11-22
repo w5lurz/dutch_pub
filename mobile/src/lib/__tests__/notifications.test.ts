@@ -31,7 +31,8 @@ describe('push notifications', () => {
 
     it("gives this phone's token to the server, and takes it back", async () => {
         await registerForPush();
-        expect(calls()).toEqual([['PUT', '/api/users/me/push-token', { token: 'ExponentPushToken[test]' }]]);
+        // With the app's language: the notifications come in it.
+        expect(calls()).toEqual([['PUT', '/api/users/me/push-token', { token: 'ExponentPushToken[test]', language: 'en' }]]);
         fetchMock.mockClear();
         await forgetPush();
         expect(calls()).toEqual([['DELETE', '/api/users/me/push-token', { token: 'ExponentPushToken[test]' }]]);

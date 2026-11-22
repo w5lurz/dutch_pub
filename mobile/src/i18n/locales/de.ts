@@ -508,6 +508,7 @@ const de: Translation = {
         roomName: 'Bitte gib dem Raum einen Namen (höchstens {{max}} Zeichen).',
         resetSent: 'Falls ein Konto diese E-Mail verwendet, ist ein Link zum Festlegen eines neuen Passworts unterwegs. Er gilt {{minutes}} Minuten.',
         registrationFailed: 'Registrierung fehlgeschlagen! {{reason}}',
+        leaveRoomFirst: 'Verlass zuerst den Raum „{{room}}“ und lösche dann dein Konto.',
     },
 };
 

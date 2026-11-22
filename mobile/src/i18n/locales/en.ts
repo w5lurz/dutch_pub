@@ -510,6 +510,7 @@ const en = {
         roomName: 'Please give the room a name (at most {{max}} characters).',
         resetSent: 'If an account uses this email, a link to set a new password is on its way. It works for {{minutes}} minutes.',
         registrationFailed: 'Registration Failed! {{reason}}',
+        leaveRoomFirst: 'Leave the room "{{room}}" first, then delete your account.',
     },
 };
 

@@ -78,6 +78,7 @@ const PATTERNS: [RegExp, ServerKey, (match: RegExpMatchArray) => Record<string, 
     [/^Please give the room a name \(at most (\d+) characters\)\.$/, 'roomName', m => ({ max: m[1] })],
     [/^If an account uses this email, a link to set a new password is on its way\. It works for (\d+) minutes\.$/, 'resetSent', m => ({ minutes: m[1] })],
     [/^Registration Failed! (.+)$/, 'registrationFailed', m => ({ reason: serverMessage(m[1]) })],
+    [/^Leave the room "(.+)" first, then delete your account\.$/, 'leaveRoomFirst', m => ({ room: m[1] })],
 ];
 
 /** `message` (English, from the server or a shared validator) in the app's language, when known. */

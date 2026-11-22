@@ -45,14 +45,17 @@ export const deleteMe = async (req, res) => {
     }
 };
 
-/** `PUT /api/users/me/push-token` with `{ token }` (an Expo push token): "your turn" notifications go to this phone. 204; 400 not a push token. */
+/**
+ * `PUT /api/users/me/push-token` with `{ token, language? }` (an Expo push token and the app's
+ * language): "your turn" notifications go to this phone, in that language. 204; 400 not a push token.
+ */
 export const setPushToken = async (req, res) => {
     const token = req.body?.token;
     if (!isExpoPushToken(token)) {
         return res.status(400).send({ message: 'Not a push token.' });
     }
     try {
-        await registerPushToken(req.auth, token);
+        await registerPushToken(req.auth, token, req.body?.language);
         return res.status(204).end();
     } catch (error) {
         return serverError(res, error);

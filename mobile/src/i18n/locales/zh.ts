@@ -507,6 +507,7 @@ const zh: Translation = {
         roomName: '请为房间命名（最多 {{max}} 个字符）。',
         resetSent: '如果该邮箱有对应账户，设置新密码的链接已发出。链接 {{minutes}} 分钟内有效。',
         registrationFailed: '注册失败！{{reason}}',
+        leaveRoomFirst: '请先离开房间“{{room}}”，然后再删除账户。',
     },
 };
 

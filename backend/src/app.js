@@ -5,6 +5,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 
 import db from './models/index.js';
+import { addMissingColumns } from './models/upgrade.js';
 import { serverError } from './utils/utils.js';
 import usersRouters from './routes/user.routes.js';
 import authRouters from './routes/auth.routes.js';
@@ -34,7 +35,7 @@ const port = process.env.PORT || 3030;
 const server = http.Server(app);
 
 // Creates missing tables (refresh_tokens, game_snapshots, ...); awaited below before listening.
-const synced = db.sequelize.sync();
+const synced = db.sequelize.sync().then(() => addMissingColumns(db.sequelize));
 
 // The only client is the mobile app. Native apps send no Origin header, so CORS doesn't
 // apply to them; CORS_ORIGIN (comma-separated) is only needed to run the Expo app in a

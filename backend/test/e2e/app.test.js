@@ -948,9 +948,9 @@ describe('push notifications', () => {
     test('a phone registers its push token (only an Expo push token)', async () => {
         assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', token: userToken, body: { token: 'nope' } })).status, 400);
         assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', body: { token: tokenA } })).status, 403);
-        assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', token: userToken, body: { token: tokenA } })).status, 204);
+        assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', token: userToken, body: { token: tokenA, language: 'hu' } })).status, 204);
         assert.equal((await pushRequest('/api/users/me/push-token', { method: 'PUT', token: guestToken, body: { token: tokenB } })).status, 204);
-        assert.ok(await db.push_token.findByPk(tokenA), "a registered user's token is stored");
+        assert.equal((await db.push_token.findByPk(tokenA))?.language, 'hu', "a registered user's token is stored, with the phone's language");
     });
 
     test('whoever is away gets "your turn"; whoever has the app open does not', async () => {
@@ -988,7 +988,9 @@ describe('push notifications', () => {
     test('a phone that dropped the app is forgotten; logging out stops the notifications', async () => {
         goneTokens.add(tokenA);
         a.emit('app-state', 'background');
-        await waitForPush(tokenA);
+        const hungarian = await waitForPush(tokenA);
+        assert.equal(hungarian.title, 'Te jössz', "in the phone's language");
+        assert.equal(hungarian.body, `Rakj le egy lapot itt: ${roomName}.`);
         await sleep(100);
         assert.equal(await db.push_token.findByPk(tokenA), null);
 
@@ -1003,6 +1005,15 @@ describe('push notifications', () => {
 });
 
 describe('account deletion', () => {
+    test("the deletion page follows the browser's language", async () => {
+        const res = await fetch(`${server.baseUrl}/account/delete`, { headers: { 'Accept-Language': 'hu-HU,hu;q=0.9,en;q=0.8' } });
+        const html = await res.text();
+        assert.match(html, /<html lang="hu">/);
+        assert.match(html, /Fiókom törlése/);
+        assert.match(html, /name="lang" value="hu"/);
+        assert.match(await (await fetch(`${server.baseUrl}/account/delete`)).text(), /Delete my account/);
+    });
+
     const doomed = { username: `e2e_del_${stamp}`, email: `e2e_del_${stamp}@example.test`, password: 'e2e-password-456' };
     const web = { username: `e2e_delweb_${stamp}`, email: `e2e_delweb_${stamp}@example.test`, password: 'e2e-password-789' };
     const friend = `e2e_friend_${stamp}`;
@@ -1222,6 +1233,7 @@ describe('forgot password', () => {
     // Its own server: mails go to a file (MAIL_OUTBOX), links point at PUBLIC_URL.
     const outbox = path.join(os.tmpdir(), `dutch-pub-outbox-${stamp}.jsonl`);
     const resetUser = { username: `e2e_reset_${stamp}`, email: `e2e_reset_${stamp}@example.test`, password: 'old-password-1' };
+    const germanUser = { username: `e2e_resetde_${stamp}`, email: `e2e_resetde_${stamp}@example.test`, password: 'old-password-2' };
     let resetServer;
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -1240,6 +1252,7 @@ describe('forgot password', () => {
     before(async () => {
         resetServer = await startServer({ MAIL_OUTBOX: outbox, PUBLIC_URL: 'https://dutchpub.example/', SMTP_HOST: '' });
         await post(`${resetServer.baseUrl}/api/auth/signup`, resetUser);
+        await post(`${resetServer.baseUrl}/api/auth/signup`, germanUser);
     });
 
     after(async () => {
@@ -1251,6 +1264,9 @@ describe('forgot password', () => {
             await db.password_reset.destroy({ where: { user_id: created.id } });
         }
         await db.user.destroy({ where: { username: resetUser.username } });
+        const german = await db.user.findOne({ where: { username: germanUser.username }, attributes: ['id'], raw: true });
+        if (german) await db.password_reset.destroy({ where: { user_id: german.id } });
+        await db.user.destroy({ where: { username: germanUser.username } });
     });
 
     test('not set up: the server says so', async () => {
@@ -1295,6 +1311,25 @@ describe('forgot password', () => {
         assert.equal((await post(`${resetServer.baseUrl}/api/auth/login`, resetUser)).status, 401, 'the old password is gone');
         assert.equal((await post(`${resetServer.baseUrl}/api/auth/login`, { ...resetUser, password: 'new-password-1' })).status, 200);
         assert.equal((await post(`${resetServer.baseUrl}/api/auth/refresh`, { refreshToken: login.refreshToken })).status, 401, 'logged out');
+    });
+
+    test("the email and the page come in the app's language", async () => {
+        const before = mails().length;
+        assert.equal((await post(`${resetServer.baseUrl}/api/auth/forgot-password`, { email: germanUser.email, language: 'de' })).status, 200);
+        for (let i = 0; i < 100 && mails().length === before; i++) await sleep(20);
+        const mail = mails().at(-1);
+        assert.equal(mail.to, germanUser.email);
+        assert.equal(mail.subject, 'Neues Passwort für Dutch Pub festlegen');
+        assert.match(mail.text, new RegExp(`Hallo ${germanUser.username},`));
+        const link = mail.text.match(/https:\/\/dutchpub\.example\/reset-password\?\S+/)[0];
+        assert.equal(new URL(link).searchParams.get('lang'), 'de');
+
+        const form = await (await fetch(`${resetServer.baseUrl}${new URL(link).pathname}${new URL(link).search}`)).text();
+        assert.match(form, /Neues Passwort speichern/);
+        assert.match(form, /name="lang" value="de"/);
+        const token = new URL(link).searchParams.get('token');
+        const refused = await submit({ token, password: 'kurz', confirm: 'kurz', lang: 'de' });
+        assert.match(await refused.text(), /mindestens 8 Zeichen/);
     });
 
     test('at most 3 mails per email per hour', async () => {

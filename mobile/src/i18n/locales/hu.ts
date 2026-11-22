@@ -508,6 +508,7 @@ const hu: Translation = {
         roomName: 'Adj nevet a szobának (legfeljebb {{max}} karakter).',
         resetSent: 'Ha van fiók ezzel az e-mail-címmel, úton van egy link az új jelszó beállításához. {{minutes}} percig érvényes.',
         registrationFailed: 'Sikertelen regisztráció! {{reason}}',
+        leaveRoomFirst: 'Előbb lépj ki a(z) „{{room}}” szobából, aztán töröld a fiókodat.',
     },
 };
 

@@ -1,12 +1,14 @@
 // Web pages the stores ask for: the privacy policy (`/privacy`) and a way to delete an account
 // without the app (`/account/delete`, required by Google Play). Plain HTML, no scripts.
+// The deletion page follows the browser's language (texts.js); the privacy policy is English.
 // The contact address comes from the environment (PRIVACY_CONTACT), so it is not in the code.
 
 import express, { Router } from 'express';
 
 import { deleteAccount } from './account.js';
 import db from './models/index.js';
-import { limiter, TOO_MANY } from './rateLimit.js';
+import { limiter } from './rateLimit.js';
+import { languageOfRequest, text } from './texts.js';
 
 const User = db.user;
 
@@ -19,8 +21,8 @@ const POLICY_DATE = '21 November 2026';
 export const escapeHtml = text =>
     String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
-export const page = (title, body) => `<!doctype html>
-<html lang="en">
+export const page = (title, body, language = 'en') => `<!doctype html>
+<html lang="${escapeHtml(language)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -99,48 +101,59 @@ export const privacyPolicyHtml = () => {
     );
 };
 
-const deletePageHtml = (message, done = false) =>
-    page(
-        'Delete your Dutch Pub account',
-        `<h1>Delete your Dutch Pub account</h1>
+const deletePageHtml = (language, message, done = false) => {
+    const t = key => escapeHtml(text(language, key));
+    return page(
+        text(language, 'deleteTitle'),
+        `<h1>${t('deleteTitle')}</h1>
 ${message ? `<p class="note" role="status">${escapeHtml(message)}</p>` : ''}
 ${
     done
         ? ''
-        : `<p>This deletes your account, avatar, sign-in and notification tokens. In past played games your name becomes “[deleted]”, so the other players keep their results. This cannot be undone.</p>
-<p class="muted">You can also do this in the app: Account tab → Delete account. Guests have no account: their name is freed when they log out or their session runs out.</p>
+        : `<p>${t('deleteText')}</p>
+<p class="muted">${t('deleteHint')}</p>
 <form method="post" action="/account/delete">
-<label>Username <input name="username" autocomplete="username" required></label>
-<label>Password <input name="password" type="password" autocomplete="current-password" required></label>
-<button type="submit">Delete my account</button>
+<input type="hidden" name="lang" value="${escapeHtml(language)}">
+<label>${t('username')} <input name="username" autocomplete="username" required></label>
+<label>${t('password')} <input name="password" type="password" autocomplete="current-password" required></label>
+<button type="submit">${t('deleteButton')}</button>
 </form>`
 }
-<p><a href="/privacy">Privacy policy</a></p>`,
+<p><a href="/privacy">${t('privacy')}</a></p>`,
+        language,
     );
+};
+
+/** `deleteAccount`'s refusal (English, for the app) in `language`. */
+const refusal = (result, language) => {
+    if (result.status === 401) return text(language, 'wrongLogin');
+    const room = /^Leave the room "(.+)" first/.exec(result.message ?? '')?.[1];
+    return room ? text(language, 'deleteLeaveRoom', { room }) : text(language, 'deleteInGame');
+};
 
 export const pages = () => {
     const router = Router();
 
     router.get('/privacy', (req, res) => res.type('html').send(privacyPolicyHtml()));
 
-    router.get('/account/delete', (req, res) => res.type('html').send(deletePageHtml()));
+    router.get('/account/delete', (req, res) => res.type('html').send(deletePageHtml(languageOfRequest(req))));
 
     router.post('/account/delete', express.urlencoded({ extended: false, limit: '4kb' }), async (req, res) => {
+        const language = languageOfRequest(req);
         const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
         if (!deleteTries(username.toLowerCase()) || !deleteTriesPerAddress(String(req.ip))) {
-            return res.status(429).type('html').send(deletePageHtml(TOO_MANY));
+            return res.status(429).type('html').send(deletePageHtml(language, text(language, 'tooMany')));
         }
         try {
             const user = username ? await User.findOne({ where: { username } }) : null;
             const result = user ? await deleteAccount(user, req.body.password, req.app.get('io')) : { status: 401 };
             if (result.status === 204) {
-                return res.type('html').send(deletePageHtml('Your account has been deleted.', true));
+                return res.type('html').send(deletePageHtml(language, text(language, 'deleted'), true));
             }
-            const message = result.status === 401 ? 'Wrong username or password.' : result.message;
-            return res.status(result.status).type('html').send(deletePageHtml(message));
+            return res.status(result.status).type('html').send(deletePageHtml(language, refusal(result, language)));
         } catch (error) {
             console.log('ACCOUNT DELETE FAILED', error.message);
-            return res.status(500).type('html').send(deletePageHtml('Something went wrong. Please try again later.'));
+            return res.status(500).type('html').send(deletePageHtml(language, text(language, 'somethingWrong')));
         }
     });
 

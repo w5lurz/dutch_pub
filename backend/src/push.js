@@ -5,6 +5,7 @@
 import { guestsList } from './controllers/auth.controller.js';
 import { games, roomsList } from './rooms.js';
 import db from './models/index.js';
+import { languageOf, text } from './texts.js';
 
 const PushToken = db.push_token;
 const User = db.user;
@@ -21,6 +22,8 @@ const CHANNEL_ID = 'turn';
 
 /** Guests' push tokens (guest id → tokens), in memory only. */
 const guestTokens = new Map();
+/** The app language of guests' phones (token → language), in memory only. */
+const guestTokenLanguages = new Map();
 /** Push tokens kept per player (a few phones); older ones are dropped. */
 const MAX_TOKENS_PER_PLAYER = 5;
 /** Who was on turn when each game last started a turn (no new notification for the same player again, e.g. after a burn). */
@@ -29,13 +32,17 @@ const lastOnTurn = new WeakMap();
 /** Whether `token` looks like an Expo push token (`ExponentPushToken[...]`). */
 export const isExpoPushToken = token => typeof token === 'string' && token.length <= 255 && /^Expo(nent)?PushToken\[[^\]]+\]$/.test(token);
 
-/** Stores push token `token` for `auth` (the decoded access token): a phone belongs to one user at a time. */
-export const registerPushToken = async (auth, token) => {
+/**
+ * Stores push token `token` for `auth` (the decoded access token), with the app's language on
+ * that phone (its notifications come in it): a phone belongs to one user at a time.
+ */
+export const registerPushToken = async (auth, token, language) => {
     await forgetPushToken(token);
     if (auth.guest) {
         guestTokens.set(auth.id, new Set([...(guestTokens.get(auth.id) ?? []), token].slice(-MAX_TOKENS_PER_PLAYER)));
+        guestTokenLanguages.set(token, languageOf(language));
     } else {
-        await PushToken.upsert({ token, user_id: auth.id });
+        await PushToken.upsert({ token, user_id: auth.id, language: languageOf(language) });
         const older = await PushToken.findAll({
             where: { user_id: auth.id },
             order: [['updatedAt', 'DESC']],
@@ -49,31 +56,33 @@ export const registerPushToken = async (auth, token) => {
 /** Forgets push token `token` (logging out, notifications turned off, or the phone dropped the app). */
 export const forgetPushToken = async token => {
     guestTokens.forEach(tokens => tokens.delete(token));
+    guestTokenLanguages.delete(token);
     await PushToken.destroy({ where: { token } });
 };
 
 /** Forgets all push tokens of registered user `userId` (account deleted). */
 export const forgetUserPushTokens = userId => PushToken.destroy({ where: { user_id: userId } });
 
-/** The push tokens of player `username` (a registered user or a guest). */
+/** The push tokens of player `username` (a registered user or a guest), as `{ token, language }`. */
 export const pushTokensOf = async username => {
     const guest = guestsList.find(other => other.username === username);
-    if (guest) return [...(guestTokens.get(guest.id) ?? [])];
+    if (guest) return [...(guestTokens.get(guest.id) ?? [])].map(token => ({ token, language: guestTokenLanguages.get(token) ?? 'en' }));
     const user = await User.findOne({ where: { username }, attributes: ['id'] });
     if (!user) return [];
-    return (await PushToken.findAll({ where: { user_id: user.id }, attributes: ['token'] })).map(row => row.token);
+    const rows = await PushToken.findAll({ where: { user_id: user.id }, attributes: ['token', 'language'] });
+    return rows.map(row => ({ token: row.token, language: languageOf(row.language) }));
 };
 
 /** Whether `username` has no socket that is connected with the app in the foreground. */
 export const isAway = (io, username) =>
     ![...io.of('/').sockets.values()].some(socket => socket.connected && socket.data.user?.username === username && !socket.data.background);
 
-/** The notification for `username`, whose turn it is in `game` of room `room`. */
-export const turnMessage = (room, game, username) => {
+/** The notification (in `language`) for `username`, whose turn it is in `game` of room `room`. */
+export const turnMessage = (room, game, username, language = 'en') => {
     const call = game.call?.target === username ? game.call : null;
     return {
-        title: call ? `${call.by} called you!` : 'Your turn',
-        body: call ? `Lay a magic card or pick up the pile (${room.name}).` : `Lay a card in ${room.name}.`,
+        title: call ? text(language, 'pushCalledYou', { name: call.by }) : text(language, 'pushYourTurn'),
+        body: text(language, call ? 'pushLayMagic' : 'pushLayCard', { room: room.name }),
     };
 };
 
@@ -125,7 +134,12 @@ export const notifyTurn = (io, roomId, game) => {
         const room = roomsList[roomId];
         if (!room || games[roomId] !== game || onTurn(game) !== username || game.blindMiss || !isAway(io, username)) return;
         try {
-            await sendPush(await pushTokensOf(username), turnMessage(room, game, username), { roomId: Number(roomId) });
+            // One request per language (each phone gets the notification in its app's language).
+            const byLanguage = new Map();
+            for (const { token, language } of await pushTokensOf(username)) byLanguage.set(language, [...(byLanguage.get(language) ?? []), token]);
+            await Promise.all(
+                [...byLanguage].map(([language, tokens]) => sendPush(tokens, turnMessage(room, game, username, language), { roomId: Number(roomId) })),
+            );
         } catch (error) {
             console.log('PUSH FAILED', error.message);
         }

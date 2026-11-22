@@ -29,7 +29,7 @@ describe('ForgotPasswordScreen', () => {
         expect(await screen.findByText('If an account uses this email, a link is on its way.')).toBeTruthy();
         const [url, init] = fetchMock.mock.calls[0];
         expect(String(url)).toMatch(/\/api\/auth\/forgot-password$/);
-        expect(JSON.parse(init.body)).toEqual({ email: 'tamas@example.hu' });
+        expect(JSON.parse(init.body)).toEqual({ email: 'tamas@example.hu', language: 'en' });
     });
 
     it("doesn't send an invalid email; shows the server's refusal", async () => {
