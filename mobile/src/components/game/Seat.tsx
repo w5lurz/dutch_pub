@@ -156,9 +156,12 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar, compa
     const active = !!opponent.active;
     const danger = isCloseToWinning(opponent.hand + opponent.tableFlipped.length + opponent.table);
     const avatarSize = Math.max(24, Math.round(cardWidth * 0.8));
-    // Side seats get a fixed width: the turned cards plus a margin; a little more when the phone is
-    // sideways (the name sits beside the cards there, so it may be wider). Names wrap to two lines.
-    const sideWidth = Math.max(layout === 'wide' ? 104 : 64, stacksHeight + 16);
+    // Side seats get a fixed width. Portrait: the turned cards plus a margin (they share the column).
+    // Wide: just the avatar and name (the cards sit beside them), scaled with the cards: ~74dp on a
+    // phone turned sideways (a wider column pushed the cards toward the piles), 104dp on tablets.
+    // Names wrap to two lines.
+    const sideWidth =
+        layout === 'wide' ? Math.min(104, Math.max(72, Math.round(cardWidth * 2.4))) : Math.max(64, stacksHeight + 16);
 
     const summary =
         i18n.t('game.seat.summary', {
