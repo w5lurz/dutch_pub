@@ -28,6 +28,7 @@ const EXACT: Record<string, ServerKey> = {
     'Password reset is not set up on this server yet.': 'resetNotSetUp',
     'Please choose a username.': 'chooseUsername',
     'Please choose an avatar.': 'chooseAvatar',
+    'Please update the app to keep playing.': 'updateApp',
     'Please give a valid email address.': 'invalidEmail',
     'Please give your username and password.': 'usernameAndPassword',
     'Registration Failed! Email is already in use!': 'emailInUse',

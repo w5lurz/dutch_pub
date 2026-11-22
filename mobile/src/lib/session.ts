@@ -1,5 +1,6 @@
 import { createApi, type AuthResponse } from '@dutch-pub/shared';
 
+import { versionOptions } from './appVersion';
 import { clearToken, getRefreshToken, getToken, setToken } from './authToken';
 import { API_URL } from './config';
 
@@ -7,7 +8,7 @@ import { API_URL } from './config';
 const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
 // Only for the refresh call itself (it sends no access token, so no loop through getValidToken).
-const authApi = createApi(API_URL);
+const authApi = createApi(API_URL, versionOptions);
 
 /** When access token `token` expires (ms since 1970), or null if it can't be read. */
 export function tokenExpiry(token: string): number | null {

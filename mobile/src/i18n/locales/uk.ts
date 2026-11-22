@@ -42,6 +42,11 @@ const uk: Translation = {
     session: {
         logInAgain: 'Будь ласка, увійди знову.',
     },
+    update: {
+        title: 'Час оновитися',
+        text: 'Ця версія Dutch Pub застаріла для сервера. Онови застосунок, щоб грати далі.',
+        button: 'Оновити',
+    },
     errors: {
         noServer: 'Сервер недоступний.',
         loginFailed: 'Помилка під час входу!',
@@ -489,6 +494,7 @@ const uk: Translation = {
         guestDelete: 'У гостей немає профілю для видалення.',
         invalidPassword: 'Неправильний пароль!',
         invalidRequest: 'Неправильний запит.',
+        updateApp: 'Онови застосунок, щоб грати далі.',
         notYourTurn: 'Зараз не твій хід.',
         noSuchUser: 'Користувача з таким іменем не знайдено.',
         sameValue: 'Разом можна класти лише карти однакового значення.',

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { io } from 'socket.io-client';
 
 import i18n, { serverMessage } from '@/i18n';
+import { APP_VERSION, setUpdateRequired } from '@/lib/appVersion';
 import { clearToken } from '@/lib/authToken';
 import { API_URL } from '@/lib/config';
 import { forgetPush } from '@/lib/notifications';
@@ -36,10 +37,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         io(API_URL, {
             transports: ['websocket'],
             autoConnect: false,
+            // The app version goes along: the server refuses outdated apps ("update required").
             auth: callback => {
                 getValidToken()
-                    .then(token => callback(token ? { token } : {}))
-                    .catch(() => callback({}));
+                    .then(token => callback(token ? { token, appVersion: APP_VERSION } : { appVersion: APP_VERSION }))
+                    .catch(() => callback({ appVersion: APP_VERSION }));
             },
         }),
     );
@@ -56,6 +58,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         };
         const onDisconnect = () => setConnected(false);
         const onConnectError = async (error: Error) => {
+            // Too old for the server: the update screen covers the app; no reconnecting.
+            if (error.message === 'update required') {
+                setUpdateRequired();
+                return;
+            }
             if (error.message === 'unauthorized' || error.message === 'username taken') {
                 // The access token was refused: try new tokens once (e.g. the phone slept past
                 // its expiry); without the server, try again in a moment.

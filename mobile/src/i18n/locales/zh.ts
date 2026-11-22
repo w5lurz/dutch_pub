@@ -41,6 +41,11 @@ const zh: Translation = {
     session: {
         logInAgain: '请重新登录。',
     },
+    update: {
+        title: '需要更新',
+        text: '此版本的 Dutch Pub 太旧，服务器已不再支持。请更新应用以继续游戏。',
+        button: '更新',
+    },
     errors: {
         noServer: '无法连接服务器。',
         loginFailed: '登录时出错！',
@@ -487,6 +492,7 @@ const zh: Translation = {
         guestDelete: '游客没有可删除的账户。',
         invalidPassword: '密码无效！',
         invalidRequest: '请求无效。',
+        updateApp: '请更新应用以继续游戏。',
         notYourTurn: '现在不是你的回合。',
         noSuchUser: '找不到该用户名的用户。',
         sameValue: '只有相同点数的牌才能一起打出。',

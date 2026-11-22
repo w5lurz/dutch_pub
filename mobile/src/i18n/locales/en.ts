@@ -43,6 +43,11 @@ const en = {
     session: {
         logInAgain: 'Please log in again.',
     },
+    update: {
+        title: 'Time for an update',
+        text: 'This version of Dutch Pub is too old for the server. Update the app to keep playing.',
+        button: 'Update',
+    },
     errors: {
         noServer: 'Cannot reach the server.',
         loginFailed: 'Error while logging in!',
@@ -490,6 +495,7 @@ const en = {
         guestDelete: 'Guests have no account to delete.',
         invalidPassword: 'Invalid Password!',
         invalidRequest: 'Invalid request.',
+        updateApp: 'Please update the app to keep playing.',
         notYourTurn: 'It is not your turn.',
         noSuchUser: 'No user with this username found.',
         sameValue: 'Only cards of the same value can be laid together.',

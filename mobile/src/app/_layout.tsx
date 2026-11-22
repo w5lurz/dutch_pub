@@ -13,6 +13,7 @@ import { Provider } from 'react-redux';
 import ConnectionBanner from '@/components/ConnectionBanner';
 import { lockPortrait } from '@/components/game/orientation';
 import Toast from '@/components/Toast';
+import UpdateRequired from '@/components/UpdateRequired';
 import { useSession } from '@/hooks/useSession';
 import { initLanguage } from '@/i18n';
 import { GameSync } from '@/providers/GameSync';
@@ -108,6 +109,8 @@ function RootLayout() {
                         </ThemeProvider>
                         <ConnectionBanner />
                         <Toast />
+                        {/* Last: covers everything once the server refuses this app version. */}
+                        <UpdateRequired />
                     </SocketProvider>
                 </SafeAreaProvider>
             </Provider>

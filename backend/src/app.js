@@ -19,6 +19,7 @@ import { push } from './push.js';
 import { pages } from './pages.js';
 import { passwordReset } from './passwordReset.js';
 import { guardHandlers, limitEvents } from './socketSafety.js';
+import { requireAppVersion, socketAppVersion } from './appVersion.js';
 
 const { json } = bodyParser;
 
@@ -63,6 +64,9 @@ app.get('/api/health', (req, res) => {
     res.status(200).send({ status: 'ok' });
 });
 
+// Apps older than MIN_APP_VERSION get 426 "update the app" (see appVersion.js).
+app.use('/api', requireAppVersion);
+
 app.use('/api/auth', authRouters);
 
 app.use('/api/users', usersRouters);
@@ -93,6 +97,8 @@ const io = new Server(server, {
     },
 });
 
+// Outdated apps are refused first ("update required"); see appVersion.js.
+socketAppVersion(io);
 // Must run before the connection handlers: sets socket.data.user from the handshake token.
 socketAuth(io);
 // First: errors in any handler below only answer that client, floods are dropped.

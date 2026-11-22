@@ -19,20 +19,29 @@ export type AuthResponse = {
 export type ApiOptions = {
     /** Returns the stored auth token, if any; requests then carry `Authorization: Bearer <token>`. */
     getToken?: () => string | null | undefined | Promise<string | null | undefined>;
+    /** The app's version, sent as `X-App-Version` on every request (the server refuses outdated apps). */
+    appVersion?: string;
+    /** Called when the server answers 426: this app version is too old, it must be updated. */
+    onUpdateRequired?: () => void;
 };
 
-export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
+export function createApi(baseUrl: string, { getToken, appVersion, onUpdateRequired }: ApiOptions = {}) {
+    const plainHeaders: Record<string, string> = { 'Content-Type': 'application/json', ...(appVersion && { 'X-App-Version': appVersion }) };
     const headers = async (): Promise<Record<string, string>> => {
         const token = getToken ? await getToken() : null;
-        return {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
-        };
+        return { ...plainHeaders, ...(token && { Authorization: `Bearer ${token}` }) };
     };
 
-    const get = async (path: string) => fetch(`${baseUrl}${path}`, { method: 'GET', headers: await headers() });
+    /** Every request goes through here: a 426 (outdated app) is reported before the caller sees it. */
+    const request = async (path: string, init: RequestInit) => {
+        const response = await fetch(`${baseUrl}${path}`, init);
+        if (response.status === 426) onUpdateRequired?.();
+        return response;
+    };
+
+    const get = async (path: string) => request(path, { method: 'GET', headers: await headers() });
     const send = async (method: 'POST' | 'PUT' | 'DELETE', path: string, body: unknown) =>
-        fetch(`${baseUrl}${path}`, { method, headers: await headers(), body: JSON.stringify(body) });
+        request(path, { method, headers: await headers(), body: JSON.stringify(body) });
     const post = (path: string, body: unknown) => send('POST', path, body);
 
     /** 201 on success; 400 + `{ message }` for a duplicate username / email. */
@@ -49,7 +58,7 @@ export function createApi(baseUrl: string, { getToken }: ApiOptions = {}) {
 
     // Sent without the access token: it may be expired, and getting one may be what calls these.
     const sendAnonymous = (method: 'POST' | 'DELETE', path: string, body: unknown) =>
-        fetch(`${baseUrl}${path}`, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        request(path, { method, headers: plainHeaders, body: JSON.stringify(body) });
     const postAnonymous = (path: string, body: unknown) => sendAnonymous('POST', path, body);
 
     /**

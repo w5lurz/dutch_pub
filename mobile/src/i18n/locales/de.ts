@@ -41,6 +41,11 @@ const de: Translation = {
     session: {
         logInAgain: 'Bitte melde dich erneut an.',
     },
+    update: {
+        title: 'Zeit für ein Update',
+        text: 'Diese Version von Dutch Pub ist zu alt für den Server. Aktualisiere die App, um weiterzuspielen.',
+        button: 'Aktualisieren',
+    },
     errors: {
         noServer: 'Der Server ist nicht erreichbar.',
         loginFailed: 'Fehler bei der Anmeldung!',
@@ -488,6 +493,7 @@ const de: Translation = {
         guestDelete: 'Gäste haben kein Konto zum Löschen.',
         invalidPassword: 'Ungültiges Passwort!',
         invalidRequest: 'Ungültige Anfrage.',
+        updateApp: 'Bitte aktualisiere die App, um weiterzuspielen.',
         notYourTurn: 'Du bist nicht dran.',
         noSuchUser: 'Kein Benutzer mit diesem Namen gefunden.',
         sameValue: 'Zusammen kannst du nur Karten gleichen Werts ablegen.',

@@ -41,6 +41,11 @@ const hu: Translation = {
     session: {
         logInAgain: 'Jelentkezz be újra.',
     },
+    update: {
+        title: 'Frissítés szükséges',
+        text: 'A Dutch Pub ezen verziója túl régi a szerverhez. Frissítsd az alkalmazást a további játékhoz.',
+        button: 'Frissítés',
+    },
     errors: {
         noServer: 'A szerver nem érhető el.',
         loginFailed: 'Hiba a bejelentkezéskor!',
@@ -488,6 +493,7 @@ const hu: Translation = {
         guestDelete: 'Vendégeknek nincs törölhető fiókjuk.',
         invalidPassword: 'Hibás jelszó!',
         invalidRequest: 'Érvénytelen kérés.',
+        updateApp: 'Frissítsd az alkalmazást a további játékhoz.',
         notYourTurn: 'Nem te jössz.',
         noSuchUser: 'Nincs ilyen nevű felhasználó.',
         sameValue: 'Egyszerre csak azonos értékű lapokat rakhatsz le.',
