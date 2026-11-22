@@ -270,7 +270,7 @@ describe('games API', () => {
     test('has a health endpoint and no website', async () => {
         const health = await request('/api/health');
         assert.equal(health.status, 200);
-        assert.deepEqual(await health.json(), { status: 'ok' });
+        assert.deepEqual(await health.json(), { status: 'ok', database: 'ok' });
         assert.equal((await request('/')).status, 404);
         assert.equal((await request('/play')).status, 404);
     });
@@ -1459,5 +1459,50 @@ describe('forgot password', () => {
         const statuses = [];
         for (let i = 0; i < 3; i++) statuses.push((await post(`${resetServer.baseUrl}/api/auth/forgot-password`, { email: resetUser.email.toUpperCase() })).status);
         assert.deepEqual(statuses, [200, 200, 429], 'one was sent before');
+    });
+});
+
+describe('minimum app version (MIN_APP_VERSION)', () => {
+    let versionServer;
+    before(async () => {
+        versionServer = await startServer({ MIN_APP_VERSION: '2.0.0' });
+    });
+    after(async () => {
+        await versionServer?.stop();
+    });
+
+    const login = version =>
+        fetch(`${versionServer.baseUrl}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(version && { 'X-App-Version': version }) },
+            body: JSON.stringify({ username: 'nobody_here', password: 'x' }),
+        });
+    const connect = auth =>
+        new Promise(resolve => {
+            const socket = io(versionServer.baseUrl, { transports: ['websocket'], reconnection: false, auth });
+            socket.on('connect', () => {
+                socket.close();
+                resolve('connected');
+            });
+            socket.on('connect_error', error => {
+                socket.close();
+                resolve(error.message);
+            });
+        });
+
+    test('older or missing versions get 426 (REST) and "update required" (socket); the health check stays open', async () => {
+        const old = await login('1.9.9');
+        assert.equal(old.status, 426);
+        assert.deepEqual(await old.json(), { message: 'Please update the app to keep playing.', code: 'UPDATE_REQUIRED', minVersion: '2.0.0' });
+        assert.equal((await login(undefined)).status, 426);
+        assert.equal(await connect({ appVersion: '1.0.0' }), 'update required');
+        assert.equal(await connect({}), 'update required');
+        assert.equal((await fetch(`${versionServer.baseUrl}/api/health`)).status, 200);
+    });
+
+    test('the minimum version and newer pass', async () => {
+        assert.notEqual((await login('2.0.0')).status, 426);
+        assert.notEqual((await login('2.1.0')).status, 426);
+        assert.equal(await connect({ appVersion: '2.0.0' }), 'connected');
     });
 });

@@ -60,8 +60,20 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get('/api/health', (req, res) => {
-    res.status(200).send({ status: 'ok' });
+// For the uptime monitor (Better Stack) and Docker: 200 only when the database answers too, within
+// 3 seconds; otherwise 503. No error details (they may name the host or the user).
+app.get('/api/health', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        await Promise.race([
+            db.sequelize.query('SELECT 1'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('database timeout')), 3000).unref()),
+        ]);
+        res.status(200).send({ status: 'ok', database: 'ok' });
+    } catch (error) {
+        console.error('Health check: the database does not answer:', error.message);
+        res.status(503).send({ status: 'error', database: 'down' });
+    }
 });
 
 // Apps older than MIN_APP_VERSION get 426 "update the app" (see appVersion.js).

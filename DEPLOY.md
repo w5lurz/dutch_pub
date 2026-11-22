@@ -1,6 +1,6 @@
 # Deployment
 
-The backend (REST API + Socket.io, in `backend/`) ships as a Docker image (see [Dockerfile](Dockerfile)) and runs on Google Cloud Run. The only client is the mobile app in `mobile/`, which is built and distributed separately (EAS; see `mobile/README.md`). Its production build must point `EXPO_PUBLIC_API_URL` at the Cloud Run URL.
+The backend (REST API + Socket.io, in `backend/`) ships as a Docker image (see [Dockerfile](Dockerfile)). **Production runs on an Oracle Cloud Always Free server with Docker Compose, Caddy (HTTPS) and a DuckDNS address: see [deploy/DEPLOY-ORACLE.md](deploy/DEPLOY-ORACLE.md)** (backups, monitoring and updates included). Google Cloud Run (below) is an alternative. The only client is the mobile app in `mobile/`, which is built and distributed separately (EAS; see `mobile/README.md`). Its production build must point `EXPO_PUBLIC_API_URL` at the server (`https://<name>.duckdns.org`).
 
 ## Environment variables / secrets
 
@@ -64,9 +64,9 @@ No manual migration or `ALTER TABLE` is needed for avatars. The API: `PUT` (or `
 docker compose up --build
 ```
 
-`docker-compose.yml` loads `backend/.env` via `env_file`, and its `environment:` block overrides the DB settings to point at the `db` container. The API is then at http://localhost:3030 (`GET /api/health` → `{"status":"ok"}`).
+`docker-compose.yml` loads `backend/.env` via `env_file`, and its `environment:` block overrides the DB settings to point at the `db` container. The API is then at http://localhost:3030 (`GET /api/health` → `{"status":"ok","database":"ok"}`; 503 when the database doesn't answer).
 
-## Production (Cloud Run)
+## Alternative: Google Cloud Run
 
 1. **Store the secrets in Secret Manager** (one-time; repeat `versions add` to rotate):
 
@@ -94,7 +94,7 @@ docker compose up --build
    - Env vars and secrets persist between deploys. On later deploys, only `gcloud run deploy <service-name> --source . --region <region>` is needed, unless a value changes.
    - **Existing service from the web-app days:** `BASE_URL`, `FRONTEND_ROOT` and `COOKIE_SECRET` are no longer used. Remove them once with `--remove-env-vars BASE_URL,FRONTEND_ROOT --remove-secrets COOKIE_SECRET`.
 
-3. **Check the deploy:** `curl https://<service>.a.run.app/api/health` returns `{"status":"ok"}`. Then log in from the app and create a room. If the container exits immediately, check the logs for `... environment variable is not set`.
+3. **Check the deploy:** `curl https://<service>.a.run.app/api/health` returns `{"status":"ok","database":"ok"}`. Then log in from the app and create a room. If the container exits immediately, check the logs for `... environment variable is not set`.
 
 ## Security notes
 

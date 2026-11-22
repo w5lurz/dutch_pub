@@ -18,5 +18,10 @@ yarn-error.log*
 **/.env
 !**/.env.example
 
+# On the server: secrets and database backups (deploy/)
+deploy/.env
+deploy/backend.env
+deploy/backups/
+
 # Firebase config for Android push (an EAS file variable on the build servers)
 /mobile/google-services.json
