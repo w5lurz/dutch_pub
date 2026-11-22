@@ -93,15 +93,19 @@ type ShotGlassProps = {
     size?: number;
 };
 
-/** Share of the time spent sliding (slowing down); then the liquor settles and the flame stands up. */
+/** Share of the time spent sliding (slowing down); then the liquor settles. */
 const SLIDE_END = 1 / 1.6;
+/** The flame goes out over this part of the time, as the glass comes to a stop beside the winner. */
+const OUT_FROM = SLIDE_END * 0.8;
+const OUT_TO = SLIDE_END + 0.1;
 
 /**
  * The winner's shot, a flaming one so nobody misses it: a glass of clear liquor slides
  * across the table from the middle and stops beside the winner. While it slides its tongue
- * of fire streams out long behind it; once it stops the flame stands up and keeps
- * flickering, with a warm glow on the table around it. Above the table, below the night's
- * card lighting; no touches. With "reduce motion" it fades in at its place, the flame still.
+ * of fire streams out long behind it, with a warm glow on the table around it; as it comes to
+ * a stop the flame goes out (shrinks and fades) and the glow with it, so the glass just stands
+ * there. Above the table, below the night's card lighting; no touches. With "reduce motion" it
+ * fades in at its place, without a flame.
  */
 export function ShotGlass({ from, to, size = 52 }: ShotGlassProps) {
     const still = useReducedMotion();
@@ -153,25 +157,35 @@ export function ShotGlass({ from, to, size = 52 }: ShotGlassProps) {
         return { transform: [{ translateX: ux * lean }, { translateY: uy * lean }] };
     });
     // The flame turns about its base (the middle of a square centred on the glass): streaming out
-    // behind while sliding, standing up once the glass stops.
+    // behind while sliding, rising a little as the glass slows down, and fading out as it stops.
     const turning = useAnimatedStyle(() => {
-        const angle = interpolate(progress.get(), [0, SLIDE_END * 0.7, SLIDE_END + 0.12], [trailing, trailing * 0.6, 0], 'clamp');
-        return { transform: [{ rotate: `${angle + (flicker.get() - 0.5) * 6}deg` }] };
+        const p = progress.get();
+        const angle = interpolate(p, [0, SLIDE_END * 0.7, SLIDE_END + 0.12], [trailing, trailing * 0.6, 0], 'clamp');
+        return {
+            opacity: still ? 0 : interpolate(p, [OUT_FROM, OUT_TO], [1, 0], 'clamp'),
+            transform: [{ rotate: `${angle + (flicker.get() - 0.5) * 6}deg` }],
+        };
     });
     // Long and thin while fast, flickering always; scaled about its base (its bottom edge).
     const burning = useAnimatedStyle(() => {
-        const speed = 1 - Math.min(1, progress.get() / SLIDE_END);
+        const p = progress.get();
+        const speed = 1 - Math.min(1, p / SLIDE_END);
         const f = flicker.get();
+        // Going out: down to a small flicker at the glass's rim.
+        const out = interpolate(p, [OUT_FROM, OUT_TO], [1, 0.2], 'clamp');
         return {
             transform: [
                 { translateY: flameHeight / 2 },
-                { scaleY: 1 + speed * 0.9 + f * 0.12 },
-                { scaleX: 1 - speed * 0.25 - f * 0.06 },
+                { scaleY: (1 + speed * 0.9 + f * 0.12) * out },
+                { scaleX: (1 - speed * 0.25 - f * 0.06) * out },
                 { translateY: -flameHeight / 2 },
             ],
         };
     });
-    const glow = useAnimatedStyle(() => ({ opacity: 0.6 + flicker.get() * 0.3, transform: [{ scale: 1 + flicker.get() * 0.08 }] }));
+    const glow = useAnimatedStyle(() => ({
+        opacity: still ? 0 : (0.6 + flicker.get() * 0.3) * interpolate(progress.get(), [OUT_FROM, OUT_TO + 0.05], [1, 0], 'clamp'),
+        transform: [{ scale: 1 + flicker.get() * 0.08 }],
+    }));
 
     return (
         <Animated.View pointerEvents="none" testID="shot-glass" style={[{ position: 'absolute', left: 0, top: 0, width: size, height: size }, sliding]}>

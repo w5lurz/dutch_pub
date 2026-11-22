@@ -77,6 +77,24 @@ describe('Seat', () => {
         expect(screen.getAllByLabelText('Face-down card')).toHaveLength(7);
     });
 
+    it('glows red for a player close to winning: a halo, and a fast orange-red glow on turn', async () => {
+        const close: Opponent = { hand: 2, table: 0, tableFlipped: [card(5)], active: false };
+        await render(<Seat name="cili" opponent={close} position="top" layout="portrait" />);
+        expect(screen.getByTestId('danger-halo')).toBeTruthy();
+        expect(screen.queryByTestId('turn-glow')).toBeNull();
+        expect(screen.getByLabelText('cili, close to winning: 2 in hand, 1 face-up, 0 face-down')).toBeTruthy();
+
+        await render(<Seat name="cili" opponent={{ ...close, active: true }} position="top" layout="portrait" />);
+        expect(screen.getByTestId('danger-turn-glow')).toBeTruthy();
+        expect(screen.queryByTestId('danger-halo')).toBeNull();
+    });
+
+    it('no danger glow with more cards left', async () => {
+        await render(<Seat name="anna" opponent={anna} position="top" layout="portrait" />);
+        expect(screen.getByTestId('turn-glow')).toBeTruthy();
+        expect(screen.queryByTestId('danger-halo')).toBeNull();
+    });
+
     it('shows a player without cards', async () => {
         await render(<Seat name="bela" opponent={bela} position="left" layout="portrait" />);
         expect(screen.getByLabelText('bela: 0 in hand, 0 face-up, 0 face-down')).toBeTruthy();

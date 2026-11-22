@@ -53,25 +53,33 @@ export const signUp = async (req, res) => {
     }
 };
 
+/** The answer for an unknown account and a wrong password alike (nobody learns which accounts exist). */
+const WRONG_LOGIN = 'Wrong username, email or password.';
+/**
+ * Compared against when there is no such account, so that answer takes as long as a wrong
+ * password. Made on first use (`PASSWORD_ROUNDS` comes from a module that imports this one).
+ */
+let noAccountHash;
+const noAccount = () => (noAccountHash ??= bcrypt.hash('no account has this password', PASSWORD_ROUNDS));
+
+/** `POST /login` with `{ username, password }`: `username` may also be the account's email. */
 export const loginUser = async (req, res, next) => {
     try {
         const { username, password } = req.body ?? {};
         if (typeof username !== 'string' || typeof password !== 'string') {
             return res.status(400).send({ message: 'Please give your username and password.' });
         }
-        const user = await User.findOne({ where: { username: username.trim() } });
-
-        if (!user) {
-            return res.status(404).send({ message: 'No user with this username found.' });
-        }
+        const login = username.trim();
+        // Usernames can't contain "@" (packages/shared validation), so with one it is an email
+        // (then a username, for accounts made before that rule).
+        const user =
+            (login.includes('@') && (await User.findOne({ where: { email: login } }))) || (await User.findOne({ where: { username: login } }));
 
         // Async: the hashing doesn't hold up the other players' moves meanwhile.
-        const passwordIsValid = await bcrypt.compare(password, user.password);
+        const passwordIsValid = await bcrypt.compare(password, user?.password ?? (await noAccount()));
 
-        if (!passwordIsValid) {
-            return res.status(401).send({
-                message: 'Invalid Password!',
-            });
+        if (!user || !passwordIsValid) {
+            return res.status(401).send({ message: WRONG_LOGIN });
         }
 
         // The app sends it back as `Authorization: Bearer <token>` and in the socket handshake;

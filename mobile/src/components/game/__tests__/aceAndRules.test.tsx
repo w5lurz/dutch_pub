@@ -68,10 +68,13 @@ describe('PileArea messages', () => {
     });
 
     it('speaks to you when you are called, or called someone', async () => {
+        // Called yourself: the red banner (not the everyday pill), announced at once.
         await piles({ turnOf: null, call: { by: 'Julcsi', target: 'me' } });
-        expect(screen.getByText('Julcsi called you: a magic card or pick up!')).toBeTruthy();
+        expect(screen.getByTestId('called-banner')).toBeTruthy();
+        expect(screen.getByRole('alert').props.children).toBe('📣 Julcsi called you: a magic card or pick up!');
         await piles({ call: { by: 'me', target: 'Lacika' } });
         expect(screen.getByText('You called Lacika: a magic card or pick up!')).toBeTruthy();
+        expect(screen.queryByTestId('called-banner')).toBeNull();
     });
 
     it('shows when the turn order is reversed', async () => {

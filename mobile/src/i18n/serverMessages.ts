@@ -58,6 +58,7 @@ const EXACT: Record<string, ServerKey> = {
     'Wait a moment before the next message.': 'chatWait',
     'Wait a moment, the pile is being picked up.': 'pileBeingPickedUp',
     'Wrong password.': 'wrongPassword',
+    'Wrong username, email or password.': 'wrongLogin',
     'You are in a room already.': 'inRoomAlready',
     'You are in a running game. You can delete your account once it is over.': 'deleteInGame',
     'You are not a player in this game.': 'notAPlayer',

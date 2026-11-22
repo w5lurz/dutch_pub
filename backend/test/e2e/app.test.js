@@ -74,9 +74,19 @@ describe('auth API', () => {
         assert.equal(res.status, 401);
     });
 
-    test('rejects an unknown user', async () => {
-        const res = await request('/api/auth/login', { method: 'POST', body: { username: `nobody_${stamp}`, password: 'x' } });
-        assert.equal(res.status, 404);
+    test('rejects an unknown user with the same answer as a wrong password', async () => {
+        const unknown = await request('/api/auth/login', { method: 'POST', body: { username: `nobody_${stamp}`, password: 'x' } });
+        const wrong = await request('/api/auth/login', { method: 'POST', body: { username: user.username, password: 'wrong' } });
+        assert.equal(unknown.status, 401);
+        assert.deepEqual(await unknown.json(), await wrong.json());
+    });
+
+    test('logs in with the email too', async () => {
+        const res = await request('/api/auth/login', { method: 'POST', body: { username: user.email.toUpperCase(), password: user.password } });
+        assert.equal(res.status, 200);
+        assert.equal((await res.json()).username, user.username);
+        const wrong = await request('/api/auth/login', { method: 'POST', body: { username: user.email, password: 'wrong' } });
+        assert.equal(wrong.status, 401);
     });
 
     test('logs in and returns a token', async () => {
@@ -1063,7 +1073,7 @@ describe('account deletion', () => {
     });
 
     test('the account is gone; the other players keep their games, without the name', async () => {
-        assert.equal((await request('/api/auth/login', { method: 'POST', body: doomed })).status, 404);
+        assert.equal((await request('/api/auth/login', { method: 'POST', body: doomed })).status, 401);
         const games = await db.played_game.findAll({ where: { players: { [Op.like]: `%${friend}%` } }, raw: true });
         assert.deepEqual(games.map(game => [game.winner, game.players]).sort(), [
             ['[deleted]', `[deleted],${friend}`],
@@ -1200,11 +1210,11 @@ describe('security', () => {
     test('logging in: 10 tries per account per 15 minutes', async () => {
         const statuses = [];
         for (let i = 0; i < 11; i++) statuses.push((await post('/api/auth/login', { username: `Nobody_${stamp}`, password: 'x' })).status);
-        assert.deepEqual(statuses.slice(0, 10), Array(10).fill(404));
+        assert.deepEqual(statuses.slice(0, 10), Array(10).fill(401));
         assert.equal(statuses[10], 429);
         // Another spelling of the same name counts too; another account doesn't.
         assert.equal((await post('/api/auth/login', { username: ` nobody_${stamp}`, password: 'x' })).status, 429);
-        assert.equal((await post('/api/auth/login', { username: `other_${stamp}`, password: 'x' })).status, 404);
+        assert.equal((await post('/api/auth/login', { username: `other_${stamp}`, password: 'x' })).status, 401);
     });
 
     test('no internal details: headers, too large and broken bodies', async () => {

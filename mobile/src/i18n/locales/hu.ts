@@ -102,6 +102,8 @@ const hu: Translation = {
         signUp: 'Regisztrálj',
         username: 'Felhasználónév',
         usernamePlaceholder: 'a felhasználóneved',
+        usernameOrEmail: 'Felhasználónév vagy e-mail',
+        usernameOrEmailPlaceholder: 'a felhasználóneved vagy e-mail-címed',
         password: 'Jelszó',
         signIn: 'Bejelentkezés',
         forgotPassword: 'Elfelejtetted a jelszavad?',
@@ -418,6 +420,7 @@ const hu: Translation = {
             summary: '{{name}}: {{hand}} a kézben, {{faceUp}} felfordított, {{faceDown}} lefordított',
             onTurn: 'soron van',
             ready: 'kész',
+            closeToWinning: 'mindjárt nyer',
         },
         you: 'Te, {{name}}',
         yourHand_one: 'A kezed, {{count}} lap',
@@ -509,6 +512,7 @@ const hu: Translation = {
         resetSent: 'Ha van fiók ezzel az e-mail-címmel, úton van egy link az új jelszó beállításához. {{minutes}} percig érvényes.',
         registrationFailed: 'Sikertelen regisztráció! {{reason}}',
         leaveRoomFirst: 'Előbb lépj ki a(z) „{{room}}” szobából, aztán töröld a fiókodat.',
+        wrongLogin: 'Hibás felhasználónév, e-mail-cím vagy jelszó.',
     },
 };
 

@@ -104,6 +104,8 @@ const en = {
         signUp: 'Sign up',
         username: 'Username',
         usernamePlaceholder: 'your username',
+        usernameOrEmail: 'Username or email',
+        usernameOrEmailPlaceholder: 'your username or email',
         password: 'Password',
         signIn: 'Sign in',
         forgotPassword: 'Forgot password?',
@@ -420,6 +422,7 @@ const en = {
             summary: '{{name}}: {{hand}} in hand, {{faceUp}} face-up, {{faceDown}} face-down',
             onTurn: 'on turn',
             ready: 'ready',
+            closeToWinning: 'close to winning',
         },
         you: 'You, {{name}}',
         yourHand_one: 'Your hand, {{count}} card',
@@ -511,6 +514,7 @@ const en = {
         resetSent: 'If an account uses this email, a link to set a new password is on its way. It works for {{minutes}} minutes.',
         registrationFailed: 'Registration Failed! {{reason}}',
         leaveRoomFirst: 'Leave the room "{{room}}" first, then delete your account.',
+        wrongLogin: 'Wrong username, email or password.',
     },
 };
 

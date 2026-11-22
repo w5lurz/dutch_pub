@@ -102,6 +102,8 @@ const zh: Translation = {
         signUp: '注册',
         username: '用户名',
         usernamePlaceholder: '你的用户名',
+        usernameOrEmail: '用户名或邮箱',
+        usernameOrEmailPlaceholder: '你的用户名或邮箱',
         password: '密码',
         signIn: '登录',
         forgotPassword: '忘记密码？',
@@ -417,6 +419,7 @@ const zh: Translation = {
             summary: '{{name}}：手牌 {{hand}} 张，明牌 {{faceUp}} 张，暗牌 {{faceDown}} 张',
             onTurn: '出牌中',
             ready: '已准备',
+            closeToWinning: '即将获胜',
         },
         you: '你，{{name}}',
         yourHand_one: '你的手牌，{{count}} 张',
@@ -508,6 +511,7 @@ const zh: Translation = {
         resetSent: '如果该邮箱有对应账户，设置新密码的链接已发出。链接 {{minutes}} 分钟内有效。',
         registrationFailed: '注册失败！{{reason}}',
         leaveRoomFirst: '请先离开房间“{{room}}”，然后再删除账户。',
+        wrongLogin: '用户名、邮箱或密码错误。',
     },
 };
 

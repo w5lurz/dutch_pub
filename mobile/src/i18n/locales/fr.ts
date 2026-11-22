@@ -102,6 +102,8 @@ const fr: Translation = {
         signUp: 'S’inscrire',
         username: 'Nom d’utilisateur',
         usernamePlaceholder: 'ton nom d’utilisateur',
+        usernameOrEmail: 'Nom d’utilisateur ou e-mail',
+        usernameOrEmailPlaceholder: 'ton nom d’utilisateur ou ton e-mail',
         password: 'Mot de passe',
         signIn: 'Se connecter',
         forgotPassword: 'Mot de passe oublié ?',
@@ -418,6 +420,7 @@ const fr: Translation = {
             summary: '{{name}} : {{hand}} en main, {{faceUp}} visibles, {{faceDown}} cachées',
             onTurn: 'à son tour',
             ready: 'prêt',
+            closeToWinning: 'près de gagner',
         },
         you: 'Toi, {{name}}',
         yourHand_one: 'Ta main, {{count}} carte',
@@ -509,6 +512,7 @@ const fr: Translation = {
         resetSent: 'Si un compte utilise cet e-mail, un lien pour choisir un nouveau mot de passe est en route. Il est valable {{minutes}} minutes.',
         registrationFailed: 'Inscription échouée ! {{reason}}',
         leaveRoomFirst: 'Quitte d’abord la salle « {{room}} », puis supprime ton compte.',
+        wrongLogin: 'Nom d’utilisateur, e-mail ou mot de passe incorrect.',
     },
 };
 

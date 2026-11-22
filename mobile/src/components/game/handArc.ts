@@ -59,3 +59,23 @@ export function handArcLayout(
     const tiltOverhang = (cardWidth / 2) * Math.sin(rad(spread / 2));
     return { cards, height: Math.ceil(lift + maxDrop + cardHeight + tiltOverhang), step };
 }
+
+/** How far the back row of a spread hand is raised, in card heights (the front row covers the rest). */
+const SPREAD_RAISE = 0.5;
+
+/** Whether a hand laid out with `step` is crowded enough to be worth spreading (cards closer than relaxed). */
+export const isCrowded = (step: number, cardWidth: number, count: number) => count > 3 && step < cardWidth * RELAXED_STEP * 0.8;
+
+/**
+ * The hand spread into two rows while it is held down (a long press): the first half of the
+ * cards in a back row raised by half a card, the rest in front, each row its own fan in the same
+ * width. Twice the room per card, so every corner index shows. Same order as the cards (later
+ * ones on top); the back row reaches above the hand area (`top` < 0).
+ */
+export function spreadHandLayout(count: number, cardWidth: number, cardHeight: number, available: number, lift = 0): HandArcCard[] {
+    const backCount = Math.ceil(count / 2);
+    const back = handArcLayout(backCount, cardWidth, cardHeight, available, lift);
+    const front = handArcLayout(count - backCount, cardWidth, cardHeight, available, lift);
+    const raise = Math.round(cardHeight * SPREAD_RAISE);
+    return [...back.cards.map(card => ({ ...card, top: card.top - raise })), ...front.cards];
+}

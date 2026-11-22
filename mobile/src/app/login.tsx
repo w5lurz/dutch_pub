@@ -49,8 +49,8 @@ export default function LoginScreen() {
             }
         >
             <TextField
-                label={t('auth.username')}
-                placeholder={t('auth.usernamePlaceholder')}
+                label={t('auth.usernameOrEmail')}
+                placeholder={t('auth.usernameOrEmailPlaceholder')}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"

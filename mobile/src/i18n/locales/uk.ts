@@ -103,6 +103,8 @@ const uk: Translation = {
         signUp: 'Зареєструйся',
         username: 'Імʼя користувача',
         usernamePlaceholder: 'твоє імʼя користувача',
+        usernameOrEmail: 'Імʼя користувача або e-mail',
+        usernameOrEmailPlaceholder: 'твоє імʼя користувача або e-mail',
         password: 'Пароль',
         signIn: 'Увійти',
         forgotPassword: 'Забув пароль?',
@@ -419,6 +421,7 @@ const uk: Translation = {
             summary: '{{name}}: у руці {{hand}}, відкритих {{faceUp}}, закритих {{faceDown}}',
             onTurn: 'ходить',
             ready: 'готовий',
+            closeToWinning: 'майже переміг',
         },
         you: 'Ти, {{name}}',
         yourHand_one: 'Твоя рука, {{count}} карта',
@@ -510,6 +513,7 @@ const uk: Translation = {
         resetSent: 'Якщо цей e-mail має профіль, посилання для нового пароля вже в дорозі. Воно діє {{minutes}} хвилин.',
         registrationFailed: 'Реєстрація не вдалася! {{reason}}',
         leaveRoomFirst: 'Спершу вийди з кімнати «{{room}}», а потім видали профіль.',
+        wrongLogin: 'Неправильне імʼя користувача, e-mail або пароль.',
     },
 };
 

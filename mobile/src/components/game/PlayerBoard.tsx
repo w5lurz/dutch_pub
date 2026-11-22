@@ -1,4 +1,5 @@
 import { useState, type ReactNode, type Ref } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Text, useWindowDimensions, View } from 'react-native';
 import i18n from '@/i18n';
 import { canLayCard, type CardRules, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
@@ -7,9 +8,9 @@ import type { Companion, ViewRef } from './CardDrag';
 import { useCardSize, type CardSize } from './cardSize';
 import { DraggableCard } from './DraggableCard';
 import { useDrawnCards } from './drawnCards';
-import { handArcLayout } from './handArc';
+import { handArcLayout, isCrowded, spreadHandLayout } from './handArc';
 import { HandSilhouette } from './HandSilhouette';
-import { SeatAvatar } from './Seat';
+import { isCloseToWinning, SeatAvatar } from './Seat';
 import { nextSelection } from './selection';
 import { TableStacks, tableSpots, upId } from './TableStacks';
 import { useTableTheme } from './tableTheme';
@@ -45,6 +46,11 @@ type PlayerBoardProps = {
 	 * played while the hand has cards, and without a hand nothing covers them.
 	 */
 	overlapStacks?: boolean;
+	/**
+	 * Your avatar and name beside your table cards instead of above them (a phone turned
+	 * sideways: the height is short, the width plenty). Above the hand when no table cards are left.
+	 */
+	youBeside?: boolean;
 	/** Shown in the bottom-left corner (the chat button). */
 	corner?: ReactNode;
 	/** Shown in the bottom-right corner (the lamp switch). */
@@ -85,6 +91,7 @@ export function PlayerBoard({
 	onLayCard,
 	handSize = 'md',
 	overlapStacks = false,
+	youBeside = false,
 	corner,
 	cornerRight,
 	avatarRef,
@@ -108,14 +115,20 @@ export function PlayerBoard({
 	const handPadding = corner || cornerRight ? CORNER_SPACE : HAND_PADDING;
 	// Until it is measured, the window width (no empty first frame).
 	const { width: windowWidth } = useWindowDimensions();
-	const [handWidth, setHandWidth] = useState(0);
-	const arc = handArcLayout(
-		hand.length,
-		cardWidth,
-		cardHeight,
-		(handWidth || windowWidth) - 2 * handPadding,
-		HAND_LIFT,
-	);
+	// The measured width counts only for the window it was measured in: right after the phone
+	// turned, the new window's width (no second rearrangement once the hand is measured again).
+	const [measured, setMeasured] = useState({ width: 0, window: 0 });
+	const handWidth = measured.window === windowWidth ? measured.width : 0;
+	const handRoom = (handWidth || windowWidth) - 2 * handPadding;
+	const arc = handArcLayout(hand.length, cardWidth, cardHeight, handRoom, HAND_LIFT);
+	// Holding a card of a crowded hand spreads it into two rows (every corner index shows) until let go.
+	const [spread, setSpread] = useState(false);
+	const canSpread = isCrowded(arc.step, cardWidth, hand.length);
+	const places = spread && canSpread ? spreadHandLayout(hand.length, cardWidth, cardHeight, handRoom, HAND_LIFT) : arc.cards;
+	const startSpread = () => {
+		setSpread(true);
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+	};
 
 	// Keyed by the card (plus its occurrence, in case of duplicates), not its position: the cards
 	// then animate in / out and glide along the arc, and newly drawn ones fly in (useDrawnCards).
@@ -168,7 +181,7 @@ export function PlayerBoard({
 
 	const handView = handPlayable ? (
 		<View
-			onLayout={(event) => setHandWidth(event.nativeEvent.layout.width)}
+			onLayout={(event) => setMeasured({ width: event.nativeEvent.layout.width, window: windowWidth })}
 			// On short windows the hand hangs partly off the bottom edge (its corner indices stay
 			// visible), like cards held at the table edge: the piles and seats keep their room.
 			style={{ height: arc.height, marginBottom: -hangOff }}
@@ -176,7 +189,7 @@ export function PlayerBoard({
 		>
 			{hand.map((card, i) => {
 				const id = handIds[i];
-				const place = arc.cards[i];
+				const place = places[i];
 				// From the board's bottom: its padding (pb-1, 4dp), less what hangs off the screen.
 				const enterFrom = drawnFrom(
 					id,
@@ -200,6 +213,8 @@ export function PlayerBoard({
 						onSelect={() => toggleSelected(id)}
 						onPlay={() => play(card, i, true, id)}
 						companions={companionsOf(id)}
+						onHold={canSpread ? startSpread : undefined}
+						onHoldEnd={() => setSpread(false)}
 					/>
 				);
 			})}
@@ -243,6 +258,7 @@ export function PlayerBoard({
 				<SeatAvatar
 					name={username ?? '?'}
 					active={active}
+					danger={isCloseToWinning(hand.length + tableFlipped.length + table)}
 					size={Math.max(24, Math.round(avatarCard * 0.8))}
 					avatarId={avatar}
 				/>
@@ -271,8 +287,17 @@ export function PlayerBoard({
 	// bottom corners; the hand keeps room on both sides, so it never covers them and stays centred.
 	return (
 		<View ref={boardRef} collapsable={false} className="pb-1">
-			{you}
-			{stacks}
+			{youBeside && stacks ? (
+				<View className="flex-row items-center justify-center gap-4">
+					{you}
+					{stacks}
+				</View>
+			) : (
+				<>
+					{you}
+					{stacks}
+				</>
+			)}
 			{handView}
 			{corner ? <View className="absolute bottom-2 left-2">{corner}</View> : null}
 			{cornerRight ? <View className="absolute bottom-2 right-2">{cornerRight}</View> : null}

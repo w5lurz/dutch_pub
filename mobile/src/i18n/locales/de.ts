@@ -102,6 +102,8 @@ const de: Translation = {
         signUp: 'Registrieren',
         username: 'Benutzername',
         usernamePlaceholder: 'dein Benutzername',
+        usernameOrEmail: 'Benutzername oder E-Mail',
+        usernameOrEmailPlaceholder: 'dein Benutzername oder deine E-Mail',
         password: 'Passwort',
         signIn: 'Anmelden',
         forgotPassword: 'Passwort vergessen?',
@@ -418,6 +420,7 @@ const de: Translation = {
             summary: '{{name}}: {{hand}} auf der Hand, {{faceUp}} offen, {{faceDown}} verdeckt',
             onTurn: 'am Zug',
             ready: 'bereit',
+            closeToWinning: 'kurz vor dem Sieg',
         },
         you: 'Du, {{name}}',
         yourHand_one: 'Deine Hand, {{count}} Karte',
@@ -509,6 +512,7 @@ const de: Translation = {
         resetSent: 'Falls ein Konto diese E-Mail verwendet, ist ein Link zum Festlegen eines neuen Passworts unterwegs. Er gilt {{minutes}} Minuten.',
         registrationFailed: 'Registrierung fehlgeschlagen! {{reason}}',
         leaveRoomFirst: 'Verlass zuerst den Raum „{{room}}“ und lösche dann dein Konto.',
+        wrongLogin: 'Falscher Benutzername, falsche E-Mail oder falsches Passwort.',
     },
 };
 

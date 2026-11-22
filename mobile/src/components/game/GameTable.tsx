@@ -239,7 +239,13 @@ export function GameTable({
 			? 'md'
 			: 'lg';
 	const piles = swapPhase ? (
-		<SwapPanel ready={!!game.ready} readyCount={readyCount} playerCount={opponentList.length + 1} onReady={() => onReady?.()} />
+		<SwapPanel
+			ready={!!game.ready}
+			readyCount={readyCount}
+			playerCount={opponentList.length + 1}
+			onReady={() => onReady?.()}
+			compact={layout === 'wide' && short}
+		/>
 	) : (
 		<PileArea
 			deck={game.deck}
@@ -290,7 +296,9 @@ export function GameTable({
 								{seatAt('right')}
 							</View>
 						) : (
-							<View className="flex-1 items-center justify-center" style={{ minHeight: 0 }}>
+							// While swapping, drawn above your board: on a short window the panel may reach over
+							// it, and its Ready button must stay tappable.
+							<View className="flex-1 items-center justify-center" style={{ minHeight: 0, zIndex: swapPhase ? 2 : 0, elevation: swapPhase ? 2 : 0 }}>
 								{piles}
 							</View>
 						)}
@@ -305,6 +313,7 @@ export function GameTable({
 							cardRules={cardRules}
 							handSize={layout === 'wide' ? 'lg' : 'md'}
 							overlapStacks={window.height < SHORT_HEIGHT}
+							youBeside={layout === 'wide'}
 							corner={
 								<View className="items-center gap-3">
 									{onStopGame ? <StopGameButton onStop={onStopGame} /> : null}

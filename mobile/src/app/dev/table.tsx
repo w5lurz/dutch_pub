@@ -85,7 +85,7 @@ export default function TablePreview() {
     useAnyOrientationWhileFocused();
     const layout = useTableLayout();
     const window = useWindowDimensions();
-    const params = useLocalSearchParams<{ opponents?: string; hand?: string; many?: string; turn?: string; panel?: string }>();
+    const params = useLocalSearchParams<{ opponents?: string; hand?: string; many?: string; turn?: string; panel?: string; swap?: string }>();
     const [opponents, setOpponents] = useState(() => Math.min(3, Math.max(1, Number(params.opponents) || 2)));
     const [handIndex, setHandIndex] = useState(() => Math.min(HAND_SIZES.length - 1, Math.max(0, Number(params.hand ?? 1) || 0)));
     const [piles, setPiles] = useState(true);
@@ -94,7 +94,11 @@ export default function TablePreview() {
     const [showCardPowers, setShowCardPowers] = useState(true);
     const [cardBack, setCardBack] = useState<'red' | 'blue'>('red');
     const [panelOpen, setPanelOpen] = useState(params.panel !== '0');
-    const [game, setGame] = useState(() => mockGame(opponents, HAND_SIZES[handIndex], piles, yourTurn, many));
+    // `?swap=1`: opens in the swap phase (as right after the deal).
+    const [game, setGame] = useState(() => {
+        const dealt = mockGame(opponents, HAND_SIZES[handIndex], piles, yourTurn, many);
+        return params.swap === '1' ? { ...dealt, phase: 'swap' as const, ready: false, laidCards: null, burntCards: null } : dealt;
+    });
     const [winner, setWinner] = useState<string | null>(null);
     // The ashtray's cigarettes (by night): another seed, other cigarettes.
     const [tableSeed, setTableSeed] = useState(1);

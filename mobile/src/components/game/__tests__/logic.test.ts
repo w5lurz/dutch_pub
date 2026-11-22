@@ -3,7 +3,8 @@ import type { Cards, Game, TCard } from '@dutch-pub/shared';
 import { pileDrawSignature } from '../autoDraw';
 import { baseCardHeight, cardDimensions, tableLayout } from '../cardSize';
 import { handFanLayout } from '../HandFan';
-import { handArcLayout } from '../handArc';
+import { handArcLayout, isCrowded, spreadHandLayout } from '../handArc';
+import { isCloseToWinning } from '../Seat';
 import { cardJitter } from '../jitter';
 import { seatPositions } from '../seats';
 import { nextSelection } from '../selection';
@@ -191,6 +192,41 @@ describe('handArcLayout (hand held as a fan)', () => {
         expect(cards[29].rotation - cards[0].rotation).toBeLessThanOrEqual(50);
         expect(height).toBeGreaterThan(14 + H);
         expect(Math.max(...cards.map(c => c.top))).toBeLessThan(height - H);
+    });
+});
+
+describe('spreading a crowded hand (long press)', () => {
+    const W = 63;
+    const H = 88;
+
+    it('only a crowded hand is worth spreading', () => {
+        expect(isCrowded(handArcLayout(4, W, H, 344).step, W, 4)).toBe(false);
+        expect(isCrowded(handArcLayout(15, W, H, 344).step, W, 15)).toBe(true);
+        expect(isCrowded(10, W, 3)).toBe(false);
+    });
+
+    it('puts the first half in a raised back row and the rest in front, with twice the room', () => {
+        const crowded = handArcLayout(16, W, H, 344);
+        const spread = spreadHandLayout(16, W, H, 344);
+        expect(spread).toHaveLength(16);
+        const back = spread.slice(0, 8);
+        const front = spread.slice(8);
+        expect(back[0].top).toBe(front[0].top - Math.round(H * 0.5));
+        expect(front[1].left - front[0].left).toBeGreaterThan(crowded.step * 1.5);
+        // Still within the width.
+        expect(Math.max(...spread.map(c => c.left)) + W).toBeLessThanOrEqual(345);
+    });
+
+    it('an odd hand has the extra card in the back row', () => {
+        const spread = spreadHandLayout(7, W, H, 344);
+        const frontTop = Math.min(...spread.slice(4).map(c => c.top));
+        expect(spread.filter(c => c.top < frontTop)).toHaveLength(4);
+    });
+});
+
+describe('close to winning (danger glow)', () => {
+    it('is 1 to 3 cards left in total', () => {
+        expect([0, 1, 3, 4, 9].map(isCloseToWinning)).toEqual([false, true, true, false, false]);
     });
 });
 

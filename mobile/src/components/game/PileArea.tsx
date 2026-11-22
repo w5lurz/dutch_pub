@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import i18n from '@/i18n';
 import { cardName } from '@/i18n/cards';
 import type { BlindMiss, Cards, TCard } from '@dutch-pub/shared';
@@ -11,6 +12,7 @@ import Animated, {
     useAnimatedStyle,
     useReducedMotion,
     useSharedValue,
+    withRepeat,
     withTiming,
     ZoomIn,
 } from 'react-native-reanimated';
@@ -20,6 +22,48 @@ import { useCardSize, type CardSize } from './cardSize';
 import { cardJitter } from './jitter';
 import { EmptyCardSlot, PlayingCard } from './PlayingCard';
 import { useTableTheme } from './tableTheme';
+
+/**
+ * You were called by an Ace (a magic card or pick up): not the everyday pill but a red banner
+ * that pulses gently (still with "reduce motion"), with a warning buzz when it appears. Literal
+ * colours: it must look the same on the day and the night table.
+ */
+function CalledBanner({ text }: { text: string }) {
+    const window = useWindowDimensions();
+    // A narrow (portrait) phone: smaller text, wrapping onto two lines within the screen's width
+    // (with room for the pulse).
+    const narrow = window.width < 500;
+    const still = useReducedMotion();
+    const pulse = useSharedValue(0);
+    useEffect(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        if (!still) pulse.set(withRepeat(withTiming(1, { duration: 650, easing: Easing.inOut(Easing.quad) }), -1, true));
+    }, [still, pulse]);
+    const breathing = useAnimatedStyle(() => ({ transform: [{ scale: 1 + pulse.get() * 0.06 }] }));
+    return (
+        <Animated.View
+            testID="called-banner"
+            entering={ZoomIn.duration(220)}
+            style={[
+                {
+                    backgroundColor: '#dc2626',
+                    borderColor: '#fde047',
+                    borderWidth: 2,
+                    borderRadius: 18,
+                    paddingHorizontal: narrow ? 12 : 16,
+                    paddingVertical: 5,
+                    maxWidth: Math.min(window.width - 48, 420),
+                },
+                { shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 5 },
+                breathing,
+            ]}
+        >
+            <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={{ color: '#ffffff', fontSize: narrow ? 14 : 16, lineHeight: narrow ? 18 : 21, fontWeight: '800', textAlign: 'center' }}>
+                {`📣 ${text}`}
+            </Text>
+        </Animated.View>
+    );
+}
 
 type PileAreaProps = {
     deck: number;
@@ -251,14 +295,19 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
           : turnOf
             ? i18n.t('game.turn.player', { name: turnOf })
             : i18n.t('game.turn.waiting');
+    const calledYou = !!(calling && call && call.target === username && call.by !== username);
     const turnColours = blindMiss ? 'bg-red-200 text-red-900' : calling ? 'bg-amber-200 text-amber-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
 
     return (
         <View ref={areaRef} collapsable={false} className="items-center gap-1.5">
             <View className="flex-row flex-wrap items-center justify-center gap-1.5">
-                <Text accessibilityLiveRegion="polite" className={`rounded-full px-3 py-0.5 text-sm font-semibold ${turnColours}`}>
-                    {turnText}
-                </Text>
+                {calledYou ? (
+                    <CalledBanner text={turnText} />
+                ) : (
+                    <Text accessibilityLiveRegion="polite" className={`rounded-full px-3 py-0.5 text-sm font-semibold ${turnColours}`}>
+                        {turnText}
+                    </Text>
+                )}
                 {reversed ? (
                     <Text
                         accessibilityLabel={i18n.t('game.pile.reversedLabel')}

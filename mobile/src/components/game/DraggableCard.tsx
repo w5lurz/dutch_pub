@@ -11,12 +11,13 @@ import Animated, {
 	withDelay,
 	withTiming,
 } from 'react-native-reanimated';
-import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
+import { GestureDetector, useCompetingGestures, useLongPressGesture, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import type { TCard } from '@dutch-pub/shared';
 
 import { useCardDrag, type Companion, type ViewRef } from './CardDrag';
 import type { CardSize } from './cardSize';
 import { cardLabel, PlayingCard } from './PlayingCard';
+import { useJustResized } from './resizing';
 
 /** How far a selected card is lifted (along its tilt) by default. */
 const SELECTED_LIFT = 8;
@@ -26,6 +27,8 @@ const EXITING = FadeOut.duration(150);
 const LAYOUT = LinearTransition.duration(200);
 /** How long a drawn card takes to fly from the deck (or the laid pile) into its place. */
 const FLY_MS = 420;
+/** Holding a card this long (without moving it) is a long press (`onHold`). */
+const HOLD_MS = 350;
 
 /** Where a newly drawn card comes from, relative to its place: offset of its centre, size, delay (ms). */
 export type EnterFrom = { dx: number; dy: number; scale: number; delay: number };
@@ -53,6 +56,9 @@ type DraggableCardProps = {
 	enterFrom?: EnterFrom;
 	/** The other selected cards, carried along (and laid together) when this one is dragged. */
 	companions?: readonly Companion[];
+	/** Held down (a long press, not moved): e.g. spread the hand. `onHoldEnd` when the finger lifts. */
+	onHold?: () => void;
+	onHoldEnd?: () => void;
 };
 
 /**
@@ -77,6 +83,8 @@ export function DraggableCard({
 	style,
 	enterFrom,
 	companions,
+	onHold,
+	onHoldEnd,
 }: DraggableCardProps) {
 	const ref = useRef<ViewRef>(null);
 	const drag = useCardDrag();
@@ -99,7 +107,20 @@ export function DraggableCard({
 		},
 	});
 	const tap = useTapGesture({ runOnJS: true, onActivate: onSelect });
-	const gesture = useCompetingGestures(pan, tap);
+	// Holding still: whichever comes first wins (moving = drag, lifting quickly = tap).
+	const hold = useLongPressGesture({
+		runOnJS: true,
+		enabled: !!onHold,
+		minDuration: HOLD_MS,
+		// The hold may spread the hand, moving this card away from under the finger: it still
+		// lasts until the finger lifts (a long press ends when the finger leaves the view by default).
+		shouldCancelWhenOutside: false,
+		onActivate: () => onHold?.(),
+		onFinalize: () => onHoldEnd?.(),
+	});
+	const gesture = useCompetingGestures(pan, hold, tap);
+	// Right after the phone turned, cards jump to their new places (gliding there felt slow).
+	const resized = useJustResized();
 
 	const label = card ? cardLabel(card) : i18n.t('cards.faceDown');
 	// Lifted along the card's own axis (straight up for an untilted card), then tilted.
@@ -131,7 +152,7 @@ export function DraggableCard({
 
 	return (
 		// Outer view: position (from `style`) and animations; inner view: gestures, measuring, a11y.
-		<Animated.View entering={flight ? undefined : ENTERING} exiting={EXITING} layout={LAYOUT} style={[style, liftStyle]}>
+		<Animated.View entering={flight ? undefined : ENTERING} exiting={EXITING} layout={resized ? undefined : LAYOUT} style={[style, liftStyle]}>
 			<GestureDetector gesture={gesture}>
 				<View
 					ref={ref}
