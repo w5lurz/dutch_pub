@@ -152,7 +152,8 @@ function DraggableCardView({
 
 	return (
 		// Outer view: position (from `style`) and animations; inner view: gestures, measuring, a11y.
-		<Animated.View entering={flight ? undefined : ENTERING} exiting={EXITING} layout={resized ? undefined : LAYOUT} style={[style, liftStyle]}>
+		// Right after the phone turned: no glide and no fade-in (a fade-in cut short by the turn left cards invisible).
+		<Animated.View entering={flight || resized ? undefined : ENTERING} exiting={EXITING} layout={resized ? undefined : LAYOUT} style={[style, liftStyle]}>
 			<GestureDetector gesture={gesture}>
 				<View
 					ref={ref}

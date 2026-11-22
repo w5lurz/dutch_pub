@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { Avatar } from '@/components/ui';
 import type { LeaderBoardEntry } from './LeaderBoardRow';
 
-/** Each place's step: medal, height and colour (gold / silver / bronze, as the list's badges). */
-const STEPS: Record<1 | 2 | 3, { medal: string; height: number; className: string }> = {
-    1: { medal: '🥇', height: 72, className: 'bg-yellow-300 border-yellow-500' },
-    2: { medal: '🥈', height: 52, className: 'bg-gray-200 border-gray-400' },
-    3: { medal: '🥉', height: 38, className: 'bg-orange-200 border-orange-400' },
+/**
+ * Each place's step: medal, height and colour. Literal gold / silver / bronze (not the palette,
+ * which flips in dark mode and turned silver into dark gray), with dark text on them.
+ */
+const STEPS: Record<1 | 2 | 3, { medal: string; height: number; fill: string; edge: string }> = {
+    1: { medal: '🥇', height: 72, fill: '#facc15', edge: '#ca8a04' },
+    2: { medal: '🥈', height: 52, fill: '#d1d5db', edge: '#9ca3af' },
+    3: { medal: '🥉', height: 38, fill: '#fdba74', edge: '#ea580c' },
 };
 
 function Place({ entry, place, isYou }: { entry: LeaderBoardEntry; place: 1 | 2 | 3; isYou: boolean }) {
@@ -33,9 +36,12 @@ function Place({ entry, place, isYou }: { entry: LeaderBoardEntry; place: 1 | 2 
                     <Text className="text-xs font-semibold text-green-900">{t('leaderboard.you')}</Text>
                 </View>
             ) : null}
-            <View style={{ height: step.height }} className={`mt-1 w-full items-center justify-center rounded-t-md border-2 border-b-0 ${step.className}`}>
-                <Text className="text-lg font-bold text-gray-900">{entry.wins}</Text>
-                <Text className="text-xs text-gray-800">{t('leaderboard.wins')}</Text>
+            <View
+                style={{ height: step.height, backgroundColor: step.fill, borderColor: step.edge }}
+                className="mt-1 w-full items-center justify-center rounded-t-md border-2 border-b-0"
+            >
+                <Text style={{ color: '#111827', fontSize: 18, fontWeight: '700' }}>{entry.wins}</Text>
+                <Text style={{ color: '#1f2937', fontSize: 12 }}>{t('leaderboard.wins')}</Text>
             </View>
         </View>
     );

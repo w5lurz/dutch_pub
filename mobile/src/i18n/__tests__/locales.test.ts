@@ -16,8 +16,8 @@ const flatten = (tree: Tree, prefix = ''): Record<string, string> =>
         {},
     );
 
-/** The parts a translation must keep: {{placeholders}} and <b> / <n> markers. */
-const markers = (text: string) => [...text.matchAll(/\{\{\w+\}\}|<\/?[bn]>/g)].map(match => match[0]).sort();
+/** The parts a translation must keep: {{placeholders}} and <b> / <n> / <url> markers. */
+const markers = (text: string) => [...text.matchAll(/\{\{\w+\}\}|<\/?(?:b|n|url)>/g)].map(match => match[0]).sort();
 
 const english = flatten(en);
 const others = { hu, de, fr, uk, zh };

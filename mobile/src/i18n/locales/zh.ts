@@ -81,6 +81,7 @@ const zh: Translation = {
             rulePickUp: '如果你没有能压上一张的牌，就收起整个出牌区，轮到下一位玩家。',
             ruleFlipped: '你的<b>明牌</b>只能在牌堆和手牌都用完后打出。',
             ruleTable: '你的<b>暗牌</b>最后出：等牌堆、<b>手牌</b>和<b>明牌</b>都用完之后。',
+            ruleCombine: '牌堆用完后，如果手牌都是同一点数，可以把同点数的明牌和手牌一起打出。',
             ruleWin: '最先出完所有牌的玩家获胜。',
         },
         cards: {
@@ -123,7 +124,7 @@ const zh: Translation = {
         welcome: '欢迎，{{name}}！',
         usernameRules: '2–20 个字符：字母、数字、空格、_ . -',
         passwordRules: '至少 8 个字符',
-        agreePrivacy: '注册即表示你同意<link>隐私政策</link>。',
+        agreePrivacy: '注册即表示你同意<url>隐私政策</url>。',
     },
     forgot: {
         title: '忘记密码？',
@@ -542,6 +543,7 @@ const zh: Translation = {
         registrationFailed: '注册失败！{{reason}}',
         leaveRoomFirst: '请先离开房间“{{room}}”，然后再删除账户。',
         enoughBots: '这个房间的机器人已经够多了。',
+        faceUpWithHand: '明牌只能和你的全部手牌一起打出。',
         wrongLogin: '用户名、邮箱或密码错误。',
     },
 };

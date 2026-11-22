@@ -81,6 +81,7 @@ const de: Translation = {
             rulePickUp: 'Passt keine deiner Karten auf die zuletzt abgelegte, nimmst du den ganzen Stapel auf, und der Nächste ist dran.',
             ruleFlipped: 'Deine <b>offenen</b> Karten darfst du erst spielen, wenn der Nachziehstapel und deine Hand leer sind.',
             ruleTable: 'Deine <b>verdeckten</b> Karten kommen zuletzt: wenn der Nachziehstapel, deine <b>Hand</b> und deine <b>offenen</b> Karten weg sind.',
+            ruleCombine: 'Ist der Nachziehstapel leer und hast du nur Karten eines Werts auf der Hand, kannst du deine offenen Karten dieses Werts zusammen mit ihnen legen.',
             ruleWin: 'Wer zuerst alle Karten abgelegt hat, gewinnt.',
         },
         cards: {
@@ -123,7 +124,7 @@ const de: Translation = {
         welcome: 'Willkommen, {{name}}!',
         usernameRules: '2–20 Zeichen: Buchstaben, Zahlen, Leerzeichen, _ . -',
         passwordRules: 'Mindestens 8 Zeichen',
-        agreePrivacy: 'Mit der Registrierung stimmst du der <link>Datenschutzerklärung</link> zu.',
+        agreePrivacy: 'Mit der Registrierung stimmst du der <url>Datenschutzerklärung</url> zu.',
     },
     forgot: {
         title: 'Passwort vergessen?',
@@ -543,6 +544,7 @@ const de: Translation = {
         registrationFailed: 'Registrierung fehlgeschlagen! {{reason}}',
         leaveRoomFirst: 'Verlass zuerst den Raum „{{room}}“ und lösche dann dein Konto.',
         enoughBots: 'Dieser Raum hat genug Bots.',
+        faceUpWithHand: 'Offene Karten kannst du nur zusammen mit deiner ganzen Hand legen.',
         wrongLogin: 'Falscher Benutzername, falsche E-Mail oder falsches Passwort.',
     },
 };

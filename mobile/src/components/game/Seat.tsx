@@ -156,8 +156,9 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar, compa
     const active = !!opponent.active;
     const danger = isCloseToWinning(opponent.hand + opponent.tableFlipped.length + opponent.table);
     const avatarSize = Math.max(24, Math.round(cardWidth * 0.8));
-    // Side seats get a fixed width (their text is truncated in it): the turned cards plus a margin.
-    const sideWidth = Math.max(56, stacksHeight + 16);
+    // Side seats get a fixed width: the turned cards plus a margin; a little more when the phone is
+    // sideways (the name sits beside the cards there, so it may be wider). Names wrap to two lines.
+    const sideWidth = Math.max(layout === 'wide' ? 104 : 64, stacksHeight + 16);
 
     const summary =
         i18n.t('game.seat.summary', {
@@ -174,9 +175,9 @@ export function Seat({ name, opponent, position, layout, avatarId, avatar, compa
     const nameText = (
         <Text
             accessibilityLabel={summary}
-            numberOfLines={1}
+            numberOfLines={side ? 2 : 1}
             className={`text-xs font-semibold ${active ? 'text-green-800' : 'text-gray-900'}`}
-            style={[{ maxWidth: side ? sideWidth : 120 }, labelStyle]}
+            style={[{ maxWidth: side ? sideWidth : 120, textAlign: 'center' }, labelStyle]}
         >
             {ready ? <Text style={{ color: '#16a34a', fontWeight: '800' }}>✓ </Text> : null}
             {name}

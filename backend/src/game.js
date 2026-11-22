@@ -198,14 +198,29 @@ export const checkCards = (currentGame, player, { card, cards }) => {
         if (cards.length > 8) {
             return { error: "You don't have that card." };
         }
+        // Face-up cards may join the hand's cards when the deck is gone and the whole hand (all of
+        // one value) is laid with them: the hand empties, so they would be next anyway.
+        const canCombine = combinesWithFaceUp(currentGame, hand);
         const pool = [...playableCards];
+        const faceUpPool = canCombine ? [...tableFlipped] : [];
         const serverCards = [];
+        let fromFaceUp = 0;
         for (const requested of cards) {
-            const i = requested ? pool.findIndex(own => own.value === requested.value && own.color === requested.color) : -1;
-            if (i < 0) {
+            const matches = own => requested && own.value === requested.value && own.color === requested.color;
+            const i = requested ? pool.findIndex(matches) : -1;
+            if (i >= 0) {
+                serverCards.push(pool.splice(i, 1)[0]);
+                continue;
+            }
+            const j = requested ? faceUpPool.findIndex(matches) : -1;
+            if (j < 0) {
                 return { error: "You don't have that card." };
             }
-            serverCards.push(pool.splice(i, 1)[0]);
+            serverCards.push(faceUpPool.splice(j, 1)[0]);
+            fromFaceUp++;
+        }
+        if (fromFaceUp > 0 && serverCards.length - fromFaceUp < hand.length) {
+            return { error: 'Face-up cards can only join your whole hand.' };
         }
         if (serverCards.some(own => own.value !== serverCards[0].value)) {
             return { error: 'Only cards of the same value can be laid together.' };
@@ -353,6 +368,25 @@ export const game = io => {
 };
 
 /**
+ * Whether face-up cards may join a lay from `hand`: the deck is gone and every hand card has the
+ * same value (laying them all empties the hand, which would make the face-up cards next anyway).
+ */
+export const combinesWithFaceUp = (game, hand) =>
+    hand.length > 0 && (game.deck?.length ?? 0) === 0 && hand.every(card => card.value === hand[0].value);
+
+/** `from` without one copy of each of `cards` (`rest`), and the cards `from` didn't hold (`missing`). */
+export const takeCards = (from, cards) => {
+    const rest = [...from];
+    const missing = [];
+    for (const card of cards) {
+        const i = rest.findIndex(own => own.value === card.value && own.color === card.color);
+        if (i >= 0) rest.splice(i, 1);
+        else missing.push(card);
+    }
+    return { rest, missing };
+};
+
+/**
  * `from` without one copy of each of `cards` (same value and colour). With two decks a
  * player can hold two identical cards; only as many copies as were laid are removed.
  */
@@ -420,8 +454,12 @@ const topRun = pile => {
 export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = false, call } = {}) => {
     const userCards = game.players[username].userCards;
     if (!fromTable) {
-        if (userCards.hand.length !== 0) userCards.hand = withoutCards(userCards.hand, cards);
-        else userCards.tableFlipped = clearSpots(userCards.tableFlipped, cards);
+        if (userCards.hand.length !== 0) {
+            // From the hand; any the hand doesn't hold are face-up cards laid with it (`checkCards`).
+            const { rest, missing } = takeCards(userCards.hand, cards);
+            userCards.hand = rest;
+            if (missing.length) userCards.tableFlipped = clearSpots(userCards.tableFlipped, missing);
+        } else userCards.tableFlipped = clearSpots(userCards.tableFlipped, cards);
     }
     // New cards go where the laid one was (the client keeps the hand in its order).
     let at = Math.max(0, Math.min(Number.isInteger(cardIndex) ? cardIndex : 0, userCards.hand.length));

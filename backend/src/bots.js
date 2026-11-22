@@ -6,7 +6,7 @@
 
 import { AVATAR_IDS, canLayCard, isCallNext } from '@dutch-pub/shared';
 
-import { activeName, checkCards, markReady, performDraw, performLay, present, sendUiDataToSocket, startTurnClock, swapCards } from './game.js';
+import { activeName, checkCards, combinesWithFaceUp, markReady, performDraw, performLay, present, sendUiDataToSocket, startTurnClock, swapCards } from './game.js';
 import { games, roomsList } from './rooms.js';
 
 /** The bots' names (the robot keeps them apart from real names, which can't contain emoji). */
@@ -96,7 +96,8 @@ export const botMove = (game, username) => {
     const playable = pool.filter(card => canLayCard(card, game.laidCards, game.rules));
     if (playable.length === 0) return { draw: true };
     const choice = [...playable].sort((a, b) => Number(!!a.isMagicCard) - Number(!!b.isMagicCard) || a.value - b.value)[0];
-    const copies = pool.filter(card => card.value === choice.value);
+    // All copies of that value; with the deck gone and a hand of only that value, face-up copies too.
+    const copies = [...pool.filter(card => card.value === choice.value), ...(hand.length > 0 && combinesWithFaceUp(game, hand) ? faceUp.filter(card => card.value === choice.value) : [])];
     const call = isCallNext(choice) ? leader(game, username) : undefined;
     const cardIndex = hand.length > 0 ? hand.indexOf(choice) : tableFlipped.indexOf(choice);
     return copies.length > 1 ? { cards: copies, cardIndex, call } : { card: choice, cardIndex, call };

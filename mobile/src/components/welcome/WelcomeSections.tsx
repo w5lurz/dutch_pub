@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import type { TCard } from '@dutch-pub/shared';
 
 import { CardFaceArt } from '@/components/cards';
+import { ExpandIcon } from '@/components/ui';
 import { Bullet, BulletList, Paragraph, SectionHeading, Strong, SubHeading } from './Typography';
 
 // Home tab texts: `home.*` in src/i18n/locales; <b>...</b> in them is shown bold.
@@ -34,7 +35,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
                 <Text accessibilityRole="header" className="text-xl font-semibold text-gray-800">
                     {title}
                 </Text>
-                <Text className="text-xl text-gray-500">{open ? '▾' : '▸'}</Text>
+                <ExpandIcon open={open} />
             </Pressable>
             {open ? <View className="pb-3">{children}</View> : null}
         </View>
@@ -107,6 +108,7 @@ export function HowTheGameWorksSection() {
                 <Bullet>
                     <Trans i18nKey="home.how.ruleTable" components={bold} />
                 </Bullet>
+                <Bullet>{t('home.how.ruleCombine')}</Bullet>
                 <Bullet>{t('home.how.ruleWin')}</Bullet>
             </BulletList>
         </Section>

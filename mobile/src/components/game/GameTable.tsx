@@ -245,6 +245,8 @@ export function GameTable({
 			playerCount={opponentList.length + 1}
 			onReady={() => onReady?.()}
 			compact={layout === 'wide' && short}
+			// Between the side seats, never over them (or pushing one off the screen).
+			maxWidth={hasSides ? Math.round(window.width * (layout === 'wide' ? 0.42 : 0.56)) : undefined}
 		/>
 	) : (
 		<PileArea
@@ -290,9 +292,12 @@ export function GameTable({
                             your cards (which are centred), and your hand always stays fully on screen. */}
 						{layout === 'portrait' && hasSides ? (
 							// The side seats at the table's edges, the pile column in the middle.
-							<View className="flex-1 flex-row items-center justify-between px-1" style={{ minHeight: 0 }}>
+							// In from the screen's edges, onto the table (its rim is a few percent in), the same on both sides.
+							<View className="flex-1 flex-row items-center justify-between" style={{ minHeight: 0, paddingHorizontal: Math.round(window.width * 0.1) }}>
 								{seatAt('left')}
-								{piles}
+								<View className="flex-1 items-center" style={{ minWidth: 0 }}>
+									{piles}
+								</View>
 								{seatAt('right')}
 							</View>
 						) : (
@@ -313,7 +318,10 @@ export function GameTable({
 							cardRules={cardRules}
 							handSize={layout === 'wide' ? 'lg' : 'md'}
 							overlapStacks={window.height < SHORT_HEIGHT}
+							deckEmpty={game.deck === 0}
 							youBeside={layout === 'wide'}
+							// Sideways with side seats: room between them for your face-up cards while swapping.
+							swapStackSize={layout === 'wide' && hasSides ? 'sm' : 'md'}
 							corner={
 								<View className="items-center gap-3">
 									{onStopGame ? <StopGameButton onStop={onStopGame} /> : null}
@@ -329,10 +337,18 @@ export function GameTable({
 						{layout === 'wide' && hasSides ? (
 							// Wide: the side seats at the edges, centred on the whole screen (the safe-area padding
 							// undone), so they stay put while your hand grows or shrinks and sit at the table's middle.
+							// Measured from the screen's real edges (the safe-area padding undone on all sides), with the
+							// same margin left and right: a camera cut-out on one side made the seats lopsided.
 							<View
 								pointerEvents="box-none"
-								className="absolute left-0 right-0 flex-row items-center justify-between px-4"
-								style={{ top: -insets.top, bottom: -insets.bottom }}
+								className="absolute flex-row items-center justify-between"
+								style={{
+									top: -insets.top,
+									bottom: -insets.bottom,
+									left: -insets.left,
+									right: -insets.right,
+									paddingHorizontal: Math.max(insets.left, insets.right) + Math.round(window.width * 0.012),
+								}}
 							>
 								<View pointerEvents="box-none">{seatAt('left')}</View>
 								<View pointerEvents="box-none">{seatAt('right')}</View>

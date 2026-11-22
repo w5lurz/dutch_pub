@@ -81,6 +81,7 @@ const fr: Translation = {
             rulePickUp: 'Si aucune de tes cartes ne va sur la dernière posée, tu ramasses toute la pile et c’est au joueur suivant.',
             ruleFlipped: 'Tes cartes <b>visibles</b> ne se jouent qu’une fois la pioche et ta main vides.',
             ruleTable: 'Tes cartes <b>cachées</b> viennent en dernier : une fois la pioche, ta <b>main</b> et tes cartes <b>visibles</b> épuisées.',
+            ruleCombine: 'Quand la pioche est vide et que ta main ne contient que des cartes d’une même valeur, tu peux poser avec elles tes cartes visibles de cette valeur.',
             ruleWin: 'Le premier à poser toutes ses cartes gagne la partie.',
         },
         cards: {
@@ -123,7 +124,7 @@ const fr: Translation = {
         welcome: 'Bienvenue, {{name}} !',
         usernameRules: '2 à 20 caractères : lettres, chiffres, espaces, _ . -',
         passwordRules: 'Au moins 8 caractères',
-        agreePrivacy: 'En t’inscrivant, tu acceptes la <link>politique de confidentialité</link>.',
+        agreePrivacy: 'En t’inscrivant, tu acceptes la <url>politique de confidentialité</url>.',
     },
     forgot: {
         title: 'Mot de passe oublié ?',
@@ -543,6 +544,7 @@ const fr: Translation = {
         registrationFailed: 'Inscription échouée ! {{reason}}',
         leaveRoomFirst: 'Quitte d’abord la salle « {{room}} », puis supprime ton compte.',
         enoughBots: 'Cette salle a assez de bots.',
+        faceUpWithHand: 'Les cartes visibles ne se posent qu’avec toute ta main.',
         wrongLogin: 'Nom d’utilisateur, e-mail ou mot de passe incorrect.',
     },
 };

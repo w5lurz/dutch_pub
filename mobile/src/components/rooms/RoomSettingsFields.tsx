@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { RoomSettings } from '@dutch-pub/shared';
 
-import { ChoiceRow, SettingRow, type SegmentedOption } from '@/components/ui';
+import { ChoiceRow, ExpandIcon, SettingRow, type SegmentedOption } from '@/components/ui';
 import type { RoomVisibility } from '@/hooks/useRooms';
 import i18n from '@/i18n';
 import type en from '@/i18n/locales/en';
@@ -120,10 +120,10 @@ export function RoomSettingsFields({ value, onChange, disabled = false }: RoomSe
                             accessibilityHint={t('home.toggleHint')}
                             onPress={() => setRulesOpen(open => !open)}
                             testID="house-rules-toggle"
-                            className="mt-3 flex-row items-center justify-between py-1 active:opacity-60"
+                            className="mt-3 flex-row items-center justify-between rounded-md py-1 active:opacity-60"
                         >
                             <Text className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</Text>
-                            <Text className="text-base text-gray-500">{rulesOpen ? '▾' : '▸'}</Text>
+                            <ExpandIcon open={rulesOpen} />
                         </Pressable>
                     ) : firstOfGroup ? (
                         <Text accessibilityRole="header" className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">

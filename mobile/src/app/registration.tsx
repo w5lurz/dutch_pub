@@ -9,6 +9,7 @@ import { Button, TextField } from '@/components/ui';
 import { useSession } from '@/hooks/useSession';
 import { serverMessage } from '@/i18n';
 import { PRIVACY_URL } from '@/lib/config';
+import { useTheme } from '@/lib/theme';
 import { useAppDispatch } from '@/store';
 import { setToast } from '@/store/generalSlice';
 
@@ -19,12 +20,14 @@ type InputRef = ComponentRef<typeof TextInput>;
 /** The privacy policy link inside the agreement sentence (a component, so its style survives `Trans`). */
 function PrivacyLink({ children }: { children?: ReactNode }) {
     const { t } = useTranslation();
+    const { accent } = useTheme();
     return (
+        // A style, not classes: nested in the sentence (`Trans`) the link classes were lost.
         <Text
             accessibilityRole="link"
             accessibilityHint={t('common.opensInBrowser')}
             onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
-            className="font-medium text-blue-600 underline"
+            style={{ color: accent, fontWeight: '600', textDecorationLine: 'underline' }}
         >
             {children}
         </Text>
@@ -169,7 +172,7 @@ export default function RegistrationScreen() {
             <Text className="text-center text-sm text-gray-600">
                 <Trans
                     i18nKey="auth.agreePrivacy"
-                    components={{ link: <PrivacyLink /> }}
+                    components={{ url: <PrivacyLink /> }}
                 />
             </Text>
         </AuthForm>

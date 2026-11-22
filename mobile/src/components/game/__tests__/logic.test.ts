@@ -296,6 +296,13 @@ describe('nextSelection', () => {
         expect(nextSelection(['hand-clubs-5-0'], 'hand-spades-5-0', cardOf)).toEqual(['hand-clubs-5-0', 'hand-spades-5-0']);
     });
 
+    it("adds face-up cards of the hand's value once the deck is gone (combineValue), not others", () => {
+        expect(nextSelection(['hand-clubs-5-0'], 'up-0-diamonds-5', cardOf, 5)).toEqual(['hand-clubs-5-0', 'up-0-diamonds-5']);
+        expect(nextSelection(['up-0-diamonds-5'], 'hand-clubs-5-0', cardOf, 5)).toEqual(['up-0-diamonds-5', 'hand-clubs-5-0']);
+        expect(nextSelection(['hand-clubs-5-0'], 'up-0-diamonds-5', cardOf, null)).toEqual(['up-0-diamonds-5']);
+        expect(nextSelection(['hand-hearts-8-0'], 'up-0-diamonds-5', cardOf, 8)).toEqual(['up-0-diamonds-5']);
+    });
+
     it('starts over with another value, another place or a face-down card', () => {
         expect(nextSelection(['hand-clubs-5-0'], 'hand-hearts-8-0', cardOf)).toEqual(['hand-hearts-8-0']);
         expect(nextSelection(['hand-clubs-5-0'], 'up-0-diamonds-5', cardOf)).toEqual(['up-0-diamonds-5']);

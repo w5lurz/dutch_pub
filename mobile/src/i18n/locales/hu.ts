@@ -81,6 +81,7 @@ const hu: Translation = {
             rulePickUp: 'Ha egyik lapod sem illik az utoljára lerakottra, felveszed az egész kupacot, és a következő játékos jön.',
             ruleFlipped: 'A <b>felfordított</b> lapjaidat csak akkor játszhatod ki, ha a pakli és a kezed is kiürült.',
             ruleTable: 'A <b>lefordított</b> lapjaid jönnek utoljára: ha a pakli, a <b>kezed</b> és a <b>felfordított</b> lapjaid is elfogytak.',
+            ruleCombine: 'Ha a pakli elfogyott, és a kezedben csak egyféle értékű lapok vannak, az ugyanilyen értékű felfordított lapjaidat is lerakhatod velük együtt.',
             ruleWin: 'Az nyer, aki elsőként rakja le az összes lapját.',
         },
         cards: {
@@ -123,7 +124,7 @@ const hu: Translation = {
         welcome: 'Üdv, {{name}}!',
         usernameRules: '2–20 karakter: betűk, számok, szóköz, _ . -',
         passwordRules: 'Legalább 8 karakter',
-        agreePrivacy: 'A regisztrációval elfogadod az <link>adatvédelmi tájékoztatót</link>.',
+        agreePrivacy: 'A regisztrációval elfogadod az <url>adatvédelmi tájékoztatót</url>.',
     },
     forgot: {
         title: 'Elfelejtetted a jelszavad?',
@@ -543,6 +544,7 @@ const hu: Translation = {
         registrationFailed: 'Sikertelen regisztráció! {{reason}}',
         leaveRoomFirst: 'Előbb lépj ki a(z) „{{room}}” szobából, aztán töröld a fiókodat.',
         enoughBots: 'Ebben a szobában már elég bot van.',
+        faceUpWithHand: 'Felfordított lapot csak a teljes kezeddel együtt rakhatsz le.',
         wrongLogin: 'Hibás felhasználónév, e-mail-cím vagy jelszó.',
     },
 };

@@ -30,7 +30,7 @@ export function BottomSheet({ visible, title, onClose, closeLabel, children }: B
     return (
         <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 justify-end">
-                <Pressable accessibilityRole="button" accessibilityLabel={closeLabel ?? t('common.close')} onPress={onClose} className="absolute inset-0 bg-black/40" />
+                <Pressable accessibilityRole="button" accessibilityLabel={closeLabel ?? t('common.close')} onPress={onClose} className="absolute inset-0" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} />
                 {/* At most 512dp wide, centred: a full-width sheet with full-width buttons looks oversized on tablets and sideways phones. */}
                 <View
                     className="max-h-[90%] w-full gap-4 self-center rounded-t-2xl bg-white p-5"

@@ -51,6 +51,8 @@ type PlayerBoardProps = {
 	 * sideways: the height is short, the width plenty). Above the hand when no table cards are left.
 	 */
 	youBeside?: boolean;
+	/** Size of your face-up cards while swapping (default md; sm in landscape with side seats, so they fit between them). */
+	swapStackSize?: CardSize;
 	/** Shown in the bottom-left corner (the chat button). */
 	corner?: ReactNode;
 	/** Shown in the bottom-right corner (the lamp switch). */
@@ -66,6 +68,8 @@ type PlayerBoardProps = {
 	secondsLeft?: number | null;
 	/** The room's house rules that change which cards fit (for dimming). */
 	cardRules?: CardRules;
+	/** The deck is gone: face-up cards may join a hand of one value (`nextSelection`). */
+	deckEmpty?: boolean;
 };
 
 /**
@@ -92,12 +96,14 @@ export function PlayerBoard({
 	handSize = 'md',
 	overlapStacks = false,
 	youBeside = false,
+	swapStackSize = 'md',
 	corner,
 	cornerRight,
 	avatarRef,
 	onSwap,
 	secondsLeft,
 	cardRules,
+	deckEmpty = false,
 }: PlayerBoardProps) {
 	const { labelStyle } = useTableTheme();
 	const { hand, tableFlipped, table } = userCards;
@@ -108,6 +114,8 @@ export function PlayerBoard({
 	const faceUpPlayable = hand.length === 0;
 	const faceDownPlayable = hand.length === 0 && tableFlipped.length === 0;
 	const dim = (card: TCard) => active && !canLayCard(card, laidCards, cardRules);
+	// With the deck gone and a hand of only one value, face-up cards of that value may join it.
+	const combineValue = deckEmpty && hand.length > 0 && hand.every((own) => own.value === hand[0].value) ? hand[0].value : null;
 	const hasTableCards = tableFlipped.length > 0 || table > 0;
 	const spots = tableSpots(tableFlipped, table, userCards.spots);
 
@@ -145,7 +153,7 @@ export function PlayerBoard({
 	const [selection, setSelection] = useState<readonly string[]>([]);
 	const selectedIds = selection.filter((id) => cardsById.has(id) || id.startsWith('down-'));
 	const toggleSelected = (id: string) => {
-		if (!onSwap) return setSelection(nextSelection(selectedIds, id, (other) => cardsById.get(other)));
+		if (!onSwap) return setSelection(nextSelection(selectedIds, id, (other) => cardsById.get(other), combineValue));
 		// Swap phase: one hand card and one face-up card make a swap; face-down cards can't be swapped.
 		if (id.startsWith('down-')) return;
 		const current = selectedIds.find((selected) => cardsById.has(selected));
@@ -162,7 +170,9 @@ export function PlayerBoard({
 	// Dragging a selected card lays every selected card (all of the same value); any other card alone.
 	const play = (card: TCard | number, cardIndex: number, touchable: boolean, id: string) => {
 		const group = selectedIds.includes(id) ? selectedIds.flatMap((selected) => cardsById.get(selected) ?? []) : [];
-		const played = onLayCard(group.length > 1 ? group : card, cardIndex, touchable);
+		// Face-up cards selected with the whole hand (deck gone): playable now, whichever card is dragged.
+		const withHand = group.length > 1 && combineValue !== null && selectedIds.some((selected) => selected.startsWith('hand-'));
+		const played = onLayCard(group.length > 1 ? group : card, cardIndex, touchable || withHand);
 		if (played) setSelection([]);
 		return played;
 	};
@@ -254,7 +264,7 @@ export function PlayerBoard({
 				faceUp={tableFlipped}
 				faceDownCount={table}
 				spots={spots}
-				size={stacksSmall ? 'sm' : 'md'}
+				size={stacksSmall ? 'sm' : swapStackSize}
 				faded={stacksSmall}
 				play={{
 					faceUpPlayable,
@@ -310,17 +320,11 @@ export function PlayerBoard({
 	// bottom corners; the hand keeps room on both sides, so it never covers them and stays centred.
 	return (
 		<View ref={boardRef} collapsable={false} className="pb-1">
-			{youBeside && stacks ? (
-				<View className="flex-row items-center justify-center gap-4">
-					{you}
-					{stacks}
-				</View>
-			) : (
-				<>
-					{you}
-					{stacks}
-				</>
-			)}
+			{/* The same wrapper either way: turning the phone must not rebuild your cards (they faded in again). */}
+			<View className={youBeside && stacks ? 'flex-row items-center justify-center gap-4' : ''}>
+				{you}
+				{stacks}
+			</View>
 			{handView}
 			{corner ? <View className="absolute bottom-2 left-2">{corner}</View> : null}
 			{cornerRight ? <View className="absolute bottom-2 right-2">{cornerRight}</View> : null}

@@ -83,6 +83,7 @@ const en = {
             rulePickUp: 'If none of your cards fits on the last one laid, you pick up the whole pile and the next player is on.',
             ruleFlipped: 'Your <b>face-up</b> cards can only be played once the deck and your hand are empty.',
             ruleTable: 'Your <b>face-down</b> cards come last: once the deck, your <b>hand</b> and your <b>face-up</b> cards are all gone.',
+            ruleCombine: 'When the deck is gone and your hand holds only cards of one value, you can lay your face-up cards of that value together with them.',
             ruleWin: 'The first player to place all of their cards wins the game.',
         },
         cards: {
@@ -125,7 +126,7 @@ const en = {
         welcome: 'Welcome, {{name}}!',
         usernameRules: '2–20 characters: letters, numbers, spaces, _ . -',
         passwordRules: 'At least 8 characters',
-        agreePrivacy: 'By registering you agree to the <link>Privacy policy</link>.',
+        agreePrivacy: 'By registering you agree to the <url>Privacy policy</url>.',
     },
     forgot: {
         title: 'Forgot your password?',
@@ -545,6 +546,7 @@ const en = {
         registrationFailed: 'Registration Failed! {{reason}}',
         leaveRoomFirst: 'Leave the room "{{room}}" first, then delete your account.',
         enoughBots: 'This room has enough bots.',
+        faceUpWithHand: 'Face-up cards can only join your whole hand.',
         wrongLogin: 'Wrong username, email or password.',
     },
 };

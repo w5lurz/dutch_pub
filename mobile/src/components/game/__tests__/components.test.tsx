@@ -122,17 +122,27 @@ describe('Seat', () => {
 });
 
 describe('PlayerBoard', () => {
-    const renderBoard = async (userCards: UserCards, { laidCards = null as TCard[] | null, active = true } = {}) => {
+    const renderBoard = async (userCards: UserCards, { laidCards = null as TCard[] | null, active = true, deckEmpty = false } = {}) => {
         const onLayCard = jest.fn(() => true);
         await render(
             <GestureHandlerRootView>
                 <CardDragProvider>
-                    <PlayerBoard userCards={userCards} laidCards={laidCards} active={active} username="me" onLayCard={onLayCard} />
+                    <PlayerBoard userCards={userCards} laidCards={laidCards} active={active} username="me" onLayCard={onLayCard} deckEmpty={deckEmpty} />
                 </CardDragProvider>
             </GestureHandlerRootView>,
         );
         return onLayCard;
     };
+
+    it('with the deck gone, lays face-up cards together with a hand of their value', async () => {
+        const hand = [card(5)];
+        const faceUp = card(5, 'spades');
+        const onLayCard = await renderBoard({ hand, tableFlipped: [faceUp, card(9)], table: 3 }, { deckEmpty: true });
+        await action(button('5 of hearts'), 'activate');
+        await action(button('5 of spades'), 'activate');
+        await action(button('5 of spades'), 'play');
+        expect(onLayCard).toHaveBeenCalledWith([hand[0], faceUp], expect.any(Number), true);
+    });
 
     it('plays a hand card with its index', async () => {
         const hand = [card(3), card(8, 'spades')];

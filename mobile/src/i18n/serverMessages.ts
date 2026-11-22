@@ -67,6 +67,7 @@ const EXACT: Record<string, ServerKey> = {
     'You are ready already.': 'readyAlready',
     'You can only act as yourself.': 'actAsYourself',
     'You cannot lay that card.': 'cannotLay',
+    'Face-up cards can only join your whole hand.': 'faceUpWithHand',
     'You cannot leave a running game.': 'cannotLeaveGame',
     'You have to play your other cards first.': 'otherCardsFirst',
     'You need to log in or join as a guest first.': 'logInFirst',
