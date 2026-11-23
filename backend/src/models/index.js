@@ -8,20 +8,19 @@ import RefreshToken from './refresh_token.model.js';
 import GameSnapshot from './game_snapshot.model.js';
 import PushToken from './push_token.model.js';
 import PasswordReset from './password_reset.model.js';
-import { isDevEnv } from '../utils/utils.js';
-
-const { DB, PORT, USER, PASSWORD, HOST, dialect: _dialect, pool: _pool, reconnect } = dbConfig;
+const { DB, PORT, USER, PASSWORD, HOST, SOCKET_PATH, dialect: _dialect, pool: _pool, reconnect } = dbConfig;
 
 const sequelize = new Sequelize(DB, USER, PASSWORD, {
-    host: isDevEnv ? HOST : '/cloudsql/dutch-card:europe-west6:dutch-pub',
+    // DB_SOCKET_PATH (a Unix socket, e.g. Cloud SQL's /cloudsql/<instance>) wins over DB_HOST / DB_PORT.
+    host: SOCKET_PATH || HOST,
     dialect: _dialect,
     port: PORT,
     reconnect,
     // SQL logging would put emails, password hashes and tokens into the logs: only on request.
     logging: process.env.DB_LOG === '1' ? console.log : false,
-    ...(!isDevEnv && {
+    ...(SOCKET_PATH && {
         dialectOptions: {
-            socketPath: '/cloudsql/dutch-card:europe-west6:dutch-pub',
+            socketPath: SOCKET_PATH,
         },
     }),
     pool: {

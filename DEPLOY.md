@@ -13,6 +13,7 @@ The backend (REST API + Socket.io, in `backend/`) ships as a Docker image (see [
 | `DB_NAME` | yes | Database name (`dutch_pub`) |
 | `DB_USER` | yes | Database user |
 | `DB_PASSWORD` | yes | Database password |
+| `DB_SOCKET_PATH` | no | Unix socket instead of `DB_HOST` / `DB_PORT`. Cloud Run with Cloud SQL: `/cloudsql/<instance connection name>` |
 | `JWT_SECRET` | yes | Signs the JWT auth tokens (users and guests). The server refuses to start without it |
 | `PORT` | no | HTTP port the server listens on (default `3030`; Cloud Run sets it automatically) |
 | `CORS_ORIGIN` | no | Comma-separated browser origins allowed to call the API. Native apps send no `Origin`, so this is only needed to run the Expo app in a browser (`npm run web`, e.g. `http://localhost:8081`). Unset = no CORS headers |
@@ -85,11 +86,12 @@ docker compose up --build
      --region <region> \
      --session-affinity \
      --max-instances 1 \
-     --set-env-vars "DB_HOST=<host>,DB_PORT=3306,DB_NAME=dutch_pub,DB_USER=<user>" \
+     --set-env-vars "DB_SOCKET_PATH=/cloudsql/<instance connection name>,DB_NAME=dutch_pub,DB_USER=<user>" \
      --set-secrets "JWT_SECRET=JWT_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest"
    ```
 
    - The server listens on `$PORT` (set by Cloud Run), falling back to 3030 locally.
+   - `DB_SOCKET_PATH`: the Cloud SQL socket (the service needs `--add-cloudsql-instances <instance connection name>`). Older versions had it built in; now it must be set, or the backend can't reach the database.
    - `--session-affinity` + `--max-instances 1`: rooms, games and guests are kept **in memory** (`rooms.js`, `game.js`, `controllers/auth.controller.js`), so all sockets must reach the same instance.
    - Env vars and secrets persist between deploys. On later deploys, only `gcloud run deploy <service-name> --source . --region <region>` is needed, unless a value changes.
    - **Existing service from the web-app days:** `BASE_URL`, `FRONTEND_ROOT` and `COOKIE_SECRET` are no longer used. Remove them once with `--remove-env-vars BASE_URL,FRONTEND_ROOT --remove-secrets COOKIE_SECRET`.
