@@ -24,7 +24,7 @@ docker compose -f docker-compose.prod.yml exec -T db sh -c \
 mv "$file.part" "$file"
 
 # Off the server. The B2 key may only write (not delete): old copies are removed by the bucket's
-# lifecycle rule (DEPLOY-ORACLE.md), so a stolen key can't wipe the backups.
+# lifecycle rule (SERVER.md step 9), so a stolen key can't wipe the backups.
 rclone copy --no-check-dest "$file" "$BACKUP_REMOTE"
 
 find backups -name '*.sql.gz.age' -mtime +14 -delete

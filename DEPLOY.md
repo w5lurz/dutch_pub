@@ -1,6 +1,6 @@
 # Deployment
 
-The backend (REST API + Socket.io, in `backend/`) ships as a Docker image (see [Dockerfile](Dockerfile)). **Production runs on an Oracle Cloud Always Free server with Docker Compose, Caddy (HTTPS) and a DuckDNS address: see [deploy/DEPLOY-ORACLE.md](deploy/DEPLOY-ORACLE.md)** (backups, monitoring and updates included). Google Cloud Run (below) is an alternative. The only client is the mobile app in `mobile/`, which is built and distributed separately (EAS; see `mobile/README.md`). Its production build must point `EXPO_PUBLIC_API_URL` at the server (`https://<name>.duckdns.org`).
+The backend (REST API + Socket.io, in `backend/`) ships as a Docker image (see [Dockerfile](Dockerfile)). **Production runs on a small rented server (netcup VPS) with Docker Compose, Caddy (HTTPS) and a DuckDNS address: see [deploy/SERVER.md](deploy/SERVER.md)** (backups, monitoring and updates included). Google Cloud Run (below) is an alternative. The only client is the mobile app in `mobile/`, which is built and distributed separately (EAS; see `mobile/README.md`). Its production build must point `EXPO_PUBLIC_API_URL` at the server (`https://<name>.duckdns.org`).
 
 ## Environment variables / secrets
 

@@ -1,38 +1,51 @@
-# Production on Oracle Cloud (Always Free) with a DuckDNS address
+# Production on a small server (netcup VPS) with a DuckDNS address
 
-Everything runs on one free Oracle virtual server: the backend, MySQL and Caddy (HTTPS), with
-Docker Compose ([docker-compose.prod.yml](docker-compose.prod.yml)). Backups are encrypted and copied
-every night to Backblaze B2 (free up to 10 GB). Better Stack watches `/api/health` and the backups.
+Everything runs on one rented Linux server: the backend, MySQL and Caddy (HTTPS), with Docker
+Compose ([docker-compose.prod.yml](docker-compose.prod.yml)). Backups are encrypted and copied every
+night to Backblaze B2 (free up to 10 GB). Better Stack watches `/api/health` and the backups.
 
-Cost: 0 €. One-off time: about 1–2 hours.
+Cost: the server only, about 6–7 € a month with VAT. Everything else is free. One-off time: about 1–2 hours.
 
 | Piece | Service | What it does |
 |---|---|---|
-| Server | Oracle Cloud Always Free, ARM VM (2 CPUs, 12 GB RAM) | Runs everything |
+| Server | netcup VPS Lite 1: 2 cores, 4 GB RAM, Ubuntu 24.04 | Runs everything (300 rooms at once = up to 1,200 players; more with a bigger plan) |
 | Address | DuckDNS (`<name>.duckdns.org`) | Free name pointing at the server |
 | HTTPS | Caddy + Let's Encrypt | Certificate fetched and renewed automatically |
 | Backups | `backup.sh` → Backblaze B2 | Nightly, encrypted, 30 days kept |
 | Monitoring | Better Stack | Alerts when the server or a backup fails |
 
-Placeholders below: `<ip>` = the server's public IP address, `<name>` = your DuckDNS subdomain.
+Placeholders below: `<ip>` = the server's public IPv4 address, `<name>` = your DuckDNS subdomain.
+
+Another provider works the same way (Hetzner, OVH, Contabo, ...): steps 1 and 2 differ, then from
+step 3 on everything is identical. You need Ubuntu 24.04, a public IPv4 address, at least 2 GB of RAM
+(4 GB is comfortable) and SSH access.
 
 ---
 
-## 1. Oracle Cloud account
+## 1. Order the server (netcup)
 
-1. Sign up at **oracle.com/cloud/free**. A card is needed for identity checks (a small temporary hold,
-   not a charge).
-2. **Home region:** it can't be changed later. Pick one in Europe near Hungary, e.g. *Germany Central
-   (Frankfurt)*. It has three data centres, so free ARM servers are more often available there.
-3. After signup, **upgrade to Pay As You Go**: *Billing & Cost Management → Upgrade and Manage Payment*.
-   - It stays free as long as you only use Always Free resources.
-   - It stops Oracle from reclaiming "idle" free servers. A quiet game server uses little CPU, so it
-     can look idle.
-   - It also makes free ARM capacity easier to get.
-4. Set a **budget alert** so that a mistake can't cost money unnoticed: *Billing → Budgets → Create
-   Budget*, 1 €/month, alert at 1 % (an email at the first cent).
+1. On **netcup.com** → *vServer (VPS)*, order the **VPS Lite 1** (2 vCores, 4 GB RAM, 80 GB SSD):
+   €6.25 a month with a 6-month term in November 2026, including 27 % Hungarian VAT. The VPS 500 has
+   the same cores and RAM for €8.82, plus a 2.5 Gbit/s port (Lite: 500 Mbit/s) and a choice of
+   location (Vienna). Neither matters for a card game: a player sends a few small messages per move
+   (500 Mbit/s carries far more than 1,200 players need), and Nuremberg is only 10–15 ms further from
+   Hungary than Vienna.
+   - Why not bigger: in the load test, 800 rooms used ~1 GB in the backend. With MySQL and the system,
+     4 GB carries the default `MAX_ROOMS=300` easily, and the two cores fit that too.
+   - When it gets busy: move to the VPS Lite 2 (4 cores, 8 GB, €10.14) and raise `MAX_ROOMS` to 800. Check in
+     netcup's FAQ whether an upgrade keeps the disk; otherwise it's a move (steps 2–7 and a restore).
+   - **Networking:** keep **IPv4 + IPv6** (€0.00). The IPv6-only options are cheaper, but DuckDNS and
+     many players' networks need the IPv4 address.
+   - **Location:** the Lite plans can't choose it; they run in Nuremberg. With a plan that can, pick
+     Vienna (closest to Hungary).
+   - Set-up fee: €0.00, billed every 6 months.
+2. Register with your real name and address, and pay by card, SEPA direct debit or PayPal. New
+   customers are sometimes checked by hand, which can take a few hours to a day.
+3. You'll get two emails: the login for the **CCP** (customer panel: contracts, invoices) and the
+   login for the **SCP** (server panel at `servercontrolpanel.de`: reinstall, reboot, console). The
+   SCP email also has the server's **IPv4 address** (`<ip>`).
 
-## 2. The server (VM)
+## 2. SSH key and a fresh Ubuntu
 
 1. On your PC, make an SSH key (Git Bash or PowerShell):
 
@@ -41,32 +54,53 @@ Placeholders below: `<ip>` = the server's public IP address, `<name>` = your Duc
    ```
 
    Keep `~/.ssh/dutchpub` (the private key) safe, and put a copy in your password manager.
-2. *Compute → Instances → Create instance*:
-   - **Name:** `dutchpub`
-   - **Image:** *Canonical Ubuntu 24.04* (the aarch64 / ARM build, picked automatically with the shape below)
-   - **Shape:** *Ampere → VM.Standard.A1.Flex*, **2 OCPUs, 12 GB memory** (the Always Free limit)
-   - **Networking:** *Create new virtual cloud network*, *public subnet*, **Assign a public IPv4 address: yes**
-   - **SSH keys:** *Upload public key* → `~/.ssh/dutchpub.pub`
-   - **Boot volume:** the default (~47 GB) is fine. Up to 200 GB in total is free.
-3. **"Out of capacity"?**
-   - Try another *Availability domain* in the same dialog, or try again later. Capacity frees up during
-     the day.
-   - Fallback: shape *VM.Standard.E2.1.Micro* (AMD, 1 GB RAM, also free). Then set `MAX_ROOMS=100` in
-     `backend.env`.
-4. Note the **Public IP address** on the instance page (`<ip>`).
+2. In the **SCP**: your server → *Media* → *Images* → **Ubuntu 24.04**.
+   - If the dialog offers an *SSH key* field, paste the contents of `~/.ssh/dutchpub.pub`.
+   - Otherwise note the **root password** it shows or emails.
+   
+   The reinstall takes a few minutes.
+3. Leave the SCP's own firewall off. If you do turn it on, allow TCP 22, 80, 443 and UDP 443 there.
+   **Never open 3306 or 3030**: MySQL and the backend stay inside the server.
 
-## 3. Open ports 80 and 443 in Oracle's network
+## 3. Your own user (not root)
 
-*Networking → Virtual cloud networks → (your VCN) → Subnets → (public subnet) → Security Lists →
-Default Security List → Add Ingress Rules*. Add three rules, each with Source CIDR `0.0.0.0/0`:
+**Shortcut on netcup:** the image install has a *Create additional user* switch. Turn it on with the user
+`dutchpub` and a password, and choose the timezone UTC. The user gets sudo rights, but its
+`~/.ssh/authorized_keys` stays empty: log in once with the password, then add your key:
 
-| IP protocol | Destination port |
-|---|---|
-| TCP | 80 |
-| TCP | 443 |
-| UDP | 443 |
+```sh
+install -d -m 700 ~/.ssh
+echo '<the line from ~/.ssh/dutchpub.pub>' > ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
 
-Port 22 (SSH) is already open. **Don't open 3306 or 3030**: MySQL and the backend stay inside the server.
+Then check the key login and `sudo whoami` as below, and go on with step 4.
+
+Without that switch, log in as root once, with the key or the root password:
+
+```sh
+ssh -i ~/.ssh/dutchpub root@<ip>
+```
+
+Then make a user with sudo rights:
+
+```sh
+adduser --gecos "" dutchpub              # choose a password: sudo asks for it. Keep it in your password manager.
+usermod -aG sudo dutchpub
+install -d -m 700 -o dutchpub -g dutchpub /home/dutchpub/.ssh
+nano /home/dutchpub/.ssh/authorized_keys # paste the one line from ~/.ssh/dutchpub.pub, save
+chown dutchpub:dutchpub /home/dutchpub/.ssh/authorized_keys
+chmod 600 /home/dutchpub/.ssh/authorized_keys
+```
+
+**Before closing the root session**, check in a second window that the new login works:
+
+```sh
+ssh -i ~/.ssh/dutchpub dutchpub@<ip>
+sudo whoami                              # root
+```
+
+From now on, log in as `dutchpub`. The setup in step 5 turns root logins and passwords off.
 
 ## 4. DuckDNS name
 
@@ -76,13 +110,9 @@ Port 22 (SSH) is already open. **Don't open 3306 or 3030**: MySQL and the backen
 
 Check it from your PC: `nslookup <name>.duckdns.org` should answer `<ip>`.
 
-## 5. Log in to the server and set it up
+## 5. Get the code and set up the server
 
-```sh
-ssh -i ~/.ssh/dutchpub ubuntu@<ip>
-```
-
-Get the code:
+As `dutchpub` on the server (`ssh -i ~/.ssh/dutchpub dutchpub@<ip>`), get the code:
 
 - **If the GitHub repo is public:**
 
@@ -115,12 +145,11 @@ exit
 ```
 
 [setup-server.sh](setup-server.sh) installs Docker, age and rclone. It also:
-- opens ports 80 and 443 in the VM's own firewall (Oracle's Ubuntu blocks them besides the step 3 rules);
 - turns on automatic security updates, with a reboot at 04:00 UTC when one is needed;
-- allows SSH with keys only;
+- allows SSH with keys only and turns root logins off;
 - adds the cron jobs: DuckDNS every 5 minutes, backup at 03:30 UTC.
 
-Log in again (`ssh -i ~/.ssh/dutchpub ubuntu@<ip>`) so the Docker permission takes effect.
+Log in again (`ssh -i ~/.ssh/dutchpub dutchpub@<ip>`) so the Docker permission takes effect.
 
 ## 6. Settings and secrets
 
@@ -164,7 +193,7 @@ On your PC, dump the current database. Use your local MySQL's port and user; wit
 
 ```sh
 mysqldump -h 127.0.0.1 -P <port> -u <user> -p --single-transaction --no-tablespaces dutch_pub > dutchpub.sql
-scp -i ~/.ssh/dutchpub dutchpub.sql ubuntu@<ip>:~/
+scp -i ~/.ssh/dutchpub dutchpub.sql dutchpub@<ip>:~/
 ```
 
 On the server:
@@ -248,7 +277,7 @@ the same at 03:30 UTC. Its log is `deploy/backups/backup.log`.
 backup from the B2 website: *Buckets → Browse Files → (file) → Download*. Then copy it to the server:
 
 ```sh
-scp -i ~/.ssh/dutchpub <backup file> ubuntu@<ip>:~/dutch_pub/deploy/
+scp -i ~/.ssh/dutchpub <backup file> dutchpub@<ip>:~/dutch_pub/deploy/
 ```
 
 On the server:
@@ -322,5 +351,4 @@ docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compo
 - **DuckDNS** is a free volunteer service with occasional short outages. Before the Play Store, or once
   ads need an `app-ads.txt`, consider a real domain (~10 €/year). Change `DOMAIN`, `PUBLIC_URL` and
   the app's `EXPO_PUBLIC_API_URL`.
-- **Oracle** may change the free allowance again (it halved the ARM limits in 2026). The setup is plain
-  Docker, so moving to another server means steps 5–9 there plus a restore from the latest backup.
+- **Growing:** the VPS Lite 1 runs 300 rooms (`MAX_ROOMS`), up to 1,200 players at once. For more: the VPS Lite 2 (4 cores, 8 GB) and `MAX_ROOMS=800`. Moving to another provider means steps 2–7 there plus a restore from the latest backup (step 9f).

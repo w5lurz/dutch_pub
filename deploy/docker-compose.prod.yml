@@ -1,4 +1,5 @@
-# Production on one server (Oracle Cloud Always Free VM): the backend, MySQL and Caddy (HTTPS).
+# Production on one server (a netcup VPS, any Ubuntu server works): the backend, MySQL and Caddy (HTTPS).
+# Step by step: SERVER.md.
 # Run from this folder:  docker compose -f docker-compose.prod.yml up -d --build
 # Settings and secrets on the server, never committed: deploy/.env (env.prod.example: domain, database,
 # backups) and deploy/backend.env (backend.env.example: the backend's own settings).
