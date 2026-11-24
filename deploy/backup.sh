@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Nightly database backup (cron, see setup-server.sh): dump -> gzip -> encrypt (age, public key only)
-# -> copy to Backblaze B2 (rclone) -> keep 14 days on the server -> ping the Better Stack heartbeat.
+# -> copy to Backblaze B2 (rclone, skipped while BACKUP_REMOTE is empty) -> keep 14 days on the server -> ping the Better Stack heartbeat.
 # Any failure stops the script before the ping, so a missing ping = a failed backup = an alert.
 # Run by hand:  ./backup.sh
 set -euo pipefail
@@ -11,7 +11,6 @@ set -a
 set +a
 
 : "${BACKUP_AGE_RECIPIENT:?set BACKUP_AGE_RECIPIENT in deploy/.env}"
-: "${BACKUP_REMOTE:?set BACKUP_REMOTE in deploy/.env}"
 
 mkdir -p backups
 file="backups/dutch_pub-$(date -u +%Y-%m-%dT%H%MZ).sql.gz.age"
@@ -24,8 +23,13 @@ docker compose -f docker-compose.prod.yml exec -T db sh -c \
 mv "$file.part" "$file"
 
 # Off the server. The B2 key may only write (not delete): old copies are removed by the bucket's
-# lifecycle rule (SERVER.md step 9), so a stolen key can't wipe the backups.
-rclone copy --no-check-dest "$file" "$BACKUP_REMOTE"
+# lifecycle rule (SERVER.md step 9), so a stolen key can't wipe the backups. An empty BACKUP_REMOTE
+# keeps the backups on this server only (until the off-site storage is set up).
+if [ -n "${BACKUP_REMOTE:-}" ]; then
+    rclone copy --no-check-dest "$file" "$BACKUP_REMOTE"
+else
+    echo "BACKUP_REMOTE is empty: this backup stays on the server only." >&2
+fi
 
 find backups -name '*.sql.gz.age' -mtime +14 -delete
 
