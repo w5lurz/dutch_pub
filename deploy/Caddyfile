@@ -1,4 +1,5 @@
 # HTTPS for the backend: Caddy gets and renews the Let's Encrypt certificate for $DOMAIN by itself
+# (one name, or several comma-separated: each gets its own certificate)
 # (ports 80 and 443 must be open) and passes everything, WebSockets included, to the backend.
 {$DOMAIN} {
 	encode gzip
