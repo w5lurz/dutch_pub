@@ -3,6 +3,7 @@ import { useWindowDimensions, View } from 'react-native';
 import i18n from '@/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CardRules, Cards, ChatMessage, Emote, Game, TCard } from '@dutch-pub/shared';
+import { useEmotes } from '@/lib/emotes';
 
 import { Screen } from '@/components/ui';
 
@@ -16,6 +17,8 @@ import { tableLayout, useCardSize, type CardSize } from './cardSize';
 import { ChatButton } from './ChatButton';
 import { ChatModal } from './ChatModal';
 import { Librarian } from './Librarian';
+import { AvatarAnchors } from './emoteAnchors';
+import { EmoteFace } from './EmoteFace';
 import { EmotePicker } from './EmotePicker';
 import { PickUpBanner } from './PickUpBanner';
 import { WinBanner } from './WinBanner';
@@ -157,11 +160,21 @@ export function GameTable({
 		setChatOpen(open);
 	};
 
-	// Emotions: each avatar acts them out (`SeatAvatar`); yours from a picker above your avatar.
+	// Emotions: a big copy of the player's avatar acts them out over their seat (`EmoteFace`); yours
+	// come from a picker above your avatar. Every seat's avatar registers its view for that.
+	const emotes = useEmotes();
 	const [emotePicker, setEmotePicker] = useState(false);
-	// Looked up when the picker is placed (not during render).
+	const avatarViews = useRef(new Map<string, ViewRef>());
+	const registerAvatar = useCallback((name: string, view: ViewRef | null) => {
+		if (view) avatarViews.current.set(name, view);
+		else avatarViews.current.delete(name);
+	}, []);
+	// Looked up when a face or the picker is placed (not during render).
 	const viewOf = useCallback(
-		(name: string | null) => (name === null ? rootRef.current : name === username ? avatarRef.current : (seatRefs.current.get(name) ?? null)),
+		(name: string | null) =>
+			name === null
+				? rootRef.current
+				: (avatarViews.current.get(name) ?? (name === username ? avatarRef.current : (seatRefs.current.get(name) ?? null))),
 		[username],
 	);
 
@@ -283,6 +296,7 @@ export function GameTable({
 
 	return (
 		// The table's own palette (light on the white table, also in dark mode).
+		<AvatarAnchors.Provider value={registerAvatar}>
 		<View ref={rootRef} collapsable={false} className={`${paletteClass} flex-1`}>
 			<TableBackground layout={layout} />
 			<TableLighting layer="table" />
@@ -411,6 +425,12 @@ export function GameTable({
 			{winner ? <WinBanner winner={winner} username={username} /> : null}
 			{/* A big pick-up: the librarian comes up and shelves a book, with the player's name. */}
 			{bigPickUp ? <Librarian key={bigPickUp.key} name={bigPickUp.name} count={bigPickUp.count} onDone={hideLibrarian} /> : null}
+			{/* Emotions, big over the players' avatars. */}
+			{Object.entries(emotes)
+				.filter(([name]) => name === username || name in game.opponents)
+				.map(([name, shown]) => (
+					<EmoteFace key={`${name}-${shown.key}`} name={name} avatarId={avatars?.[name]} shown={shown} viewOf={viewOf} />
+				))}
 			{emotePicker && onSendEmote ? (
 				<EmotePicker
 					username={username}
@@ -424,6 +444,7 @@ export function GameTable({
 				/>
 			) : null}
 		</View>
+		</AvatarAnchors.Provider>
 	);
 }
 

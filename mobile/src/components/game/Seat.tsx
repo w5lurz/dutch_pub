@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useContext, useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import i18n from '@/i18n';
 import Animated, {
@@ -15,7 +15,7 @@ import { Avatar } from '@/components/ui';
 import { useEmotes } from '@/lib/emotes';
 
 import { useCardSize, type CardSize, type TableLayout } from './cardSize';
-import { useEmoteMotion } from './emoteMotion';
+import { AvatarAnchors } from './emoteAnchors';
 import { HandFan } from './HandFan';
 import { Rotated } from './Rotated';
 import type { SeatPosition } from './seats';
@@ -97,14 +97,14 @@ function DangerHalo({ size }: { size: number }) {
 
 /**
  * A player's avatar (chosen, or generated from the name: `Avatar`), with `TurnGlow` while the
- * player is on turn. When the player shows an emotion (`useEmotes`), the avatar's face changes and
- * it acts the emotion out (`useEmoteMotion`) for a few seconds.
+ * player is on turn. When the player shows an emotion (`useEmotes`) the face changes; the table
+ * shows it big over this avatar (`EmoteFace`, placed by the view registered in `AvatarAnchors`).
  */
 export function SeatAvatar({ name, active, size, avatarId, avatar, danger = false }: SeatAvatarProps) {
     const shown = useEmotes()[name];
-    const acting = useEmoteMotion(shown);
+    const register = useContext(AvatarAnchors);
     return (
-        <Animated.View style={[{ padding: 3, zIndex: shown ? 10 : 0 }, acting]}>
+        <View ref={view => register?.(name, view)} collapsable={false} style={{ padding: 3 }}>
             {active ? <TurnGlow key={danger ? 'danger' : 'turn'} size={size + 6} danger={danger} /> : danger ? <DangerHalo size={size + 6} /> : null}
             <View
                 style={{
@@ -124,7 +124,7 @@ export function SeatAvatar({ name, active, size, avatarId, avatar, danger = fals
                     {i18n.t('game.emote.shown', { name, emote: i18n.t(`game.emote.${shown.emote}`) })}
                 </Text>
             ) : null}
-        </Animated.View>
+        </View>
     );
 }
 
