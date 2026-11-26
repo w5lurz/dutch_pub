@@ -86,7 +86,7 @@ export default function TablePreview() {
     useAnyOrientationWhileFocused();
     const layout = useTableLayout();
     const window = useWindowDimensions();
-    const params = useLocalSearchParams<{ opponents?: string; hand?: string; many?: string; turn?: string; panel?: string; swap?: string }>();
+    const params = useLocalSearchParams<{ opponents?: string; hand?: string; many?: string; turn?: string; panel?: string; swap?: string; streak?: string }>();
     const [opponents, setOpponents] = useState(() => Math.min(3, Math.max(1, Number(params.opponents) || 2)));
     const [handIndex, setHandIndex] = useState(() => Math.min(HAND_SIZES.length - 1, Math.max(0, Number(params.hand ?? 1) || 0)));
     const [piles, setPiles] = useState(true);
@@ -95,9 +95,9 @@ export default function TablePreview() {
     const [showCardPowers, setShowCardPowers] = useState(true);
     const [cardBack, setCardBack] = useState<'red' | 'blue'>('red');
     const [panelOpen, setPanelOpen] = useState(params.panel !== '0');
-    // `?swap=1`: opens in the swap phase (as right after the deal).
-    const [game, setGame] = useState(() => {
-        const dealt = mockGame(opponents, HAND_SIZES[handIndex], piles, yourTurn, many);
+    // `?swap=1`: opens in the swap phase (as right after the deal). `?streak=5`: five games in a row (cans).
+    const [game, setGame] = useState<Game>(() => {
+        const dealt = { ...mockGame(opponents, HAND_SIZES[handIndex], piles, yourTurn, many), streak: Number(params.streak) || 1 };
         return params.swap === '1' ? { ...dealt, phase: 'swap' as const, ready: false, laidCards: null, burntCards: null } : dealt;
     });
     const [winner, setWinner] = useState<string | null>(null);
@@ -266,6 +266,7 @@ export default function TablePreview() {
                         <Chip label={`Cigarette ${tableSeed}`} onPress={() => setTableSeed(tableSeed + 1)} />
                         <Chip label="Librarian: you" onPress={() => bigPickUp('you')} />
                         <Chip label="Librarian: Julcsi" onPress={() => bigPickUp('Julcsi')} />
+                        <Chip label={`Cans: ${game.streak ?? 1} games`} onPress={() => setGame({ ...game, streak: ((game.streak ?? 1) % 9) + 1 })} />
                         <Chip label="Pick-up banner" onPress={() => setGame({ ...game, pickedUp: game.pickedUp ? null : { username: 'Julcsi', count: 3 } })} />
                         {EMOTES.map((emote) => (
                             <Chip key={emote} label={`Julcsi: ${emote}`} onPress={() => showEmote({ username: 'Julcsi', emote })} />

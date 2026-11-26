@@ -859,6 +859,9 @@ describe('a pause after picking up the pile', () => {
         const [[viewA], [viewB]] = await playing;
         views[user.username] = viewA;
         views[guestName] = viewB;
+        // Games in a row at this table (the cans): this server is new, so its first game.
+        assert.equal(viewA.streak, 1);
+        assert.equal(viewB.streak, 1);
     });
 
     after(async () => {

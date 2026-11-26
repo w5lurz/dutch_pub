@@ -8,6 +8,7 @@ import { pileDrawSignature } from '../autoDraw';
 import { PickUpBanner } from '../PickUpBanner';
 import { SeatAvatar } from '../Seat';
 import { WinBanner } from '../WinBanner';
+import { cansFor, MAX_CANS } from '../TableCans';
 
 describe('PickUpBanner', () => {
     it("says who picked up the pile and how many cards", async () => {
@@ -89,5 +90,15 @@ describe('emotions at the seat', () => {
 
         await act(async () => jest.advanceTimersByTime(EMOTE_MS + 50));
         expect(said('Julcsi: Angry')).toBeNull();
+    });
+});
+
+describe('cans on the table', () => {
+    it('one can per game in a row from the second game, beer and cola taking turns, at most eight', () => {
+        expect(cansFor(undefined)).toEqual([]);
+        expect(cansFor(1)).toEqual([]);
+        expect(cansFor(2)).toEqual(['beer', 'cola']);
+        expect(cansFor(3)).toEqual(['beer', 'cola', 'beer']);
+        expect(cansFor(30)).toHaveLength(MAX_CANS);
     });
 });

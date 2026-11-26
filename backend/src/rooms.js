@@ -4,6 +4,7 @@ import { modifyRoomMessages, roomMessages } from './chat.js';
 import { clearTurnClock, deck as initialDeck, sendUiDataToSocket, shuffleDeck } from './game.js';
 import { identityError } from './socketAuth.js';
 import { isBot, MAX_BOTS, newBot, readyBots } from './bots.js';
+import { endStreaks, startStreaks } from './streaks.js';
 
 /** Emits `action-rejected` and returns true when `error` is set. */
 const rejected = (socket, error) => {
@@ -151,6 +152,9 @@ export const stopGameError = (socket, roomId) => {
     return null;
 };
 
+/** The players of `room` who aren't bots. */
+export const humanNames = room => room.players.filter(player => !player.bot).map(player => player.username);
+
 /**
  * Ends the game of room `roomId` without a winner (the owner stopped it): the game, the room
  * and its chat are removed, as after a win, but nothing is recorded for the leaderboard.
@@ -158,6 +162,7 @@ export const stopGameError = (socket, roomId) => {
  */
 export const stopGame = roomId => {
     if (games[roomId]) clearTurnClock(games[roomId]);
+    if (games[roomId] && roomsList[roomId]) endStreaks(humanNames(roomsList[roomId]));
     clearTimeout(ownerGoneTimers.get(String(roomId)));
     ownerGoneTimers.delete(String(roomId));
     delete games[roomId];
@@ -515,6 +520,8 @@ export const rooms = io => {
                 newGame.players[player.username].active = rand.username === player.username;
             });
             newGame.deck = deck;
+            // Games in a row at this table (the most of any player here): empty cans on the table.
+            newGame.streak = startStreaks(humanNames(newRoom));
             // First everyone may swap hand cards with their face-up cards, until all are ready.
             newGame.phase = 'swap';
             games[roomId] = newGame;

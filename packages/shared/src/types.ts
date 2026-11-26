@@ -120,6 +120,8 @@ export type Game = {
     blindMiss?: BlindMiss | null;
     /** Set during the pause after a pick-up (no moves, no clock meanwhile; the next player is already marked active). */
     pickedUp?: PickedUp | null;
+    /** Games in a row at this table, this one included (the most of any player here): empty cans on the table from 2. Missing (older servers): 1. */
+    streak?: number;
     /**
      * Turn timer: ms left of the current turn when this view was sent, and the whole turn's
      * length. null / missing: no clock is running (timer off, swap phase, missed blind card).

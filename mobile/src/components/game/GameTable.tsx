@@ -34,6 +34,7 @@ import { LampButton } from './LampButton';
 import { Moth } from './Moth';
 import { DayVisitors } from './DayVisitors';
 import { TableBackground } from './TableBackground';
+import { TableCans } from './TableCans';
 import { TableLamp } from './TableLamp';
 import { TableLighting } from './TableLighting';
 import { useTableTheme } from './tableTheme';
@@ -146,7 +147,7 @@ export function GameTable({
 	const insets = useSafeAreaInsets();
 	const layout = tableLayout(window);
 	const short = window.height < SHORT_HEIGHT;
-	const { height: cardHeight } = useCardSize('md');
+	const { width: cardWidth, height: cardHeight } = useCardSize('md');
 
 	// Chat: unread = messages that arrived while the modal was closed.
 	const [chatOpen, setChatOpen] = useState(false);
@@ -311,6 +312,8 @@ export function GameTable({
 				size={Math.round(cardHeight * (layout === 'portrait' ? 0.75 : 0.85))}
 				style={layout === 'portrait' ? { left: '7%', top: '62%' } : { left: '10%', bottom: '13%' }}
 			/>
+			{/* Several games in a row: empty beer and cola cans on the free parts of the table. */}
+			<TableCans streak={game.streak} layout={layout} cardWidth={cardWidth} seed={tableSeed} />
 			<Screen edges={['top', 'bottom', 'left', 'right']} padded={false} background="none">
 				<CardSettingsProvider settings={cardSettings}>
 					<CardDragProvider>

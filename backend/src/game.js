@@ -4,6 +4,7 @@ import { modifyRoomMessages, roomMessages } from './chat.js';
 import { identityError } from './socketAuth.js';
 import { notifyTurn } from './push.js';
 import { scheduleBotTurn } from './bots.js';
+import { endStreaks } from './streaks.js';
 
 import db from './models/index.js';
 const PlayedGame = db.played_game;
@@ -305,6 +306,7 @@ export const performLay = async (io, roomId, username, validation, { cardIndex, 
         modifyRooms(rest);
         // The game is over: free it (the players' last view is sent below from `currentGame`).
         delete games[roomId];
+        endStreaks(currentRoom.players.filter(player => !player.bot).map(player => player.username));
         io.to(gameId).emit('game-won', username, roomsList);
         emptySocketRoom(io, gameId);
         const { [gameId]: _messages, ...restRoomMessages } = roomMessages;
@@ -554,6 +556,7 @@ export const buildPlayerView = (room, game, username) => {
         call: game.call ?? null,
         turnTimeLeft: game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : null,
         turnTime: game.turnEndsAt ? game.turnTime : null,
+        streak: game.streak ?? 1,
     };
 };
 
