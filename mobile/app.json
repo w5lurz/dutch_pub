@@ -3,6 +3,12 @@
     "name": "Dutch Pub",
     "slug": "dutch-pub",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c0bd4405-44d2-40ed-8c93-f876885e4680"
+    },
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "dutchpub",
