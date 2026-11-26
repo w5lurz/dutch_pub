@@ -361,8 +361,6 @@ const zh: Translation = {
     },
     game: {
         toast: {
-            youWon: '你赢了！恭喜！',
-            playerWon: '{{name}} 赢了！恭喜！',
             stoppedOwnerGone: '游戏已停止：{{owner}}（房主）离开了 2 分钟。',
             youStopped: '你停止了游戏。',
             playerStopped: '{{owner}} 停止了游戏。',
@@ -449,6 +447,11 @@ const zh: Translation = {
             relieved: '松了口气',
             thumbsUp: '点赞',
             shown: '{{name}}：{{emote}}',
+        },
+        win: {
+            title: '<n>{{name}}</n> 赢了！',
+            you: '你赢了！',
+            congrats: '恭喜！',
         },
         pickUp: {
             title: '<n>{{name}}</n> 收起了出牌区！',

@@ -364,8 +364,6 @@ const en = {
     },
     game: {
         toast: {
-            youWon: 'You won the game! Congratulations!',
-            playerWon: '{{name}} won the game! Congratulations!',
             stoppedOwnerGone: 'The game was stopped: {{owner}} (the room owner) was gone for 2 minutes.',
             youStopped: 'You stopped the game.',
             playerStopped: '{{owner}} stopped the game.',
@@ -452,6 +450,11 @@ const en = {
             relieved: 'Relieved',
             thumbsUp: 'Thumbs up',
             shown: '{{name}}: {{emote}}',
+        },
+        win: {
+            title: '<n>{{name}}</n> won the game!',
+            you: 'You won the game!',
+            congrats: 'Congratulations!',
         },
         pickUp: {
             title: '<n>{{name}}</n> picked up the pile!',

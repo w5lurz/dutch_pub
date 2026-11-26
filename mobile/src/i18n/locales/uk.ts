@@ -363,8 +363,6 @@ const uk: Translation = {
     },
     game: {
         toast: {
-            youWon: 'Ти переміг! Вітаємо!',
-            playerWon: '{{name}} переміг! Вітаємо!',
             stoppedOwnerGone: 'Гру зупинено: {{owner}} (власник кімнати) був відсутній 2 хвилини.',
             youStopped: 'Ти зупинив гру.',
             playerStopped: '{{owner}} зупинив гру.',
@@ -451,6 +449,11 @@ const uk: Translation = {
             relieved: 'Полегшення',
             thumbsUp: 'Клас',
             shown: '{{name}}: {{emote}}',
+        },
+        win: {
+            title: '<n>{{name}}</n> переміг!',
+            you: 'Ти переміг!',
+            congrats: 'Вітаємо!',
         },
         pickUp: {
             title: '<n>{{name}}</n> забрав стос!',

@@ -3,7 +3,6 @@ import { useWindowDimensions, View } from 'react-native';
 import i18n from '@/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CardRules, Cards, ChatMessage, Emote, Game, TCard } from '@dutch-pub/shared';
-import { useEmotes } from '@/lib/emotes';
 
 import { Screen } from '@/components/ui';
 
@@ -17,9 +16,9 @@ import { tableLayout, useCardSize, type CardSize } from './cardSize';
 import { ChatButton } from './ChatButton';
 import { ChatModal } from './ChatModal';
 import { Librarian } from './Librarian';
-import { EmoteBubble } from './EmoteBubble';
 import { EmotePicker } from './EmotePicker';
 import { PickUpBanner } from './PickUpBanner';
+import { WinBanner } from './WinBanner';
 import { PileArea } from './PileArea';
 import { PlayerBoard } from './PlayerBoard';
 import { Seat } from './Seat';
@@ -158,10 +157,9 @@ export function GameTable({
 		setChatOpen(open);
 	};
 
-	// Emotions: a bubble above the player's name (`emote-sent`); yours from a picker above your avatar.
-	const emotes = useEmotes();
+	// Emotions: each avatar acts them out (`SeatAvatar`); yours from a picker above your avatar.
 	const [emotePicker, setEmotePicker] = useState(false);
-	// Looked up when a bubble or the picker is placed (not during render).
+	// Looked up when the picker is placed (not during render).
 	const viewOf = useCallback(
 		(name: string | null) => (name === null ? rootRef.current : name === username ? avatarRef.current : (seatRefs.current.get(name) ?? null)),
 		[username],
@@ -407,25 +405,16 @@ export function GameTable({
 			<Moth insetTop={insets.top} />
 			{/* By day: a bee, a butterfly or (rarely) a frisbee passing over now and then. */}
 			<DayVisitors />
-			{/* Emotions above the players' names. */}
-			{Object.entries(emotes)
-				.filter(([name]) => name === username || name in game.opponents)
-				.map(([name, shown]) => (
-					<EmoteBubble
-						key={`${name}-${shown.key}`}
-						name={name}
-						avatarId={avatars?.[name]}
-						emote={shown.emote}
-						viewOf={viewOf}
-					/>
-				))}
 			{/* Right after a pick-up (the pause before the next turn): who it was, big, for everyone. */}
-			{game.pickedUp && game.pickedUp.count <= BIG_PICK_UP ? <PickUpBanner pickedUp={game.pickedUp} username={username} /> : null}
+			{game.pickedUp && game.pickedUp.count <= BIG_PICK_UP && !winner ? <PickUpBanner pickedUp={game.pickedUp} username={username} /> : null}
+			{/* Who won: in the middle of the table until the game closes. */}
+			{winner ? <WinBanner winner={winner} username={username} /> : null}
 			{/* A big pick-up: the librarian comes up and shelves a book, with the player's name. */}
 			{bigPickUp ? <Librarian key={bigPickUp.key} name={bigPickUp.name} count={bigPickUp.count} onDone={hideLibrarian} /> : null}
 			{emotePicker && onSendEmote ? (
 				<EmotePicker
 					username={username}
+					avatarId={username ? avatars?.[username] : undefined}
 					viewOf={viewOf}
 					onPick={(emote) => {
 						setEmotePicker(false);

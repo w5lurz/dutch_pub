@@ -71,15 +71,8 @@ export function GameSync() {
             dispatch(updateGame(game));
             dispatch(setRooms(rooms));
         };
+        // Who won shows in the middle of the table (`WinBanner`, from `setWinner`) until the game closes.
         const onGameWon = (winner: string, rooms: TRooms) => {
-            dispatch(
-                setToast({
-                    id: `game-won-${Date.now()}`,
-                    type: 'success',
-                    message: winner === usernameRef.current ? i18n.t('game.toast.youWon') : i18n.t('game.toast.playerWon', { name: winner }),
-                    duration: GAME_WON_DELAY_MS,
-                }),
-            );
             haptic(Haptics.NotificationFeedbackType.Success);
             dispatch(setLastGameEnd('won'));
             dispatch(setWinner(winner));

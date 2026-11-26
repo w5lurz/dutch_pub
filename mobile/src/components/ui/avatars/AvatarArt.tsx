@@ -1,6 +1,6 @@
-import type { ReactElement } from 'react';
+import { createContext, useContext, type ReactElement } from 'react';
 import { Circle, Ellipse, G, Path, Polygon, Rect } from 'react-native-svg';
-import type { AvatarId } from '@dutch-pub/shared';
+import type { AvatarId, Emote } from '@dutch-pub/shared';
 
 import i18n from '@/i18n';
 
@@ -12,21 +12,68 @@ const INK = '#2b2118';
 const PINK = '#f4a7b9';
 const WHITE = '#ffffff';
 
-function Eyes({ y, dx = 11, r = 4, cx = 50 }: { y: number; dx?: number; r?: number; cx?: number }) {
+/**
+ * The face's mood (an emotion shown at the table), read by the shared eyes and mouth: happy
+ * closed eyes (hello), frowning brows and mouth (angry), calm closed eyes and a "phew" (relieved),
+ * a wink and a big smile (thumbs up). null: the usual face.
+ */
+export const MoodContext = createContext<Emote | null>(null);
+
+/** One eye as a closed arc: `up` = a happy "^", otherwise a calm "u". */
+function ClosedEye({ x, y, r, color, up }: { x: number; y: number; r: number; color: string; up: boolean }) {
+    const d = up ? `M${x - r * 1.1} ${y + r * 0.35} Q${x} ${y - r * 1.1} ${x + r * 1.1} ${y + r * 0.35}` : `M${x - r * 1.1} ${y - r * 0.25} Q${x} ${y + r * 0.9} ${x + r * 1.1} ${y - r * 0.25}`;
+    return <Path d={d} stroke={color} strokeWidth={Math.max(2, r * 0.6)} strokeLinecap="round" fill="none" />;
+}
+
+/** Two eyes (`color`: the pupil; `shine`: the white highlight), following the face's mood. */
+function Eyes({ y, dx = 11, r = 4, cx = 50, color = INK, shine = true }: { y: number; dx?: number; r?: number; cx?: number; color?: string; shine?: boolean }) {
+    const mood = useContext(MoodContext);
     return (
         <G>
-            {[cx - dx, cx + dx].map(x => (
-                <G key={x}>
-                    <Circle cx={x} cy={y} r={r} fill={INK} />
-                    <Circle cx={x + r * 0.35} cy={y - r * 0.35} r={r * 0.35} fill={WHITE} />
-                </G>
-            ))}
+            {[cx - dx, cx + dx].map(x => {
+                const left = x < cx;
+                if (mood === 'hello' || mood === 'relieved' || (mood === 'thumbsUp' && !left)) {
+                    return <ClosedEye key={x} x={x} y={y} r={r} color={color} up={mood !== 'relieved'} />;
+                }
+                return (
+                    <G key={x}>
+                        <Circle cx={x} cy={y} r={r} fill={color} />
+                        {shine ? <Circle cx={x + r * 0.35} cy={y - r * 0.35} r={r * 0.35} fill={WHITE} /> : null}
+                        {mood === 'angry' ? (
+                            // A brow sloping down towards the nose.
+                            <Path
+                                d={`M${x + (left ? -1 : 1) * r * 1.6} ${y - r * 2.1} L${x + (left ? 1 : -1) * r * 1.2} ${y - r * 1.2}`}
+                                stroke={color}
+                                strokeWidth={Math.max(2.2, r * 0.7)}
+                                strokeLinecap="round"
+                            />
+                        ) : null}
+                    </G>
+                );
+            })}
         </G>
     );
 }
 
-function Smile({ y, w = 7, cx = 50 }: { y: number; w?: number; cx?: number }) {
-    return <Path d={`M${cx - w} ${y} Q${cx} ${y + w * 0.9} ${cx + w} ${y}`} stroke={INK} strokeWidth={2.4} strokeLinecap="round" fill="none" />;
+/** The mouth, following the face's mood: a frown (angry), a small "o" (relieved), a bigger smile (hello, thumbs up). */
+function Smile({ y, w = 7, cx = 50, color = INK }: { y: number; w?: number; cx?: number; color?: string }) {
+    const mood = useContext(MoodContext);
+    if (mood === 'relieved') return <Ellipse cx={cx} cy={y + w * 0.3} rx={w * 0.35} ry={w * 0.45} fill={color} />;
+    const d =
+        mood === 'angry'
+            ? `M${cx - w} ${y + w * 0.5} Q${cx} ${y - w * 0.5} ${cx + w} ${y + w * 0.5}`
+            : mood
+              ? `M${cx - w * 1.2} ${y} Q${cx} ${y + w * 1.4} ${cx + w * 1.2} ${y}`
+              : `M${cx - w} ${y} Q${cx} ${y + w * 0.9} ${cx + w} ${y}`;
+    return <Path d={d} stroke={color} strokeWidth={2.4} strokeLinecap="round" fill="none" />;
+}
+
+/** Drawn over the whole face for some moods: red cheeks of anger, a drop of relief. */
+export function MoodOverlay() {
+    const mood = useContext(MoodContext);
+    if (mood === 'angry') return <Circle cx={50} cy={50} r={50} fill="#ef4444" opacity={0.25} />;
+    if (mood === 'relieved') return <Path d="M78 20 Q72 31 78 35 Q84 31 78 20 Z" fill="#60a5fa" stroke={WHITE} strokeWidth={1.5} />;
+    return null;
 }
 
 function Cheeks({ y, dx = 20, color = PINK }: { y: number; dx?: number; color?: string }) {
@@ -118,8 +165,7 @@ const Panda = () => (
         <Circle cx={50} cy={56} r={30} fill={WHITE} />
         <Ellipse cx={38} cy={53} rx={8} ry={10} fill={INK} transform="rotate(-25 38 53)" />
         <Ellipse cx={62} cy={53} rx={8} ry={10} fill={INK} transform="rotate(25 62 53)" />
-        <Circle cx={39} cy={52} r={3} fill={WHITE} />
-        <Circle cx={61} cy={52} r={3} fill={WHITE} />
+        <Eyes y={52} r={3} color={WHITE} shine={false} />
         <Ellipse cx={50} cy={65} rx={4.5} ry={3.2} fill={INK} />
         <Smile y={71} w={4.5} />
         <Cheeks y={66} dx={19} />
@@ -343,9 +389,8 @@ const Sheep = () => (
         <Circle cx={56} cy={36} r={8} fill={WHITE} />
         <Circle cx={43} cy={56} r={3.4} fill={WHITE} />
         <Circle cx={57} cy={56} r={3.4} fill={WHITE} />
-        <Circle cx={43.5} cy={56.5} r={2} fill={INK} />
-        <Circle cx={56.5} cy={56.5} r={2} fill={INK} />
-        <Path d="M45 70 Q50 74 55 70" stroke="#f4c6d0" strokeWidth={2.2} fill="none" strokeLinecap="round" />
+        <Eyes y={56.5} dx={6.5} r={2} shine={false} />
+        <Smile y={70} w={5} color="#f4c6d0" />
     </G>
 );
 

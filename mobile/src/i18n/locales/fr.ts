@@ -362,8 +362,6 @@ const fr: Translation = {
     },
     game: {
         toast: {
-            youWon: 'Tu as gagné la partie ! Bravo !',
-            playerWon: '{{name}} a gagné la partie ! Bravo !',
             stoppedOwnerGone: 'La partie est arrêtée : {{owner}} (propriétaire de la salle) est parti depuis 2 minutes.',
             youStopped: 'Tu as arrêté la partie.',
             playerStopped: '{{owner}} a arrêté la partie.',
@@ -450,6 +448,11 @@ const fr: Translation = {
             relieved: 'Soulagé',
             thumbsUp: 'Pouce levé',
             shown: '{{name}} : {{emote}}',
+        },
+        win: {
+            title: '<n>{{name}}</n> a gagné la partie !',
+            you: 'Tu as gagné la partie !',
+            congrats: 'Bravo !',
         },
         pickUp: {
             title: '<n>{{name}}</n> a ramassé la pile !',

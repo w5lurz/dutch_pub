@@ -1,10 +1,10 @@
 import { View } from 'react-native';
 import Svg from 'react-native-svg';
-import { avatarFor } from '@dutch-pub/shared';
+import { avatarFor, type Emote } from '@dutch-pub/shared';
 
 import i18n from '@/i18n';
 
-import { AVATAR_ART, avatarName } from './avatars/AvatarArt';
+import { AVATAR_ART, avatarName, MoodContext, MoodOverlay } from './avatars/AvatarArt';
 
 export type AvatarProps = {
     /** Whose avatar: decides the generated one and the background colour. */
@@ -18,6 +18,8 @@ export type AvatarProps = {
      * text, skipped by them), e.g. next to the name that already says who it is.
      */
     accessibilityLabel?: string;
+    /** An emotion the face shows (eyes, mouth, a flush or a drop); missing: the usual face. */
+    mood?: Emote | null;
 };
 
 /**
@@ -25,7 +27,7 @@ export type AvatarProps = {
  * (`avatarFor`, the same on every device), on a background colour from the name.
  * Drawn locally (react-native-svg), no network. Fixed colours, like card faces.
  */
-export function Avatar({ username, avatar, size, accessibilityLabel }: AvatarProps) {
+export function Avatar({ username, avatar, size, accessibilityLabel, mood = null }: AvatarProps) {
     const look = avatarFor(username, avatar);
     const Art = AVATAR_ART[look.id];
     return (
@@ -37,7 +39,10 @@ export function Avatar({ username, avatar, size, accessibilityLabel }: AvatarPro
             style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: look.background, overflow: 'hidden' }}
         >
             <Svg width={size} height={size} viewBox="0 0 100 100">
-                <Art />
+                <MoodContext.Provider value={mood}>
+                    <Art />
+                    <MoodOverlay />
+                </MoodContext.Provider>
             </Svg>
         </View>
     );

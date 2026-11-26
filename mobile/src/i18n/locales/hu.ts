@@ -362,8 +362,6 @@ const hu: Translation = {
     },
     game: {
         toast: {
-            youWon: 'Megnyerted a játékot! Gratulálunk!',
-            playerWon: '{{name}} nyerte a játékot! Gratulálunk!',
             stoppedOwnerGone: 'A játék leállt: {{owner}} (a szoba tulajdonosa) 2 percig nem volt itt.',
             youStopped: 'Leállítottad a játékot.',
             playerStopped: '{{owner}} leállította a játékot.',
@@ -447,9 +445,14 @@ const hu: Translation = {
             hint: 'Mutat egy érzelmet mindenkinek az asztalnál',
             hello: 'Szia',
             angry: 'Mérges',
-            relieved: 'Megkönnyebbült',
+            relieved: 'Phű',
             thumbsUp: 'Szuper',
             shown: '{{name}}: {{emote}}',
+        },
+        win: {
+            title: '<n>{{name}}</n> nyerte a játékot!',
+            you: 'Megnyerted a játékot!',
+            congrats: 'Gratulálunk!',
         },
         pickUp: {
             title: '<n>{{name}}</n> felvette a kupacot!',

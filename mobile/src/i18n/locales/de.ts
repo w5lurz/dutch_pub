@@ -362,8 +362,6 @@ const de: Translation = {
     },
     game: {
         toast: {
-            youWon: 'Du hast gewonnen! Glückwunsch!',
-            playerWon: '{{name}} hat gewonnen! Glückwunsch!',
             stoppedOwnerGone: 'Das Spiel wurde beendet: {{owner}} (Besitzer des Raums) war 2 Minuten weg.',
             youStopped: 'Du hast das Spiel beendet.',
             playerStopped: '{{owner}} hat das Spiel beendet.',
@@ -450,6 +448,11 @@ const de: Translation = {
             relieved: 'Erleichtert',
             thumbsUp: 'Daumen hoch',
             shown: '{{name}}: {{emote}}',
+        },
+        win: {
+            title: '<n>{{name}}</n> hat gewonnen!',
+            you: 'Du hast gewonnen!',
+            congrats: 'Glückwunsch!',
         },
         pickUp: {
             title: '<n>{{name}}</n> hat den Stapel aufgenommen!',

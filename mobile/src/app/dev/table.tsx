@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { canLayCard, type Cards, type ChatMessage, type Game, type Opponents, type TCard } from '@dutch-pub/shared';
+import { canLayCard, EMOTES, type Cards, type ChatMessage, type Game, type Opponents, type TCard } from '@dutch-pub/shared';
+import { showEmote } from '@/lib/emotes';
 
 import { GameTable, summonVisitor, TableThemeProvider, useAnyOrientationWhileFocused, useTableLayout } from '@/components/game';
 
@@ -233,6 +234,7 @@ export default function TablePreview() {
                 tableSeed={tableSeed}
                 messages={MESSAGES}
                 onSendMessage={() => true}
+                onSendEmote={(emote) => showEmote({ username: 'test', emote })}
                 canSendMessage
                 cardSettings={{ showCardPowers, cardBack }}
                 onStopGame={() => router.back()}
@@ -264,6 +266,10 @@ export default function TablePreview() {
                         <Chip label={`Cigarette ${tableSeed}`} onPress={() => setTableSeed(tableSeed + 1)} />
                         <Chip label="Librarian: you" onPress={() => bigPickUp('you')} />
                         <Chip label="Librarian: Julcsi" onPress={() => bigPickUp('Julcsi')} />
+                        <Chip label="Pick-up banner" onPress={() => setGame({ ...game, pickedUp: game.pickedUp ? null : { username: 'Julcsi', count: 3 } })} />
+                        {EMOTES.map((emote) => (
+                            <Chip key={emote} label={`Julcsi: ${emote}`} onPress={() => showEmote({ username: 'Julcsi', emote })} />
+                        ))}
                         <Chip label="Win: you" onPress={() => setWinner('test')} />
                         <Chip label="Win: Julcsi" onPress={() => setWinner('Julcsi')} />
                         <Chip label="Bee" onPress={() => summonVisitor('bee')} />
