@@ -16,9 +16,9 @@ describe('EmotePicker', () => {
         // Placed once your avatar is measured.
         const angry = await screen.findByTestId('emote-angry', { includeHiddenElements: true });
         expect(angry.props.accessibilityLabel).toBe('Angry');
-        fireEvent.press(angry);
+        await fireEvent.press(angry);
         expect(onPick).toHaveBeenCalledWith('angry');
-        fireEvent.press(screen.getByLabelText('Close'));
+        await fireEvent.press(screen.getByLabelText('Close'));
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 });

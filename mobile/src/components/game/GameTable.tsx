@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import i18n from '@/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CardRules, Cards, ChatMessage, Emote, Game, TCard } from '@dutch-pub/shared';
+import { useBlockedPlayers } from '@/lib/blockedPlayers';
 import { useEmotes } from '@/lib/emotes';
 
 import { Screen } from '@/components/ui';
@@ -126,7 +127,7 @@ export function GameTable({
 	playerOrder,
 	avatars,
 	onLayCard,
-	messages,
+	messages: allMessages,
 	onSendMessage,
 	onSendEmote,
 	canSendMessage,
@@ -149,6 +150,9 @@ export function GameTable({
 
 	// Chat: unread = messages that arrived while the modal was closed.
 	const [chatOpen, setChatOpen] = useState(false);
+	// Players blocked on this phone: their messages are left out (also from the unread count).
+	const blocked = useBlockedPlayers();
+	const messages = useMemo(() => allMessages.filter((message) => !blocked.includes(message.senderName)), [allMessages, blocked]);
 	const [seenCount, setSeenCount] = useState(messages.length);
 	if (messages.length < seenCount) {
 		// History was replaced by a shorter one (new room / re-sync): adjust during render.

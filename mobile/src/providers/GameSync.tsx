@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import type { ChatMessage, Game, GameState, TRooms } from '@dutch-pub/shared';
+import type { ChatMessage, EmoteSent, Game, GameState, TRooms } from '@dutch-pub/shared';
 
 import i18n, { serverMessage } from '@/i18n';
 import { useSocket } from '@/providers/SocketProvider';
@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { setMessages } from '@/store/chatSlice';
 import { initialState as emptyGame, updateGame } from '@/store/gameSlice';
 import { clearNotifications, registerForPush } from '@/lib/notifications';
+import { isBlocked } from '@/lib/blockedPlayers';
 import { showEmote } from '@/lib/emotes';
 import { playSound } from '@/lib/sounds';
 import { setLastGameEnd, setToast, setWinner } from '@/store/generalSlice';
@@ -127,6 +128,10 @@ export function GameSync() {
             haptic(Haptics.NotificationFeedbackType.Error);
         };
         const onMessageSent = (messages: ChatMessage[]) => dispatch(setMessages(messages));
+        // Emotions of players blocked on this phone are not shown.
+        const onEmoteSent = (emote: EmoteSent) => {
+            if (!isBlocked(emote.username)) showEmote(emote);
+        };
 
         socket.on('rooms-listed', onRooms);
         socket.on('joined-room', onRooms);
@@ -142,7 +147,7 @@ export function GameSync() {
         socket.on('lay-card-rejected', onLayCardRejected);
         socket.on('game-state', onGameState);
         socket.on('message-sent', onMessageSent);
-        socket.on('emote-sent', showEmote);
+        socket.on('emote-sent', onEmoteSent);
         return () => {
             clearTimeout(gameWonTimer);
             socket.off('rooms-listed', onRooms);
@@ -159,7 +164,7 @@ export function GameSync() {
             socket.off('lay-card-rejected', onLayCardRejected);
             socket.off('game-state', onGameState);
             socket.off('message-sent', onMessageSent);
-            socket.off('emote-sent', showEmote);
+            socket.off('emote-sent', onEmoteSent);
         };
     }, [socket, dispatch]);
 

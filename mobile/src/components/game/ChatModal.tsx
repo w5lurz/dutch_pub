@@ -4,7 +4,8 @@ import i18n from '@/i18n';
 import type { ChatMessage } from '@dutch-pub/shared';
 
 import { CloseIcon } from '@/components/icons';
-import { Avatar, Button, KeyboardSpacer, Screen, TextField } from '@/components/ui';
+import { Avatar, BottomSheet, Button, KeyboardSpacer, Screen, TextField } from '@/components/ui';
+import { blockPlayer, unblockPlayer, useBlockedPlayers } from '@/lib/blockedPlayers';
 import { useTheme } from '@/lib/theme';
 
 type ChatModalProps = {
@@ -24,12 +25,16 @@ type ChatModalProps = {
 /** The sender's avatar beside the bubble: on the left for others, on the right for you. */
 const CHAT_AVATAR = 28;
 
-function MessageRow({ message, own, avatar }: { message: ChatMessage; own: boolean; avatar?: string | null }) {
+/** A message; tapping someone else's offers to block them (`onBlock`). */
+function MessageRow({ message, own, avatar, onBlock }: { message: ChatMessage; own: boolean; avatar?: string | null; onBlock?: () => void }) {
 	return (
-		<View
+		<Pressable
 			accessible
 			accessibilityLabel={i18n.t('game.chat.messageLabel', { name: message.senderName, time: message.time, message: message.message })}
-			className={`mb-2 max-w-[85%] flex-row items-end gap-2 ${own ? 'flex-row-reverse self-end' : 'self-start'}`}
+			accessibilityHint={onBlock ? i18n.t('game.chat.blockHint', { name: message.senderName }) : undefined}
+			disabled={!onBlock}
+			onPress={onBlock}
+			className={`mb-2 max-w-[85%] flex-row items-end gap-2 active:opacity-70 ${own ? 'flex-row-reverse self-end' : 'self-start'}`}
 		>
 			<Avatar username={message.senderName} avatar={avatar} size={CHAT_AVATAR} />
 			<View className={`shrink rounded-lg px-3 py-2 ${own ? 'bg-blue-100' : 'bg-gray-200'}`}>
@@ -39,7 +44,7 @@ function MessageRow({ message, own, avatar }: { message: ChatMessage; own: boole
 				</View>
 				<Text className="text-gray-900">{message.message}</Text>
 			</View>
-		</View>
+		</Pressable>
 	);
 }
 
@@ -51,10 +56,17 @@ const MODAL_ORIENTATIONS = ['portrait', 'landscape', 'landscape-left', 'landscap
  * Kept compact for landscape, where the keyboard takes most of the height: a slim header,
  * no visible input label, the list shrinking above the input (KeyboardSpacer), and
  * no Android full-screen keyboard ("extract") mode, so the messages stay visible.
+ *
+ * Tapping someone else's message offers to block them: their messages and emotions are hidden
+ * on this phone (`blockedPlayers`; the game table leaves their messages out of `messages`). The
+ * header then lists the blocked players, to unblock them.
  */
 export function ChatModal({ visible, onClose, messages, username, onSend, canSend, avatars }: ChatModalProps) {
 	const colors = useTheme();
 	const [text, setText] = useState('');
+	const blocked = useBlockedPlayers();
+	const [blocking, setBlocking] = useState<string | null>(null);
+	const [blockedList, setBlockedList] = useState(false);
 	// Inverted list: newest first in the data, shown at the bottom and kept in view.
 	const newestFirst = useMemo(() => [...messages].reverse(), [messages]);
 	const sendDisabled = !canSend || text.trim().length === 0;
@@ -79,6 +91,16 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 						<Text accessibilityRole="header" className="text-lg font-bold text-gray-900">
 							{i18n.t('game.chat.title')}
 						</Text>
+						{blocked.length > 0 ? (
+							<Pressable
+								accessibilityRole="button"
+								onPress={() => setBlockedList(true)}
+								hitSlop={8}
+								className="ml-auto mr-3 rounded-md px-2 py-1 active:bg-gray-200"
+							>
+								<Text className="text-sm font-semibold text-gray-600">{i18n.t('game.chat.blockedCount', { count: blocked.length })}</Text>
+							</Pressable>
+						) : null}
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={i18n.t('game.chat.hide')}
@@ -100,7 +122,12 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 							data={newestFirst}
 							keyExtractor={(message) => String(message.id)}
 							renderItem={({ item }) => (
-								<MessageRow message={item} own={item.senderName === username} avatar={avatars?.[item.senderName]} />
+								<MessageRow
+									message={item}
+									own={item.senderName === username}
+									avatar={avatars?.[item.senderName]}
+									onBlock={item.senderName === username ? undefined : () => setBlocking(item.senderName)}
+								/>
 							)}
 							className="flex-1"
 							contentContainerClassName="px-4 py-2"
@@ -131,6 +158,40 @@ export function ChatModal({ visible, onClose, messages, username, onSend, canSen
 					</View>
 				</KeyboardSpacer>
 			</Screen>
+
+			<BottomSheet visible={blocking !== null} title={i18n.t('game.chat.blockTitle', { name: blocking ?? '' })} onClose={() => setBlocking(null)}>
+				<Text className="text-base text-gray-700">{i18n.t('game.chat.blockText', { name: blocking ?? '' })}</Text>
+				<Button
+					label={i18n.t('game.chat.block')}
+					variant="red"
+					onPress={() => {
+						if (blocking) blockPlayer(blocking);
+						setBlocking(null);
+					}}
+					className="w-full"
+				/>
+				<Button label={i18n.t('common.cancel')} variant="gray" onPress={() => setBlocking(null)} className="w-full" />
+			</BottomSheet>
+
+			<BottomSheet visible={blockedList} title={i18n.t('game.chat.blockedTitle')} onClose={() => setBlockedList(false)}>
+				{blocked.length === 0 ? <Text className="text-base text-gray-700">{i18n.t('game.chat.blockedNone')}</Text> : null}
+				{blocked.map((name) => (
+					<View key={name} className="flex-row items-center justify-between gap-3">
+						<View className="flex-1 flex-row items-center gap-2">
+							<Avatar username={name} avatar={avatars?.[name]} size={CHAT_AVATAR} />
+							<Text numberOfLines={1} className="shrink text-base font-semibold text-gray-900">
+								{name}
+							</Text>
+						</View>
+						<Button
+							label={i18n.t('game.chat.unblock')}
+							variant="gray"
+							onPress={() => unblockPlayer(name)}
+							accessibilityLabel={i18n.t('game.chat.unblockLabel', { name })}
+						/>
+					</View>
+				))}
+			</BottomSheet>
 		</Modal>
 	);
 }
