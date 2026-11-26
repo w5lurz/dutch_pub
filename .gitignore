@@ -25,3 +25,4 @@ deploy/backups/
 
 # Firebase config for Android push (an EAS file variable on the build servers)
 /mobile/google-services.json
+deploy/web/

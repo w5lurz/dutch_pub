@@ -318,6 +318,31 @@ The app must call the new address:
 3. APKs already installed keep calling the old ngrok address. Keep the PC backend running until
    everyone has installed the new one, then stop it.
 
+## 12. Web version of the app (for iPhones)
+
+The same app runs in a browser, served by Caddy at its own name (`WEB_DOMAIN`, e.g. `play.dutchpub.eu`).
+No push notifications there, and sounds start after the first tap.
+
+1. **DNS:** an `A` record for the name (host `play` at your registrar) pointing at `<ip>`.
+2. **Server settings** (once):
+
+   ```sh
+   cd ~/dutch_pub/deploy
+   printf '\nWEB_DOMAIN=play.dutchpub.eu\n' >> .env
+   printf '\nCORS_ORIGIN=https://play.dutchpub.eu\n' >> backend.env
+   mkdir -p web                       # before Docker creates it (as root)
+   docker compose -f docker-compose.prod.yml run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+3. **Publish** from your PC (Git Bash, in the repo), now and after every app change:
+
+   ```sh
+   deploy/publish-web.sh dutchpub@<ip> -i ~/.ssh/dutchpub
+   ```
+
+   It builds the web version for `https://dutchpub.eu` and copies it to `deploy/web`; no restart needed.
+
 ## Updating the server later
 
 ```sh

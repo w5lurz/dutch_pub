@@ -9,3 +9,23 @@
 		-Server
 	}
 }
+
+# The web version of the app (for iPhones until the App Store): static files from deploy/web
+# (publish-web.sh). It talks to the backend at $DOMAIN, so the backend allows this origin
+# (CORS_ORIGIN in backend.env). Unknown paths get index.html: the app routes them itself.
+{$WEB_DOMAIN} {
+	encode gzip
+	root * /srv/web
+	try_files {path} /index.html
+	file_server
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	# File names under _expo/ and assets/ change with their content: cache them long. Everything else
+	# (index.html, also served for the app's own paths) is checked again each time.
+	@hashed path /_expo/* /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	@other not path /_expo/* /assets/*
+	header @other Cache-Control "no-cache"
+}

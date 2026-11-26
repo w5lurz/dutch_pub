@@ -73,8 +73,11 @@ services:
             - '443:443/udp'
         environment:
             DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
+            WEB_DOMAIN: ${WEB_DOMAIN:?set WEB_DOMAIN in deploy/.env}
         volumes:
             - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            # The web version of the app (publish-web.sh copies it here; create the folder before the first start).
+            - ./web:/srv/web:ro
             # The HTTPS certificates (Let's Encrypt): kept across restarts, or Caddy asks for new ones each time.
             - caddy-data:/data
             - caddy-config:/config
