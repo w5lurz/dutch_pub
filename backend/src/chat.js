@@ -1,3 +1,4 @@
+import { isEmote } from '@dutch-pub/shared';
 import { roomById } from './rooms.js';
 import { identityError } from './socketAuth.js';
 
@@ -9,6 +10,10 @@ export const CHAT_HISTORY = 50;
 const CHAT_GAP_MS = Number(process.env.CHAT_GAP_MS ?? 1000);
 /** When each player last sent a message. */
 const lastSent = new Map();
+/** One emotion per 2 seconds per player at most; more often is ignored (no error: it is only a bubble). Env for tests. */
+const EMOTE_GAP_MS = Number(process.env.EMOTE_GAP_MS ?? 2000);
+/** When each player last showed an emotion. */
+const lastEmote = new Map();
 
 export let roomMessages = {};
 
@@ -49,6 +54,22 @@ export const chat = io => {
                 },
             ];
             io.to(`game-${roomId}`).emit('message-sent', roomMessages[`game-${roomId}`]);
+        });
+
+        // An emotion (a bubble above the player's name on every phone in the room), not stored.
+        socket.on('send-emote', payload => {
+            const { roomId, username, emote } = payload ?? {};
+            const room = roomById(roomId);
+            const error =
+                identityError(socket, username) ??
+                (!room || !room.players.some(player => player.username === username) ? 'You are not in this room.' : null);
+            if (error) {
+                socket.emit('action-rejected', error);
+                return;
+            }
+            if (!isEmote(emote) || Date.now() - (lastEmote.get(username) ?? 0) < EMOTE_GAP_MS) return;
+            lastEmote.set(username, Date.now());
+            io.to(`game-${roomId}`).emit('emote-sent', { username, emote });
         });
     });
 };

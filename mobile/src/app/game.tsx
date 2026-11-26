@@ -25,7 +25,7 @@ export default function GameScreen() {
     // Turn order for the seats: the room's player list (the server takes turns in that order).
     const roomPlayers = useAppSelector(state => (inGame !== undefined ? state.rooms[inGame]?.players : undefined));
     const playerOrder = useMemo(() => roomPlayers?.map(player => player.username), [roomPlayers]);
-    const { layCard, sendMessage, canSend, active, username, canStop, stopGame, swapCards, setReady } = useGameActions();
+    const { layCard, sendMessage, sendEmote, canSend, active, username, canStop, stopGame, swapCards, setReady } = useGameActions();
     const lastGameEnd = useAppSelector(state => state.general.lastGameEnd);
     const winner = useAppSelector(state => state.general.winner);
     // Chosen avatars from the room (kept current by the server); yours from your account, so a
@@ -80,6 +80,7 @@ export default function GameScreen() {
                 onLayCard={layCard}
                 messages={messages}
                 onSendMessage={sendMessage}
+                onSendEmote={sendEmote}
                 canSendMessage={canSend}
                 onStopGame={canStop ? stopGame : undefined}
                 winner={winner}

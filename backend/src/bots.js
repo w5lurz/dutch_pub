@@ -109,11 +109,11 @@ export const botMove = (game, username) => {
  */
 export const scheduleBotTurn = (io, roomId, game) => {
     const room = roomsList[roomId];
-    if (!room || games[roomId] !== game || game.phase === 'swap' || game.blindMiss) return;
+    if (!room || games[roomId] !== game || game.phase === 'swap' || game.blindMiss || game.pickedUp) return;
     const username = activeName(game);
     if (!isBot(room, username)) return;
     setTimeout(async () => {
-        if (games[roomId] !== game || game.phase === 'swap' || game.blindMiss || activeName(game) !== username) return;
+        if (games[roomId] !== game || game.phase === 'swap' || game.blindMiss || game.pickedUp || activeName(game) !== username) return;
         try {
             const move = botMove(game, username);
             const validation = move.draw ? { error: 'draw' } : checkCards(game, game.players[username], move);

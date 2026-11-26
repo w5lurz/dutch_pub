@@ -573,6 +573,26 @@ describe('socket game flow', () => {
         );
     });
 
+    test('an emotion reaches everyone in the room; too soon again or an unknown one is ignored', async () => {
+        const shown = Promise.all([waitFor(a, 'emote-sent'), waitFor(b, 'emote-sent')]);
+        a.emit('send-emote', { roomId, username: user.username, emote: 'hello' });
+        const [[toA], [toB]] = await shown;
+        assert.deepEqual(toA, { username: user.username, emote: 'hello' });
+        assert.deepEqual(toB, { username: user.username, emote: 'hello' });
+
+        let extra = 0;
+        const count = () => extra++;
+        b.on('emote-sent', count);
+        a.emit('send-emote', { roomId, username: user.username, emote: 'angry' }); // within 2 s
+        b.emit('send-emote', { roomId, username: guestName, emote: 'dance' }); // not an emotion
+        await new Promise(resolve => setTimeout(resolve, 300));
+        b.off('emote-sent', count);
+        assert.equal(extra, 0);
+
+        a.emit('send-emote', { roomId, username: guestName, emote: 'hello' });
+        assert.equal((await waitFor(a, 'action-rejected'))[0], 'You can only act as yourself.');
+    });
+
     test('picking up the pile gives the laid cards to the active player and passes the turn', async () => {
         const { active, waiting } = players();
         const laid = active.game.laidCards ?? [];
@@ -792,6 +812,106 @@ describe('turn timer, private rooms and an owner who is gone', () => {
         assert.equal(owner, user.username);
         assert.equal(reason, 'owner-left');
         assert.equal(rooms[roomId], undefined, 'the room is gone');
+    });
+});
+
+describe('a pause after picking up the pile', () => {
+    // Its own server with a 300 ms pause (the others run without one).
+    let paused;
+    let a; // the registered user, room owner
+    let b; // the guest
+    let roomId;
+    const views = {};
+    const connectPaused = async token => {
+        const socket = io(paused.baseUrl, { transports: ['websocket'], reconnection: false, auth: { token } });
+        await new Promise((resolve, reject) => {
+            socket.once('connect', resolve);
+            socket.once('connect_error', reject);
+        });
+        return socket;
+    };
+    const seats = () => {
+        const aOnTurn = views[user.username].active;
+        return aOnTurn
+            ? { on: { socket: a, name: user.username }, next: { socket: b, name: guestName } }
+            : { on: { socket: b, name: guestName }, next: { socket: a, name: user.username } };
+    };
+
+    before(async () => {
+        paused = await startServer({ PICK_UP_PAUSE_MS: '300' });
+        a = await connectPaused(userToken);
+        b = await connectPaused(guestToken);
+        const created = waitFor(a, 'rooms-listed');
+        a.emit('create-room', { name: `pause_${stamp}`, owner: user.username, slots: 2, visibility: 'public', settings: { turnTimer: 15 } });
+        const [rooms] = await created;
+        roomId = Number(Object.keys(rooms).find(key => rooms[key].name === `pause_${stamp}`));
+        const joined = waitFor(a, 'joined-room');
+        b.emit('join-room', { username: guestName, roomId });
+        await joined;
+        const started = Promise.all([waitFor(a, 'game-started'), waitFor(b, 'game-started')]);
+        a.emit('start-game', roomId);
+        await started;
+        const ready = waitFor(a, 'game-updated');
+        a.emit('player-ready', { roomId, username: user.username });
+        await ready;
+        const playing = Promise.all([waitFor(a, 'game-updated'), waitFor(b, 'game-updated')]);
+        b.emit('player-ready', { roomId, username: guestName });
+        const [[viewA], [viewB]] = await playing;
+        views[user.username] = viewA;
+        views[guestName] = viewB;
+    });
+
+    after(async () => {
+        a?.close();
+        b?.close();
+        await paused?.stop();
+    });
+
+    test('everyone sees who picked up the pile; the next turn waits for the pause', async () => {
+        // One card on the pile (not a 10: that would clear it).
+        const { on, next } = seats();
+        const hand = views[on.name].userCards.hand;
+        const cardIndex = hand.findIndex(card => card.value !== 10 && canLayCard(card, null));
+        assert.ok(cardIndex >= 0, 'a card to lay');
+        const laid = Promise.all([waitFor(on.socket, 'card-laid'), waitFor(next.socket, 'card-laid')]);
+        on.socket.emit('lay-card', { roomId, username: on.name, card: hand[cardIndex], cardIndex });
+        await laid;
+
+        // The next player can't lay on it (pretend) and picks it up.
+        const drawn = Promise.all([waitFor(on.socket, 'cards-drawn'), waitFor(next.socket, 'cards-drawn')]);
+        next.socket.emit('draw-cards', { roomId, username: next.name });
+        const [[onView], [nextView]] = await drawn;
+        for (const view of [onView, nextView]) {
+            assert.deepEqual(view.pickedUp, { username: next.name, count: 1 });
+            assert.equal(view.turnTimeLeft, null, 'no clock during the pause');
+        }
+        assert.equal(onView.active, true, 'the turn passed to the first player');
+
+        // No moves during the pause.
+        on.socket.emit('draw-cards', { roomId, username: on.name });
+        assert.equal((await waitFor(on.socket, 'action-rejected'))[0], 'Wait a moment, the pile is being picked up.');
+
+        // Then the turn starts, with its clock.
+        const [after] = await waitFor(on.socket, 'game-updated', 2000);
+        assert.equal(after.pickedUp, null);
+        assert.equal(after.active, true);
+        assert.ok(after.turnTimeLeft > 0, 'the clock runs');
+    });
+
+    test('picking up an empty pile shows nothing and passes the turn at once', async () => {
+        const [{ game }] = await new Promise(resolve => {
+            a.once('game-state', (...args) => resolve(args));
+            a.emit('get-game-state');
+        });
+        views[user.username] = game;
+        const { on } = seats();
+        assert.equal(game.laidCards, null);
+        const drawn = waitFor(on.socket, 'cards-drawn');
+        on.socket.emit('draw-cards', { roomId, username: on.name });
+        const [view] = await drawn;
+        assert.equal(view.pickedUp, null);
+        assert.equal(view.active, false, 'the turn passed');
+        assert.ok(view.turnTimeLeft > 0, 'and the next turn is timed at once');
     });
 });
 

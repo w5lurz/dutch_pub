@@ -128,11 +128,11 @@ export const notifyTurn = (io, roomId, game) => {
     // Unit tests run the game with a fake socket.io server.
     if (typeof io?.of !== 'function') return;
     const username = onTurn(game);
-    if (!username || game.phase === 'swap' || game.blindMiss || lastOnTurn.get(game) === username) return;
+    if (!username || game.phase === 'swap' || game.blindMiss || game.pickedUp || lastOnTurn.get(game) === username) return;
     lastOnTurn.set(game, username);
     setTimeout(async () => {
         const room = roomsList[roomId];
-        if (!room || games[roomId] !== game || onTurn(game) !== username || game.blindMiss || !isAway(io, username)) return;
+        if (!room || games[roomId] !== game || onTurn(game) !== username || game.blindMiss || game.pickedUp || !isAway(io, username)) return;
         try {
             // One request per language (each phone gets the notification in its app's language).
             const byLanguage = new Map();

@@ -12,6 +12,8 @@ const PlayedGame = db.played_game;
 const BLIND_REVEAL_MS = Number(process.env.BLIND_REVEAL_MS ?? 3000);
 /** One second of the room's turn timer, in ms (env for tests, which run the clock faster). */
 const TURN_SECOND_MS = Number(process.env.TURN_SECOND_MS ?? 1000);
+/** How long everyone sees who picked up the pile before the next turn starts (env for tests; 0 = no pause). */
+const PICK_UP_PAUSE_MS = Number(process.env.PICK_UP_PAUSE_MS ?? 5000);
 
 /** The running turn clock of each game (cleared when the turn changes, the game ends or is stopped). */
 const turnClocks = new WeakMap();
@@ -51,14 +53,14 @@ export const startTurnClock = (io, roomId, game) => {
     scheduleBotTurn(io, roomId, game);
     const room = roomsList[roomId];
     const limit = normalizeRoomSettings(room?.settings).turnTimer * TURN_SECOND_MS;
-    if (!room || games[roomId] !== game || game.phase === 'swap' || game.blindMiss || limit <= 0) return;
+    if (!room || games[roomId] !== game || game.phase === 'swap' || game.blindMiss || game.pickedUp || limit <= 0) return;
     game.turnEndsAt = Date.now() + limit;
     game.turnTime = limit;
     turnClocks.set(
         game,
         setTimeout(() => {
             turnClocks.delete(game);
-            if (games[roomId] !== game || game.blindMiss) return;
+            if (games[roomId] !== game || game.blindMiss || game.pickedUp) return;
             const skipped = timeOutTurn(game);
             if (!skipped) return;
             io.to(`game-${roomId}`).emit('turn-timed-out', skipped);
@@ -69,6 +71,29 @@ export const startTurnClock = (io, roomId, game) => {
 };
 
 /**
+ * Someone just picked up the pile (`count` cards) in game `game` of room `roomId`, and the next
+ * player is set: everyone sees who it was (`game.pickedUp`) for `PICK_UP_PAUSE_MS` before that turn
+ * starts (no moves, no clock, no bot meanwhile). Nothing to see (an empty pile) or no pause: the turn starts at once.
+ */
+const pauseAfterPickUp = (io, roomId, game, username, count) => {
+    if (PICK_UP_PAUSE_MS <= 0 || count === 0) {
+        startTurnClock(io, roomId, game);
+        return;
+    }
+    clearTurnClock(game);
+    game.pickedUp = { username, count };
+    setTimeout(() => finishPickUpPause(io, roomId, game), PICK_UP_PAUSE_MS).unref?.();
+};
+
+/** Ends the pause after a pick-up (`pauseAfterPickUp`): the next turn starts. Nothing when the game is gone. */
+export const finishPickUpPause = (io, roomId, game) => {
+    if (games[roomId] !== game || !game.pickedUp) return;
+    game.pickedUp = null;
+    startTurnClock(io, roomId, game);
+    if (roomsList[roomId]) sendUiDataToSocket(io, roomsList[roomId], game, 'game-updated');
+};
+
+/**
  * Ends a missed blind card's moment (`game.blindMiss`): its player picks up the pile with it and
  * the next player is on. Nothing when the game was stopped or finished meanwhile.
  */
@@ -76,11 +101,12 @@ export const finishBlindMiss = (io, roomId, game) => {
     if (games[roomId] !== game || !game.blindMiss) return;
     const { username } = game.blindMiss;
     game.blindMiss = null;
+    const count = game.laidCards.length;
     game.players[username].userCards.hand = [...game.laidCards].sort((a, b) => a.value - b.value);
     game.laidCards = null;
     game.call = null;
     setActivePlayerNext(game);
-    startTurnClock(io, roomId, game);
+    pauseAfterPickUp(io, roomId, game, username, count);
     if (roomsList[roomId]) sendUiDataToSocket(io, roomsList[roomId], game, 'cards-drawn');
 };
 
@@ -118,7 +144,7 @@ const validateTurn = (socket, { roomId, username }) => {
     if (game.phase === 'swap') {
         return { error: 'Swap your cards first, then tap Ready.' };
     }
-    if (game.blindMiss) {
+    if (game.blindMiss || game.pickedUp) {
         return { error: 'Wait a moment, the pile is being picked up.' };
     }
     if (!player.active) {
@@ -303,12 +329,13 @@ export const performDraw = (io, roomId, username) => {
     const currentRoom = roomsList[roomId];
     const currentGame = games[roomId];
     const userCards = currentGame.players[username].userCards;
+    const count = currentGame.laidCards?.length ?? 0;
     userCards.hand = [...(userCards.hand ?? []), ...(currentGame.laidCards ?? [])].sort((a, b) => a.value - b.value);
     currentGame.laidCards = null;
-    // The next player is on (after a called player: the one after them).
+    // The next player is on (after a called player: the one after them), once everyone saw the pick-up.
     currentGame.call = null;
     setActivePlayerNext(currentGame);
-    startTurnClock(io, roomId, currentGame);
+    pauseAfterPickUp(io, roomId, currentGame, username, count);
     sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
 };
 
@@ -522,6 +549,7 @@ export const buildPlayerView = (room, game, username) => {
         phase: game.phase ?? 'play',
         ready: !!own.ready,
         blindMiss: game.blindMiss ?? null,
+        pickedUp: game.pickedUp ?? null,
         direction: game.direction === -1 ? -1 : 1,
         call: game.call ?? null,
         turnTimeLeft: game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : null,

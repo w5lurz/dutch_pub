@@ -8,11 +8,11 @@ import { hasAnyPlayableCard, type CardRules, type Game } from '@dutch-pub/shared
  *
  * A player without any cards left has won (the server sends `game-won`), so no draw then.
  * Nothing is played in the swap phase, nor while a missed blind card is shown (the server
- * picks up the pile itself then).
+ * picks up the pile itself then), nor during the pause after a pick-up.
  */
 export function pileDrawSignature(roomId: number | undefined, game: Game, rules: CardRules = {}): string | null {
     const { userCards, laidCards, active } = game;
-    if (roomId === undefined || !active || game.phase === 'swap' || game.blindMiss) return null;
+    if (roomId === undefined || !active || game.phase === 'swap' || game.blindMiss || game.pickedUp) return null;
     if (userCards.hand.length === 0 && userCards.tableFlipped.length === 0 && userCards.table === 0) return null;
     if (hasAnyPlayableCard(userCards, laidCards, rules)) return null;
     return JSON.stringify([roomId, userCards.hand, userCards.tableFlipped, userCards.table, laidCards]);

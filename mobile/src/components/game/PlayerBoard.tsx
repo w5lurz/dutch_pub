@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import * as Haptics from 'expo-haptics';
-import { Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import i18n from '@/i18n';
 import { canLayCard, type CardRules, type Cards, type TCard, type UserCards } from '@dutch-pub/shared';
 
@@ -59,6 +59,8 @@ type PlayerBoardProps = {
 	cornerRight?: ReactNode;
 	/** Set to your avatar and name (the winner's shot glass stops beside them). */
 	avatarRef?: Ref<ViewRef | null>;
+	/** Tapping your avatar or name (opens the emotions). */
+	onPressYou?: () => void;
 	/**
 	 * Swap phase, until you are ready: tapping a hand card and a face-up card (either first)
 	 * swaps them (`onSwap`); your face-up cards are shown full size meanwhile.
@@ -100,6 +102,7 @@ export function PlayerBoard({
 	corner,
 	cornerRight,
 	avatarRef,
+	onPressYou,
 	onSwap,
 	secondsLeft,
 	cardRules,
@@ -281,10 +284,16 @@ export function PlayerBoard({
 
 	// Avatar and name on one line, like at the opponents' seats.
 	const you = (
-		<View
+		<Pressable
 			accessible
+			accessibilityRole={onPressYou ? 'button' : undefined}
 			accessibilityLabel={[i18n.t('game.you', { name: username ?? '' }), ...(active ? [i18n.t('game.seat.onTurn')] : [])].join(', ')}
-			className="flex-row items-center justify-center"
+			accessibilityHint={onPressYou ? i18n.t('game.emote.hint') : undefined}
+			disabled={!onPressYou}
+			onPress={onPressYou}
+			hitSlop={6}
+			testID="you"
+			className="flex-row items-center justify-center active:opacity-70"
 		>
 			{/* Just the avatar and the name (measured for the winner's shot glass). */}
 			<View ref={avatarRef} collapsable={false} className="flex-row items-center gap-1.5">
@@ -312,7 +321,7 @@ export function PlayerBoard({
 					</View>
 				) : null}
 			</View>
-		</View>
+		</Pressable>
 	);
 
 	// One centred column: you, your table stacks, your hand (drawn last, so it lies on top of

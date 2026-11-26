@@ -3,6 +3,7 @@
 // Server handlers live in backend/src/{rooms,game,chat,guests}.js.
 
 import type { ChatMessage, Game, RoomSettings, TCard, TRooms } from './types';
+import type { Emote, EmoteSent } from './emotes';
 
 /** Reply to `get-game-state`: everything a client needs to re-sync after a reconnect. */
 export type GameState = {
@@ -34,6 +35,8 @@ export interface ServerToClientEvents {
     /** `reason` 'owner-left': the owner was disconnected for 2 minutes, so the server stopped it. */
     'game-stopped': (ownerUsername: string, rooms: TRooms, reason?: 'owner-left') => void;
     'message-sent': (messages: Array<ChatMessage>) => void;
+    /** Someone in the room showed an emotion (a bubble above their name for a moment). */
+    'emote-sent': (emote: EmoteSent) => void;
     /** Sent only to the player whose `lay-card` was refused by the server (not their turn, invalid card, ...). */
     'lay-card-rejected': (reason: string) => void;
     /** Sent only to the sender when any other action was refused (not logged in, not the owner, ...). */
@@ -83,6 +86,8 @@ export interface ClientToServerEvents {
     /** Swap phase: you are done swapping. Once everyone is, the play phase starts. */
     'player-ready': (payload: { roomId: number; username?: string }) => void;
     'send-message': (payload: { roomId: number; username?: string; message: string }) => void;
+    /** Show an emotion to everyone in the room (`emote-sent`). Too often (see the server) is ignored. */
+    'send-emote': (payload: { roomId: number; username?: string; emote: Emote }) => void;
     /** Ask for a `game-state` re-sync (after reconnecting / returning to the foreground). */
     'get-game-state': () => void;
 }

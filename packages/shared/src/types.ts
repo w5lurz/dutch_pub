@@ -101,6 +101,9 @@ export type GamePhase = 'swap' | 'play';
 /** A face-down card that was played blind and doesn't fit the pile: shown for a moment before its player picks up the pile. */
 export type BlindMiss = { username: string; card: TCard };
 
+/** Someone just picked up the pile (`count` cards): everyone sees it for a few seconds before the next turn starts. */
+export type PickedUp = { username: string; count: number };
+
 /** Per-player view of a game, as sent by the server. */
 export type Game = {
     userCards: UserCards;
@@ -115,6 +118,8 @@ export type Game = {
     ready?: boolean;
     /** Set while a missed blind card lies on top of the pile (no moves meanwhile). */
     blindMiss?: BlindMiss | null;
+    /** Set during the pause after a pick-up (no moves, no clock meanwhile; the next player is already marked active). */
+    pickedUp?: PickedUp | null;
     /**
      * Turn timer: ms left of the current turn when this view was sent, and the whole turn's
      * length. null / missing: no clock is running (timer off, swap phase, missed blind card).

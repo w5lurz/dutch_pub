@@ -8,7 +8,7 @@
 // (a game ends -> its row is deleted). Mention this in the privacy policy.
 import { modifyRoomMessages, roomMessages } from './chat.js';
 import { readyBots } from './bots.js';
-import { finishBlindMiss, startTurnClock } from './game.js';
+import { finishBlindMiss, finishPickUpPause, startTurnClock } from './game.js';
 import db from './models/index.js';
 import { games, modifyRooms, roomsList, watchOwnersAfterRestart } from './rooms.js';
 
@@ -51,7 +51,7 @@ export const restoreRooms = rows => {
 
 /**
  * Restarts what was running when the snapshot was taken: each turn gets its full time again,
- * a missed blind card being shown is picked up at once, and every running game waits for its
+ * a missed blind card being shown is picked up at once, a pause after a pick-up ends at once, and every running game waits for its
  * owner to come back (as after a disconnect: stopped if they don't within 2 minutes).
  */
 export const resumeClocks = io => {
@@ -59,6 +59,7 @@ export const resumeClocks = io => {
         game.turnEndsAt = null;
         game.turnTime = null;
         if (game.blindMiss) finishBlindMiss(io, roomId, game);
+        else if (game.pickedUp) finishPickUpPause(io, roomId, game);
         else startTurnClock(io, roomId, game);
         // Bots that weren't ready yet when the server stopped.
         if (game.phase === 'swap') readyBots(io, roomId, game);

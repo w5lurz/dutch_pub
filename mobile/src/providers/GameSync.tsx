@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { setMessages } from '@/store/chatSlice';
 import { initialState as emptyGame, updateGame } from '@/store/gameSlice';
 import { clearNotifications, registerForPush } from '@/lib/notifications';
+import { showEmote } from '@/lib/emotes';
 import { playSound } from '@/lib/sounds';
 import { setLastGameEnd, setToast, setWinner } from '@/store/generalSlice';
 import { setRooms } from '@/store/roomsSlice';
@@ -148,6 +149,7 @@ export function GameSync() {
         socket.on('lay-card-rejected', onLayCardRejected);
         socket.on('game-state', onGameState);
         socket.on('message-sent', onMessageSent);
+        socket.on('emote-sent', showEmote);
         return () => {
             clearTimeout(gameWonTimer);
             socket.off('rooms-listed', onRooms);
@@ -164,6 +166,7 @@ export function GameSync() {
             socket.off('lay-card-rejected', onLayCardRejected);
             socket.off('game-state', onGameState);
             socket.off('message-sent', onMessageSent);
+            socket.off('emote-sent', showEmote);
         };
     }, [socket, dispatch]);
 

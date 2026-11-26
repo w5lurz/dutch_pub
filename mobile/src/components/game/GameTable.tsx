@@ -1,21 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import i18n from '@/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { CardRules, Cards, ChatMessage, Game, TCard } from '@dutch-pub/shared';
+import type { CardRules, Cards, ChatMessage, Emote, Game, TCard } from '@dutch-pub/shared';
+import { useEmotes } from '@/lib/emotes';
 
 import { Screen } from '@/components/ui';
 
 import { needsAceCall } from './aceCall';
 import { AceCallSheet } from './AceCallSheet';
 import { Ashtray } from './Ashtray';
-import { useBigPickUp } from './bigPickUp';
+import { BIG_PICK_UP, useBigPickUp } from './bigPickUp';
 import { CardDragProvider, measure, type Rect, type ViewRef } from './CardDrag';
 import { CardSettingsProvider, type CardSettings } from './cardSettings';
 import { tableLayout, useCardSize, type CardSize } from './cardSize';
 import { ChatButton } from './ChatButton';
 import { ChatModal } from './ChatModal';
 import { Librarian } from './Librarian';
+import { EmoteBubble } from './EmoteBubble';
+import { EmotePicker } from './EmotePicker';
+import { PickUpBanner } from './PickUpBanner';
 import { PileArea } from './PileArea';
 import { PlayerBoard } from './PlayerBoard';
 import { Seat } from './Seat';
@@ -59,6 +63,8 @@ export type GameTableProps = {
 	tableSeed?: number;
 	messages: ChatMessage[];
 	onSendMessage: (message: string) => boolean;
+	/** Shows an emotion to everyone at the table (tap your avatar or name). Missing: no emotions. */
+	onSendEmote?: (emote: Emote) => void;
 	canSendMessage: boolean;
 	/** The room's card settings (special-card stamps, back colour); room defaults if omitted. */
 	cardSettings?: Partial<CardSettings>;
@@ -113,13 +119,14 @@ export function glassPath(root: Rect, seat: Rect): { from: Point; to: Point } {
  */
 export function GameTable({
 	game,
-	active,
+	active: activeProp,
 	username,
 	playerOrder,
 	avatars,
 	onLayCard,
 	messages,
 	onSendMessage,
+	onSendEmote,
 	canSendMessage,
 	cardSettings,
 	onStopGame,
@@ -129,6 +136,8 @@ export function GameTable({
 	cardRules,
 	tableSeed = 0,
 }: GameTableProps) {
+	// Right after a pick-up everyone sees who it was for a moment: nobody is on turn meanwhile.
+	const active = activeProp && !game.pickedUp;
 	const { paletteClass } = useTableTheme();
 	const window = useWindowDimensions();
 	const insets = useSafeAreaInsets();
@@ -148,6 +157,15 @@ export function GameTable({
 		setSeenCount(messages.length);
 		setChatOpen(open);
 	};
+
+	// Emotions: a bubble above the player's name (`emote-sent`); yours from a picker above your avatar.
+	const emotes = useEmotes();
+	const [emotePicker, setEmotePicker] = useState(false);
+	// Looked up when a bubble or the picker is placed (not during render).
+	const viewOf = useCallback(
+		(name: string | null) => (name === null ? rootRef.current : name === username ? avatarRef.current : (seatRefs.current.get(name) ?? null)),
+		[username],
+	);
 
 	// A big pick-up (more than six cards) calls the librarian, on every device.
 	const [bigPickUp, hideLibrarian] = useBigPickUp(game, username);
@@ -170,7 +188,7 @@ export function GameTable({
 		};
 	}, [winner, username]);
 
-	const activeOpponent = Object.entries(game.opponents).find(([, opponent]) => opponent.active)?.[0];
+	const activeOpponent = game.pickedUp ? undefined : Object.entries(game.opponents).find(([, opponent]) => opponent.active)?.[0];
 	const turnOf = active ? null : activeOpponent;
 	// Swap phase (right after the deal): nobody is on turn yet; you can swap until you are ready.
 	const swapPhase = game.phase === 'swap';
@@ -214,7 +232,7 @@ export function GameTable({
 				>
 					<Seat
 						name={seat.name}
-						opponent={swapPhase ? { ...game.opponents[seat.name], active: false } : game.opponents[seat.name]}
+						opponent={swapPhase || game.pickedUp ? { ...game.opponents[seat.name], active: false } : game.opponents[seat.name]}
 						ready={swapPhase ? !!game.opponents[seat.name].ready : undefined}
 						secondsLeft={secondsLeft}
 						position={position}
@@ -258,6 +276,7 @@ export function GameTable({
 			tight={short}
 			column={pilesColumn}
 			blindMiss={game.blindMiss}
+			pickedUp={game.pickedUp}
 			username={username}
 			call={game.call}
 			reversed={game.direction === -1}
@@ -330,6 +349,7 @@ export function GameTable({
 							}
 							cornerRight={<LampButton />}
 							avatarRef={avatarRef}
+							onPressYou={onSendEmote ? () => setEmotePicker(true) : undefined}
 							onSwap={swapPhase && !game.ready ? onSwapCards : undefined}
 							secondsLeft={secondsLeft}
 						/>
@@ -387,8 +407,33 @@ export function GameTable({
 			<Moth insetTop={insets.top} />
 			{/* By day: a bee, a butterfly or (rarely) a frisbee passing over now and then. */}
 			<DayVisitors />
+			{/* Emotions above the players' names. */}
+			{Object.entries(emotes)
+				.filter(([name]) => name === username || name in game.opponents)
+				.map(([name, shown]) => (
+					<EmoteBubble
+						key={`${name}-${shown.key}`}
+						name={name}
+						avatarId={avatars?.[name]}
+						emote={shown.emote}
+						viewOf={viewOf}
+					/>
+				))}
+			{/* Right after a pick-up (the pause before the next turn): who it was, big, for everyone. */}
+			{game.pickedUp && game.pickedUp.count <= BIG_PICK_UP ? <PickUpBanner pickedUp={game.pickedUp} username={username} /> : null}
 			{/* A big pick-up: the librarian comes up and shelves a book, with the player's name. */}
 			{bigPickUp ? <Librarian key={bigPickUp.key} name={bigPickUp.name} count={bigPickUp.count} onDone={hideLibrarian} /> : null}
+			{emotePicker && onSendEmote ? (
+				<EmotePicker
+					username={username}
+					viewOf={viewOf}
+					onPick={(emote) => {
+						setEmotePicker(false);
+						onSendEmote(emote);
+					}}
+					onClose={() => setEmotePicker(false)}
+				/>
+			) : null}
 		</View>
 	);
 }

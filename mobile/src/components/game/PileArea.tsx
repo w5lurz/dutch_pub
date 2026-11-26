@@ -3,7 +3,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import i18n from '@/i18n';
 import { cardName } from '@/i18n/cards';
-import type { BlindMiss, Cards, TCard } from '@dutch-pub/shared';
+import type { BlindMiss, Cards, PickedUp, TCard } from '@dutch-pub/shared';
 
 import Animated, {
     Easing,
@@ -79,6 +79,8 @@ type PileAreaProps = {
     column?: boolean;
     /** A face-down card played blind that doesn't fit: it lies on top of the pile for a moment, with a message. */
     blindMiss?: BlindMiss | null;
+    /** Who just picked up the pile (the pause before the next turn): the message says so. */
+    pickedUp?: PickedUp | null;
     /** Your username (the message then says "Your"). */
     username?: string;
     /** The last Ace's call (who must lay a magic card now). */
@@ -235,7 +237,7 @@ function BurntHeap({ count, size }: { count: number; size: CardSize }) {
  * a heap of burnt backs.
  * The laid pile is where you drop a card to play it (`CardDropZone`).
  */
-export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false, blindMiss, username, call, reversed = false }: PileAreaProps) {
+export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false, blindMiss, pickedUp, username, call, reversed = false }: PileAreaProps) {
     const burnt = burntCards?.length ?? 0;
     const { deckRef, dropZoneRef } = useCardDrag();
     const still = useReducedMotion();
@@ -280,7 +282,11 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
 
     // An Ace's call, while the called player is on turn.
     const calling = !blindMiss && call && (turnOf === null ? call.target === username : turnOf === call.target);
-    const turnText = blindMiss
+    const turnText = pickedUp
+        ? pickedUp.username === username
+            ? i18n.t('game.turn.youPickedUp', { count: pickedUp.count })
+            : i18n.t('game.turn.pickedUp', { name: pickedUp.username, count: pickedUp.count })
+        : blindMiss
         ? blindMiss.username === username
             ? i18n.t('game.turn.yourBlindMiss', { card: cardName(blindMiss.card) })
             : i18n.t('game.turn.blindMiss', { name: blindMiss.username, card: cardName(blindMiss.card) })
@@ -296,7 +302,7 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
             ? i18n.t('game.turn.player', { name: turnOf })
             : i18n.t('game.turn.waiting');
     const calledYou = !!(calling && call && call.target === username && call.by !== username);
-    const turnColours = blindMiss ? 'bg-red-200 text-red-900' : calling ? 'bg-amber-200 text-amber-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
+    const turnColours = blindMiss || pickedUp ? 'bg-red-200 text-red-900' : calling ? 'bg-amber-200 text-amber-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
 
     return (
         <View ref={areaRef} collapsable={false} className="items-center gap-1.5">

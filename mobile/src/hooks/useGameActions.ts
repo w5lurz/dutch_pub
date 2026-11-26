@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { canLayCard, type Cards, type TCard } from '@dutch-pub/shared';
+import { canLayCard, type Cards, type Emote, type TCard } from '@dutch-pub/shared';
 
 import { pileDrawSignature } from '@/components/game/autoDraw';
 import { useRoomSettings } from '@/hooks/useRoomSettings';
@@ -12,6 +12,8 @@ import { setToast } from '@/store/generalSlice';
 
 /** Minimum time between two chat messages (as on the web). */
 export const CHAT_COOLDOWN_MS = 3000;
+/** The server takes one emotion per 2 seconds per player (more often is ignored there). */
+export const EMOTE_COOLDOWN_MS = 2000;
 
 /**
  * The player's moves in the running game (`user.inGame` is the room id):
@@ -21,6 +23,7 @@ export const CHAT_COOLDOWN_MS = 3000;
  *   the card was sent (false: refused locally, with a toast).
  * - Auto pick-up: on your turn with no playable card it emits `draw-cards` once per state.
  * - `sendMessage(text)` with a 3 s cooldown (`canSend`).
+ * - `sendEmote(emote)`: an emotion above your name for everyone (one per 2 s).
  * - `stopGame()`: the room owner ends the game for everyone (`canStop`: you own the room).
  * - Swap phase: `swapCards(hand, faceUp)` trades a hand card with a face-up card, `setReady()`
  *   says you are done (no moves until everyone is).
@@ -49,8 +52,8 @@ export function useGameActions() {
                 );
                 return false;
             }
-            // A missed blind card is being shown: the pile is about to be picked up.
-            if (game.blindMiss) return false;
+            // A missed blind card is being shown, or everyone is seeing who picked up the pile: no moves.
+            if (game.blindMiss || game.pickedUp) return false;
             // Several cards laid together: all of the same value, the first must fit the pile.
             const several = Array.isArray(card) ? card : null;
             const first = several ? several[0] : (card as TCard | number);
@@ -90,7 +93,7 @@ export function useGameActions() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             return true;
         },
-        [active, laidCards, roomId, username, socket, dispatch, game.phase, game.blindMiss, cardRules],
+        [active, laidCards, roomId, username, socket, dispatch, game.phase, game.blindMiss, game.pickedUp, cardRules],
     );
 
     // Swap phase: trade a hand card with a face-up card, and say when you are done.
@@ -118,16 +121,9 @@ export function useGameActions() {
         if (drawnFor.current === signature || roomId === undefined) return;
         drawnFor.current = signature;
         socket.emit('draw-cards', { roomId, username });
-        dispatch(
-            setToast({
-                id: `cards-drawn-${Date.now()}`,
-                type: 'sad',
-                message: i18n.t('game.toast.autoPickedUp'),
-                duration: 3000,
-            }),
-        );
+        // Everyone, you too, then sees who picked up the pile (the banner during the pause after it).
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    }, [connected, roomId, game, username, socket, dispatch, cardRules]);
+    }, [connected, roomId, game, username, socket, cardRules]);
 
     // Chat cooldown.
     const [canSend, setCanSend] = useState(true);
@@ -147,6 +143,17 @@ export function useGameActions() {
         [canSend, roomId, username, socket],
     );
 
+    // Emotions (a bubble above your name on every phone at the table). Too soon again does nothing.
+    const lastEmote = useRef(0);
+    const sendEmote = useCallback(
+        (emote: Emote) => {
+            if (roomId === undefined || Date.now() - lastEmote.current < EMOTE_COOLDOWN_MS) return;
+            lastEmote.current = Date.now();
+            socket.emit('send-emote', { roomId, username, emote });
+        },
+        [roomId, username, socket],
+    );
+
     // Stopping the game: only the room's owner (the server checks again). Everyone then gets
     // `game-stopped` (GameSync), which ends the game on every device.
     const owner = useAppSelector(state => (roomId !== undefined ? state.rooms[roomId]?.owner : undefined));
@@ -155,7 +162,7 @@ export function useGameActions() {
         if (canStop && roomId !== undefined) socket.emit('stop-game', roomId);
     }, [canStop, roomId, socket]);
 
-    return { layCard, sendMessage, canSend, active, username, roomId, canStop, stopGame, swapCards, setReady };
+    return { layCard, sendMessage, sendEmote, canSend, active, username, roomId, canStop, stopGame, swapCards, setReady };
 }
 
 export default useGameActions;
