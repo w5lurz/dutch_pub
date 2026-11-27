@@ -5,13 +5,15 @@ import { Avatar } from '@/components/ui';
 import type { LeaderBoardEntry } from './LeaderBoardRow';
 
 /**
- * Each place's step: medal, height and colour. Literal gold / silver / bronze (not the palette,
- * which flips in dark mode and turned silver into dark gray), with dark text on them.
+ * Each place's step: medal, how much taller than the lowest step it is, and colour. The steps grow
+ * with their text (large font settings), so it never touches the bottom. Literal gold / silver /
+ * bronze (not the palette, which flips in dark mode and turned silver into dark gray), with dark
+ * text on them.
  */
-const STEPS: Record<1 | 2 | 3, { medal: string; height: number; fill: string; edge: string }> = {
-    1: { medal: '🥇', height: 72, fill: '#facc15', edge: '#ca8a04' },
-    2: { medal: '🥈', height: 52, fill: '#d1d5db', edge: '#9ca3af' },
-    3: { medal: '🥉', height: 38, fill: '#fdba74', edge: '#ea580c' },
+const STEPS: Record<1 | 2 | 3, { medal: string; extra: number; fill: string; edge: string }> = {
+    1: { medal: '🥇', extra: 34, fill: '#facc15', edge: '#ca8a04' },
+    2: { medal: '🥈', extra: 14, fill: '#d1d5db', edge: '#9ca3af' },
+    3: { medal: '🥉', extra: 0, fill: '#fdba74', edge: '#ea580c' },
 };
 
 function Place({ entry, place, isYou }: { entry: LeaderBoardEntry; place: 1 | 2 | 3; isYou: boolean }) {
@@ -37,7 +39,7 @@ function Place({ entry, place, isYou }: { entry: LeaderBoardEntry; place: 1 | 2 
                 </View>
             ) : null}
             <View
-                style={{ height: step.height, backgroundColor: step.fill, borderColor: step.edge }}
+                style={{ paddingTop: 5 + step.extra / 2, paddingBottom: 5 + step.extra / 2, backgroundColor: step.fill, borderColor: step.edge }}
                 className="mt-1 w-full items-center justify-center rounded-t-md border-2 border-b-0"
             >
                 <Text style={{ color: '#111827', fontSize: 18, fontWeight: '700' }}>{entry.wins}</Text>
