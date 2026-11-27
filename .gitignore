@@ -9,6 +9,9 @@
 .env.development.local
 .env.test.local
 .env.production.local
+# The Sentry token for uploading source maps (mobile/scripts/update.mjs). Here, not in mobile/.gitignore:
+# that file is part of the app's fingerprint.
+.env.sentry-build-plugin
 
 npm-debug.log*
 yarn-debug.log*

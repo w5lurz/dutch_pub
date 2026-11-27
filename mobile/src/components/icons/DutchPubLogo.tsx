@@ -5,7 +5,8 @@ import { useTheme } from '@/lib/theme';
 import { iconA11y, iconSize, type IconProps } from './types';
 
 /**
- * The Dutch Pub logo (copied from the web). Default 40x40 (h-10 w-10), `color` is the
+ * The Dutch Pub logo: "Holland" above "Kocsma" (Dutch Pub in Hungarian), the big H shared by both
+ * rows, drawn with straight strokes (once "Holland Kártya", from the web). Default 40x40 (h-10 w-10), `color` is the
  * stroke (default: the accent blue, readable on the light background; the web's blue-300 was faint).
  */
 export function DutchPubLogo({ color, accessibilityLabel = 'Dutch Pub', ...props }: IconProps) {
@@ -29,14 +30,14 @@ export function DutchPubLogo({ color, accessibilityLabel = 'Dutch Pub', ...props
             <Line {...thin} x1="28.29" y1="245.58" x2="28.29" y2="425.57" />
             <Polyline {...thin} points="34.72 335.58 73.29 335.58 162.65 246.22" />
             <Line {...thin} x1="162.65" y1="425.57" x2="72.97" y2="335.9" />
-            <Polyline {...thin} points="226.29 377.71 146.58 377.71 146.58 298.29 226.29 298.29 226.29 395.21" />
-            <Line {...thin} x1="226.29" y1="234.01" x2="194.15" y2="275.3" />
-            <Polyline {...thin} points="253.34 290.9 253.34 313.53 253.34 395.21" />
-            <Line {...thin} x1="253.34" y1="313.53" x2="317.22" y2="313.53" />
-            <Line {...thin} x1="336.1" y1="245.55" x2="336.1" y2="424.91" />
-            <Line {...thin} x1="352.52" y1="268.47" x2="320.58" y2="268.47" />
-            <Polyline {...thin} points="362.28 290.9 362.28 356.2 430.22 356.2 430.22 290.9 430.22 418.18 362.28 418.18 362.28 391.71" />
-            <Polyline {...thin} points="536.12 377.71 456.41 377.71 456.41 298.29 536.12 298.29 536.12 395.21" />
+            {/* "ocsma" on the bottom row's x-height, the m's stems like the top row's n. */}
+            <Rect {...thin} x="146.58" y="298.29" width="54" height="79.42" />
+            <Polyline {...thin} points="272.58 298.29 226.58 298.29 226.58 377.71 272.58 377.71" />
+            <Polyline {...thin} points="344.58 298.29 298.58 298.29 298.58 338 344.58 338 344.58 377.71 298.58 377.71" />
+            <Polyline {...thin} points="370.58 290.9 370.58 308.43 370.58 383.64" />
+            <Polyline {...thin} points="370.58 308.43 408.58 308.43 408.58 383.64" />
+            <Polyline {...thin} points="408.58 308.43 446.58 308.43 446.58 383.64" />
+            <Polyline {...thin} points="536.12 377.71 472.58 377.71 472.58 298.29 536.12 298.29 536.12 395.21" />
         </Svg>
     );
 }
