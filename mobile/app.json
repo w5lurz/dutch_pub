@@ -1,0 +1,87 @@
+{
+  "expo": {
+    "name": "Dutch Pub",
+    "slug": "dutch-pub",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c0bd4405-44d2-40ed-8c93-f876885e4680"
+    },
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "dutchpub",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "requireFullScreen": true,
+      "bundleIdentifier": "hu.dutchpub.app"
+    },
+    "android": {
+      "package": "hu.dutchpub.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#374151",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#374151",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT_UP"
+        }
+      ],
+      "@sentry/react-native",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#374151",
+          "defaultChannel": "turn"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c0bd4405-44d2-40ed-8c93-f876885e4680"
+      }
+    },
+    "owner": "w5larz"
+  }
+}

@@ -1,54 +1,83 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import cookieSession from 'cookie-session';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
 
 import db from './models/index.js';
+import { addMissingColumns } from './models/upgrade.js';
+import { serverError } from './utils/utils.js';
 import usersRouters from './routes/user.routes.js';
 import authRouters from './routes/auth.routes.js';
 import playedGamesRoutes from './routes/played_game.routes.js';
 import { rooms } from './rooms.js';
 import { game } from './game.js';
 import { chat } from './chat.js';
-import { guests } from './guests.js';
-
-console.log('SAS3', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
-// dotenv.config({ path: '.env' });
-console.log('SAS4', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
-
-// to refresh and purify db data {force: true}
+import { socketAuth } from './socketAuth.js';
+import { startPersistence } from './persistence.js';
+import { push } from './push.js';
+import { pages } from './pages.js';
+import { passwordReset } from './passwordReset.js';
+import { guardHandlers, limitEvents } from './socketSafety.js';
+import { requireAppVersion, socketAppVersion } from './appVersion.js';
 
 const { json } = bodyParser;
 
 const app = express();
-
-const port = 3030;
-const server = http.Server(app);
-
-db.sequelize.sync();
-
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
-
-app.use(json());
-
-if (!process.env.COOKIE_SECRET) {
-    throw new Error('COOKIE_SECRET environment variable is not set');
+app.disable('x-powered-by');
+// Behind a proxy (ngrok, a host's load balancer) set TRUST_PROXY (e.g. 1 = one proxy in front), so
+// the rate limits see the phone's address instead of the proxy's. Don't set it without a proxy:
+// then anyone could pretend to be another address with an X-Forwarded-For header.
+if (process.env.TRUST_PROXY) {
+    app.set('trust proxy', /^\d+$/.test(process.env.TRUST_PROXY) ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY);
 }
 
-const cookieSessionMiddleWare = cookieSession({
-    name: 'app-session',
-    secret: process.env.COOKIE_SECRET,
-    httpOnly: true,
-});
+const port = process.env.PORT || 3030;
+const server = http.Server(app);
 
-app.use(cookieSessionMiddleWare);
+// Creates missing tables (refresh_tokens, game_snapshots, ...); awaited below before listening.
+const synced = db.sequelize.sync().then(() => addMissingColumns(db.sequelize));
 
-app.use(function (req, res, next) {
-    res.header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept');
+// The only client is the mobile app. Native apps send no Origin header, so CORS doesn't
+// apply to them; CORS_ORIGIN (comma-separated) is only needed to run the Expo app in a
+// browser (`npm run web`, e.g. http://localhost:8081).
+const corsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim()) : false;
+
+app.use(cors({ origin: corsOrigin }));
+
+// The app's requests are small; bigger bodies are refused before they are parsed.
+app.use(json({ limit: '16kb' }));
+
+// The two HTML pages (privacy policy, account deletion) load nothing from elsewhere and may not be
+// framed; the JSON API isn't a page at all.
+app.use((req, res, next) => {
+    res.set({
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'no-referrer',
+        'X-Frame-Options': 'DENY',
+        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+    });
     next();
 });
+
+// For the uptime monitor (Better Stack) and Docker: 200 only when the database answers too, within
+// 3 seconds; otherwise 503. No error details (they may name the host or the user).
+app.get('/api/health', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        await Promise.race([
+            db.sequelize.query('SELECT 1'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('database timeout')), 3000).unref()),
+        ]);
+        res.status(200).send({ status: 'ok', database: 'ok' });
+    } catch (error) {
+        console.error('Health check: the database does not answer:', error.message);
+        res.status(503).send({ status: 'error', database: 'down' });
+    }
+});
+
+// Apps older than MIN_APP_VERSION get 426 "update the app" (see appVersion.js).
+app.use('/api', requireAppVersion);
 
 app.use('/api/auth', authRouters);
 
@@ -56,22 +85,22 @@ app.use('/api/users', usersRouters);
 
 app.use('/api/games', playedGamesRoutes);
 
-// Error-handling middleware below
+// The privacy policy and the account deletion page (linked from the app and the store listings).
+app.use(pages());
+// "Forgot password?": the app's request and the page the email links to.
+app.use(passwordReset());
+
+// Errors nobody caught: no details to the client (they may name tables or columns).
 app.use((err, req, res, next) => {
-    res.status(500).json({ message: err.message });
+    if (err.type === 'entity.too.large') return res.status(413).send({ message: 'Request too large.' });
+    if (err.type === 'entity.parse.failed') return res.status(400).send({ message: 'Invalid request.' });
+    serverError(res, err, `${req.method} ${req.path}`);
 });
-
-server.listen(port, () => {
-    console.log('Backend started - Listening on port 3030');
-});
-
-console.log('SAS', process.env.DB_HOST, process.env.DB_PORT, process.env.DB_NAME);
 
 const io = new Server(server, {
-    cors: {
-        origin: process.env.BASE_URL,
-        credentials: true,
-    },
+    cors: { origin: corsOrigin },
+    // The app's events are small (a chat message is at most 256 characters).
+    maxHttpBufferSize: 16 * 1024,
     connectionStateRecovery: {
         // The backup duration of the sessions and the packets
         maxDisconnectionDuration: 2 * 60 * 1000,
@@ -80,32 +109,23 @@ const io = new Server(server, {
     },
 });
 
-// TODO IS this needed?
-// convert a connect middleware to a Socket.IO middleware
-// const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
-
-// io.use(wrap(cookieSessionMiddleWare));
-
-/* io.on('connection', socket => {
-    console.log('a user connected', socket.id);
-    socket.on('test', () => console.log('TETETESTTS'));
-    socket.on('disconnect', () => {
-        console.log('user disconnected');
-    });
-}); */
-
+// Outdated apps are refused first ("update required"); see appVersion.js.
+socketAppVersion(io);
+// Must run before the connection handlers: sets socket.data.user from the handshake token.
+socketAuth(io);
+// First: errors in any handler below only answer that client, floods are dropped.
+guardHandlers(io);
+limitEvents(io);
 rooms(io);
 game(io);
 chat(io);
-guests(io);
+push(io);
+// Account deletion disconnects the deleted user's sockets.
+app.set('io', io);
 
-// if (process.env.NODE_ENV === 'production') {
-// const root = require('path').join(__dirname, 'client', 'build');
-
-const root = process.env.FRONTEND_ROOT;
-app.use(express.static(root));
-app.get('*', (req, res) => {
-    res.sendFile('index.html', { root });
+// Rooms and games from before a restart are back in memory before anyone can connect.
+await synced;
+await startPersistence(io);
+server.listen(port, () => {
+    console.log(`Backend started - Listening on port ${port}`);
 });
-
-// }

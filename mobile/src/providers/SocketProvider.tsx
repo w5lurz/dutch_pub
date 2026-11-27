@@ -1,0 +1,115 @@
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { io } from 'socket.io-client';
+
+import i18n, { serverMessage } from '@/i18n';
+import { APP_VERSION, setUpdateRequired } from '@/lib/appVersion';
+import { clearToken } from '@/lib/authToken';
+import { API_URL } from '@/lib/config';
+import { forgetPush } from '@/lib/notifications';
+import { getValidToken, refreshSession } from '@/lib/session';
+import type { AppSocket } from '@/lib/types';
+import { setToast } from '@/store/generalSlice';
+import { setUser } from '@/store/userSlice';
+import { useAppDispatch } from '@/store';
+
+type SocketContextValue = {
+    socket: AppSocket;
+    connected: boolean;
+    /** Whether the socket has connected at least once (to tell "connecting" from "lost"). */
+    everConnected: boolean;
+    /** Reconnects so the server sees the current token (call after login / logout / join as guest). */
+    reconnect: () => void;
+};
+
+const SocketContext = createContext<SocketContextValue | null>(null);
+
+/**
+ * Owns the app's single Socket.io connection. The server identifies the socket once, at
+ * connect time, from `auth.token`; the `auth` callback reads the access token on every
+ * (re)connect (refreshed first when it is about to expire). Re-syncing after reconnects / foregrounding lives in <GameSync>.
+ */
+export function SocketProvider({ children }: { children: ReactNode }) {
+    const dispatch = useAppDispatch();
+
+    // Created once; connected/closed by the effect (safe with StrictMode's double effects).
+    // Native has no CORS / cookie constraints; plain WebSocket avoids long-polling.
+    const [socket] = useState<AppSocket>(() =>
+        io(API_URL, {
+            transports: ['websocket'],
+            autoConnect: false,
+            // The app version goes along: the server refuses outdated apps ("update required").
+            auth: callback => {
+                getValidToken()
+                    .then(token => callback(token ? { token, appVersion: APP_VERSION } : { appVersion: APP_VERSION }))
+                    .catch(() => callback({ appVersion: APP_VERSION }));
+            },
+        }),
+    );
+    const [connected, setConnected] = useState(false);
+    const [everConnected, setEverConnected] = useState(false);
+
+    useEffect(() => {
+        // One refresh attempt per refused handshake (reset once connected).
+        let retriedRefresh = false;
+        const onConnect = () => {
+            retriedRefresh = false;
+            setConnected(true);
+            setEverConnected(true);
+        };
+        const onDisconnect = () => setConnected(false);
+        const onConnectError = async (error: Error) => {
+            // Too old for the server: the update screen covers the app; no reconnecting.
+            if (error.message === 'update required') {
+                setUpdateRequired();
+                return;
+            }
+            if (error.message === 'unauthorized' || error.message === 'username taken') {
+                // The access token was refused: try new tokens once (e.g. the phone slept past
+                // its expiry); without the server, try again in a moment.
+                if (error.message === 'unauthorized' && !retriedRefresh) {
+                    retriedRefresh = true;
+                    const result = await refreshSession();
+                    if (result.status !== 'expired') {
+                        setTimeout(() => socket.connect(), result.status === 'ok' ? 0 : 3000);
+                        return;
+                    }
+                }
+                // The session is over (or a guest name got taken): drop it and continue anonymously.
+                await forgetPush();
+                await clearToken();
+                dispatch(setUser(null));
+                dispatch(setToast({ id: `session-${Date.now()}`, type: 'info', message: i18n.t('session.logInAgain'), duration: 3000 }));
+                socket.connect();
+            }
+        };
+        const onActionRejected = (reason: string) =>
+            dispatch(setToast({ id: `action-rejected-${Date.now()}`, type: 'sad', message: serverMessage(reason), duration: 3000 }));
+
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
+        socket.on('connect_error', onConnectError);
+        socket.on('action-rejected', onActionRejected);
+        socket.connect();
+
+        return () => {
+            socket.off('connect', onConnect);
+            socket.off('disconnect', onDisconnect);
+            socket.off('connect_error', onConnectError);
+            socket.off('action-rejected', onActionRejected);
+            socket.close();
+        };
+    }, [socket, dispatch]);
+
+    const reconnect = useCallback(() => {
+        socket.disconnect();
+        socket.connect();
+    }, [socket]);
+
+    return <SocketContext.Provider value={{ socket, connected, everConnected, reconnect }}>{children}</SocketContext.Provider>;
+}
+
+export function useSocket() {
+    const value = useContext(SocketContext);
+    if (!value) throw new Error('useSocket must be used inside <SocketProvider>');
+    return value;
+}

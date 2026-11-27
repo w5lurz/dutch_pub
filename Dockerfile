@@ -1,17 +1,20 @@
-FROM node:16.14.2 AS builder
-WORKDIR /app
-COPY /frontend/package*.json ./
-RUN npm install 
-COPY /frontend .
-ENV REACT_APP_BASE_URL=https://dutch-card-oxthkdwy2a-oa.a.run.app
-RUN npm run build
+# Backend image (REST API + Socket.io). The mobile app is built separately with EAS.
 
-#Stage 2
-FROM node:16.14.2
+# Stage 1: build the shared package (types, game rules) the backend depends on.
+FROM node:24 AS shared
+WORKDIR /repo/packages/shared
+COPY packages/shared ./
+RUN npm ci && npm run build
+
+# Stage 2: runtime
+FROM node:24
 WORKDIR /usr/src/app
-COPY --from=builder /app/build build
-COPY /backend/package*.json ./
-RUN npm install
-COPY /backend .
+# backend/package.json depends on "file:../packages/shared": only the built package is needed.
+COPY --from=shared /repo/packages/shared/package.json /usr/src/packages/shared/package.json
+COPY --from=shared /repo/packages/shared/dist /usr/src/packages/shared/dist
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
+COPY backend .
+ENV NODE_ENV=production
 EXPOSE 3030
-CMD [ "npm", "start" ]
+CMD [ "node", "src/app.js" ]

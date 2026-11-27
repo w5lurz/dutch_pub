@@ -8,6 +8,8 @@ export default function (sequelize, Sequelize) {
         username: {
             type: DataTypes.STRING,
             allowNull: false,
+            // New databases only: sync() doesn't change an existing table (see the security notes).
+            unique: true,
         },
         email: {
             type: DataTypes.STRING,

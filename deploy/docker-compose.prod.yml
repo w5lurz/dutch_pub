@@ -1,0 +1,89 @@
+# Production on one server (a netcup VPS, any Ubuntu server works): the backend, MySQL and Caddy (HTTPS).
+# Step by step: SERVER.md.
+# Run from this folder:  docker compose -f docker-compose.prod.yml up -d --build
+# Settings and secrets on the server, never committed: deploy/.env (env.prod.example: domain, database,
+# backups) and deploy/backend.env (backend.env.example: the backend's own settings).
+# Only Caddy is reachable from outside (ports 80 / 443); the backend and MySQL are not published.
+
+name: dutchpub
+
+x-logging: &logging
+    driver: json-file
+    options:
+        max-size: '10m'
+        max-file: '5'
+
+services:
+    db:
+        # 8.4 LTS: has ARM images (5.7, used locally, has none).
+        image: mysql:8.4
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: dutch_pub
+            MYSQL_USER: dutchpub
+            MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in deploy/.env}
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in deploy/.env}
+        volumes:
+            - mysql-data:/var/lib/mysql
+        healthcheck:
+            test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -uroot --silent']
+            interval: 10s
+            timeout: 5s
+            retries: 12
+            start_period: 30s
+        logging: *logging
+
+    app:
+        build:
+            context: ..
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+        # The backend's settings (JWT_SECRET, SMTP_*, PUBLIC_URL, MAX_ROOMS, ...); the lines below win.
+        env_file: backend.env
+        environment:
+            DB_HOST: db
+            DB_PORT: 3306
+            DB_NAME: dutch_pub
+            DB_USER: dutchpub
+            DB_PASSWORD: ${DB_PASSWORD}
+            PORT: 3030
+            # Caddy is the one proxy in front: rate limits see each phone's address.
+            TRUST_PROXY: 1
+        expose:
+            - '3030'
+        healthcheck:
+            test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3030/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+        logging: *logging
+
+    caddy:
+        image: caddy:2
+        restart: unless-stopped
+        depends_on:
+            - app
+        ports:
+            - '80:80'
+            - '443:443'
+            - '443:443/udp'
+        environment:
+            DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
+            WEB_DOMAIN: ${WEB_DOMAIN:?set WEB_DOMAIN in deploy/.env}
+        volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            # The web version of the app (publish-web.sh copies it here; create the folder before the first start).
+            - ./web:/srv/web:ro
+            # The HTTPS certificates (Let's Encrypt): kept across restarts, or Caddy asks for new ones each time.
+            - caddy-data:/data
+            - caddy-config:/config
+        logging: *logging
+
+volumes:
+    mysql-data:
+    caddy-data:
+    caddy-config:

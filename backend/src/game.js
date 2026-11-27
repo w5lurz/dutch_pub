@@ -1,236 +1,656 @@
-import { games, modifyRooms, roomsList } from './rooms.js';
+import { canLayCard, isCallNext, isReverse, normalizeRoomSettings } from '@dutch-pub/shared';
+import { emptySocketRoom, games, modifyRooms, roomById, roomsList } from './rooms.js';
 import { modifyRoomMessages, roomMessages } from './chat.js';
+import { identityError } from './socketAuth.js';
+import { notifyTurn } from './push.js';
+import { scheduleBotTurn } from './bots.js';
+import { endStreaks } from './streaks.js';
 
 import db from './models/index.js';
 const PlayedGame = db.played_game;
 
-const handleClearAll = () => {};
+/** How long a missed blind card stays on the pile before its player picks the pile up (env for tests). */
+const BLIND_REVEAL_MS = Number(process.env.BLIND_REVEAL_MS ?? 3000);
+/** One second of the room's turn timer, in ms (env for tests, which run the clock faster). */
+const TURN_SECOND_MS = Number(process.env.TURN_SECOND_MS ?? 1000);
+/** How long everyone sees who picked up the pile before the next turn starts (env for tests; 0 = no pause). */
+const PICK_UP_PAUSE_MS = Number(process.env.PICK_UP_PAUSE_MS ?? 5000);
+
+/** The running turn clock of each game (cleared when the turn changes, the game ends or is stopped). */
+const turnClocks = new WeakMap();
+
+/** Stops game `game`'s turn clock (no turn is timed meanwhile). */
+export const clearTurnClock = game => {
+    clearTimeout(turnClocks.get(game));
+    turnClocks.delete(game);
+    game.turnEndsAt = null;
+    game.turnTime = null;
+};
+
+/**
+ * Time ran out for whoever is on turn in `game`: their turn is skipped (nothing laid, nothing
+ * picked up), the next player is on. Returns the skipped player's name, or undefined.
+ */
+export const timeOutTurn = game => {
+    const entry = Object.entries(game.players).find(([, player]) => player.active);
+    if (!entry) return undefined;
+    game.call = null;
+    game.addOnBy = null;
+    setActivePlayerNext(game);
+    return entry[0];
+};
+
+/**
+ * (Re)starts the turn clock of game `game` in room `roomId`: call it whenever a new turn
+ * starts, before the new view is sent (the view carries the time left). No clock while the
+ * room's timer is off, in the swap phase, during a missed blind card, or once the game is
+ * gone. When it runs out, the turn is skipped (`timeOutTurn`), everyone gets
+ * `turn-timed-out` and the new view, and the next turn's clock starts.
+ */
+export const startTurnClock = (io, roomId, game) => {
+    clearTurnClock(game);
+    // Whoever is on turn now gets a notification if the app is away (with or without a timer).
+    notifyTurn(io, roomId, game);
+    // A bot on turn makes its move in a moment.
+    scheduleBotTurn(io, roomId, game);
+    const room = roomsList[roomId];
+    const limit = normalizeRoomSettings(room?.settings).turnTimer * TURN_SECOND_MS;
+    if (!room || games[roomId] !== game || game.phase === 'swap' || game.blindMiss || game.pickedUp || limit <= 0) return;
+    game.turnEndsAt = Date.now() + limit;
+    game.turnTime = limit;
+    turnClocks.set(
+        game,
+        setTimeout(() => {
+            turnClocks.delete(game);
+            if (games[roomId] !== game || game.blindMiss || game.pickedUp) return;
+            const skipped = timeOutTurn(game);
+            if (!skipped) return;
+            io.to(`game-${roomId}`).emit('turn-timed-out', skipped);
+            startTurnClock(io, roomId, game);
+            sendUiDataToSocket(io, roomsList[roomId] ?? room, game, 'game-updated');
+        }, limit),
+    );
+};
+
+/**
+ * Someone just picked up the pile (`count` cards) in game `game` of room `roomId`, and the next
+ * player is set: everyone sees who it was (`game.pickedUp`) for `PICK_UP_PAUSE_MS` before that turn
+ * starts (no moves, no clock, no bot meanwhile). Nothing to see (an empty pile) or no pause: the turn starts at once.
+ */
+const pauseAfterPickUp = (io, roomId, game, username, count) => {
+    if (PICK_UP_PAUSE_MS <= 0 || count === 0) {
+        startTurnClock(io, roomId, game);
+        return;
+    }
+    clearTurnClock(game);
+    game.pickedUp = { username, count };
+    setTimeout(() => finishPickUpPause(io, roomId, game), PICK_UP_PAUSE_MS).unref?.();
+};
+
+/** Ends the pause after a pick-up (`pauseAfterPickUp`): the next turn starts. Nothing when the game is gone. */
+export const finishPickUpPause = (io, roomId, game) => {
+    if (games[roomId] !== game || !game.pickedUp) return;
+    game.pickedUp = null;
+    startTurnClock(io, roomId, game);
+    if (roomsList[roomId]) sendUiDataToSocket(io, roomsList[roomId], game, 'game-updated');
+};
+
+/**
+ * Ends a missed blind card's moment (`game.blindMiss`): its player picks up the pile with it and
+ * the next player is on. Nothing when the game was stopped or finished meanwhile.
+ */
+export const finishBlindMiss = (io, roomId, game) => {
+    if (games[roomId] !== game || !game.blindMiss) return;
+    const { username } = game.blindMiss;
+    game.blindMiss = null;
+    const count = game.laidCards.length;
+    game.players[username].userCards.hand = [...game.laidCards].sort((a, b) => a.value - b.value);
+    game.laidCards = null;
+    game.call = null;
+    game.addOnBy = null;
+    setActivePlayerNext(game);
+    pauseAfterPickUp(io, roomId, game, username, count);
+    if (roomsList[roomId]) sendUiDataToSocket(io, roomsList[roomId], game, 'cards-drawn');
+};
+
+/**
+ * Checks that `socket` is authenticated as `username` and plays in game `roomId`.
+ * Returns `{ error }` or `{ player, game }` (the server-side player and game state).
+ */
+const validatePlayer = (socket, { roomId, username }) => {
+    const authError = identityError(socket, username);
+    if (authError) {
+        return { error: authError };
+    }
+    const currentRoom = roomById(roomId);
+    const currentGame = currentRoom && Object.hasOwn(games, roomId) ? games[roomId] : undefined;
+    if (!currentRoom || !currentGame) {
+        return { error: 'This game does not exist.' };
+    }
+    const player = Object.hasOwn(currentGame.players, username) ? currentGame.players[username] : undefined;
+    const roomPlayer = currentRoom.players.find(roomPlayer => roomPlayer.username === username);
+    if (!player || !roomPlayer || roomPlayer.socketId !== socket.id) {
+        return { error: 'You are not a player in this game.' };
+    }
+    return { player, game: currentGame };
+};
+
+/**
+ * Like `validatePlayer`, and that cards can be played now (the swap phase is over, no
+ * missed blind card is being shown) and it is their turn. Returns `{ error }` or `{ player }`.
+ */
+const validateTurn = (socket, { roomId, username }) => {
+    const { error, player, game } = validatePlayer(socket, { roomId, username });
+    if (error) {
+        return { error };
+    }
+    const waitError = noMovesError(game);
+    if (waitError) {
+        return { error: waitError };
+    }
+    if (!player.active) {
+        return { error: 'It is not your turn.' };
+    }
+    return { player };
+};
+
+/** Why nobody can move in `game` now (the swap phase, a missed blind card, the pause after a pick-up), or null. */
+const noMovesError = game => {
+    if (game.phase === 'swap') return 'Swap your cards first, then tap Ready.';
+    if (game.blindMiss || game.pickedUp) return 'Wait a moment, the pile is being picked up.';
+    return null;
+};
+
+/**
+ * Swap phase: hand card `hand` and face-up card `faceUp` of `username` trade places (one
+ * copy each; the face-up card keeps its spot). Returns an error message, or null.
+ */
+export const swapCards = (game, username, hand, faceUp) => {
+    const player = game.players[username];
+    if (game.phase !== 'swap') return 'Cards can only be swapped before the game starts.';
+    if (player.ready) return 'You are ready already.';
+    const same = wanted => own => wanted && own && own.value === wanted.value && own.color === wanted.color;
+    const handIndex = player.userCards.hand.findIndex(same(hand));
+    const faceUpIndex = player.userCards.tableFlipped.findIndex(same(faceUp));
+    if (handIndex < 0 || faceUpIndex < 0) return "You don't have that card.";
+    const fromHand = player.userCards.hand[handIndex];
+    player.userCards.hand[handIndex] = player.userCards.tableFlipped[faceUpIndex];
+    player.userCards.tableFlipped[faceUpIndex] = fromHand;
+    return null;
+};
+
+/** Swap phase: `username` is done swapping; once everyone is, the play phase starts. Returns whether it started. */
+export const markReady = (game, username) => {
+    game.players[username].ready = true;
+    if (game.phase === 'swap' && Object.values(game.players).every(player => player.ready)) {
+        game.phase = 'play';
+        return true;
+    }
+    return false;
+};
+
+/**
+ * Checks a `lay-card` request against the server-side game state.
+ * Returns `{ error }` when the move must be rejected, otherwise `{ card }`: the server's own
+ * copy of the card (so client-sent flags like isMagicCard are never trusted), or the
+ * face-down table card index for a blind play. With `cards` (several cards laid together)
+ * it returns `{ card, cards }`: the server's copies, one per requested card (two requests
+ * for the same card need two copies, possible with two decks), all of the same value, the
+ * first one fitting the pile.
+ */
+export const validateLayCard = (socket, { card, cards, roomId, username }) => {
+    const { error, player, game: currentGame } = validatePlayer(socket, { roomId, username });
+    if (error) {
+        return { error };
+    }
+    const waitError = noMovesError(currentGame);
+    if (waitError) {
+        return { error: waitError };
+    }
+    if (!player.active) {
+        return checkAddOn(currentGame, username, { card, cards });
+    }
+    return checkCards(currentGame, player, { card, cards });
+};
+
+/**
+ * An add-on: `username` laid the top of the pile and nobody has moved since (`game.addOnBy`, e.g.
+ * they drew another 7 after laying a 7), so they may lay more cards of that value now, out of
+ * turn, as if laid together with the first ones (they fit whatever the pile's rules). Not blind.
+ * Returns `{ error }`, or `checkCards`' result with `addOn: true`.
+ */
+export const checkAddOn = (game, username, { card, cards }) => {
+    const top = game.laidCards?.[0];
+    if (game.addOnBy !== username || !top || typeof card === 'number' || game.players[username].active) {
+        return { error: 'It is not your turn.' };
+    }
+    const checked = checkCards(game, game.players[username], { card, cards }, { sameAs: top.value });
+    return checked.error ? checked : { ...checked, addOn: true };
+};
+
+/**
+ * The cards part of `validateLayCard` (for a player whose turn it is): `{ error }`, or the
+ * server's own `{ card }` / `{ card, cards }` / face-down index. Bots' moves go through it too.
+ */
+export const checkCards = (currentGame, player, { card, cards }, { sameAs } = {}) => {
+    // An add-on (`checkAddOn`): only cards of value `sameAs`, whatever the pile's rules.
+    const fits = own => (sameAs === undefined ? canLayCard(own, currentGame.laidCards, currentGame.rules) : own.value === sameAs);
+    const { hand } = player.userCards;
+    const tableFlipped = present(player.userCards.tableFlipped);
+    const table = present(player.userCards.table);
+    if (typeof card === 'number') {
+        if (hand.length !== 0 || tableFlipped.length !== 0) {
+            return { error: 'You have to play your other cards first.' };
+        }
+        // The how-manieth face-down card still there (left to right), not the spot.
+        if (!Number.isInteger(card) || card < 0 || card >= table.length) {
+            return { error: 'That card does not exist.' };
+        }
+        // Blind card: whether it fits the pile is decided after revealing it.
+        return { card };
+    }
+
+    const playableCards = hand.length !== 0 ? hand : tableFlipped;
+    if (Array.isArray(cards) && cards.length > 0) {
+        // At most 8 cards of one value exist (two decks).
+        if (cards.length > 8) {
+            return { error: "You don't have that card." };
+        }
+        // Face-up cards may join the hand's cards when the deck is gone and the whole hand (all of
+        // one value) is laid with them: the hand empties, so they would be next anyway.
+        const canCombine = combinesWithFaceUp(currentGame, hand);
+        const pool = [...playableCards];
+        const faceUpPool = canCombine ? [...tableFlipped] : [];
+        const serverCards = [];
+        let fromFaceUp = 0;
+        for (const requested of cards) {
+            const matches = own => requested && own.value === requested.value && own.color === requested.color;
+            const i = requested ? pool.findIndex(matches) : -1;
+            if (i >= 0) {
+                serverCards.push(pool.splice(i, 1)[0]);
+                continue;
+            }
+            const j = requested ? faceUpPool.findIndex(matches) : -1;
+            if (j < 0) {
+                return { error: "You don't have that card." };
+            }
+            serverCards.push(faceUpPool.splice(j, 1)[0]);
+            fromFaceUp++;
+        }
+        if (fromFaceUp > 0 && serverCards.length - fromFaceUp < hand.length) {
+            return { error: 'Face-up cards can only join your whole hand.' };
+        }
+        if (serverCards.some(own => own.value !== serverCards[0].value)) {
+            return { error: 'Only cards of the same value can be laid together.' };
+        }
+        if (!fits(serverCards[0])) {
+            return { error: sameAs === undefined ? 'You cannot lay that card.' : 'It is not your turn.' };
+        }
+        return { card: serverCards[0], cards: serverCards };
+    }
+    const serverCard = card && playableCards.find(ownCard => ownCard.value === card.value && ownCard.color === card.color);
+    if (!serverCard) {
+        return { error: "You don't have that card." };
+    }
+    if (!fits(serverCard)) {
+        return { error: sameAs === undefined ? 'You cannot lay that card.' : 'It is not your turn.' };
+    }
+    return { card: serverCard };
+};
+
+/**
+ * Lays checked cards (`validation`: `checkCards` / `validateLayCard`) for `username` in room
+ * `roomId`: a blind face-down card is revealed (it fits, or is shown and picked up), a win ends
+ * the game, otherwise the next turn starts. Players' `lay-card` and bots' moves both come here.
+ */
+export const performLay = async (io, roomId, username, validation, { cardIndex, call } = {}) => {
+    const currentRoom = roomsList[roomId];
+    const currentGame = games[roomId];
+    const userCards = currentGame.players[username].userCards;
+
+    if (typeof validation.card === 'number') {
+        // A face-down card, played blind: revealed now, it either fits the pile or the
+        // player picks up the pile together with it.
+        // The n-th face-down card still there; its spot stays (empty) so the others keep theirs.
+        const spot = nthCardSpot(userCards.table, validation.card);
+        const blindCard = userCards.table[spot];
+        userCards.table = userCards.table.map((own, i) => (i === spot ? null : own));
+        if (!canLayCard(blindCard, currentGame.laidCards, currentGame.rules)) {
+            // It doesn't fit: first everyone sees it on top of the pile for a moment (no
+            // moves meanwhile), then its player picks up the pile with it.
+            currentGame.laidCards = [blindCard, ...(currentGame.laidCards ?? [])];
+            currentGame.blindMiss = { username, card: blindCard };
+            clearTurnClock(currentGame);
+            sendUiDataToSocket(io, currentRoom, currentGame, 'game-updated');
+            setTimeout(() => finishBlindMiss(io, roomId, currentGame), BLIND_REVEAL_MS);
+            return;
+        }
+        applyLay(currentGame, username, [blindCard], cardIndex, { fromTable: true });
+    } else {
+        applyLay(currentGame, username, validation.cards ?? [validation.card], cardIndex, { call, addOn: validation.addOn });
+    }
+
+    const won = userCards.hand.length === 0 && present(userCards.tableFlipped).length === 0 && present(userCards.table).length === 0;
+    if (won) {
+        const gameId = `game-${roomId}`;
+        const { [roomId]: _won, ...rest } = roomsList;
+        modifyRooms(rest);
+        // The game is over: free it (the players' last view is sent below from `currentGame`).
+        delete games[roomId];
+        endStreaks(currentRoom.players.filter(player => !player.bot).map(player => player.username));
+        io.to(gameId).emit('game-won', username, roomsList);
+        emptySocketRoom(io, gameId);
+        const { [gameId]: _messages, ...restRoomMessages } = roomMessages;
+        modifyRoomMessages(restRoomMessages);
+    }
+
+    // A new turn (the next player's, or the same player's again after a burn); no clock once won.
+    // An add-on that didn't burn the pile leaves the turn (and its clock) as it was.
+    if (won) clearTurnClock(currentGame);
+    else if (!validation.addOn || currentGame.players[username].active) startTurnClock(io, roomId, currentGame);
+    sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
+    // Games with a bot are practice: not recorded anywhere.
+    if (won && !currentRoom.players.some(player => player.bot)) {
+        await PlayedGame.create({
+            winner: username,
+            players: currentRoom.players.map(player => player.username).join(','),
+        });
+    }
+};
+
+/** `username` (on turn) picks up the pile; the next player is on. Players' `draw-cards` and bots both come here. */
+export const performDraw = (io, roomId, username) => {
+    const currentRoom = roomsList[roomId];
+    const currentGame = games[roomId];
+    const userCards = currentGame.players[username].userCards;
+    const count = currentGame.laidCards?.length ?? 0;
+    userCards.hand = [...(userCards.hand ?? []), ...(currentGame.laidCards ?? [])].sort((a, b) => a.value - b.value);
+    currentGame.laidCards = null;
+    // The next player is on (after a called player: the one after them), once everyone saw the pick-up.
+    currentGame.call = null;
+    currentGame.addOnBy = null;
+    setActivePlayerNext(currentGame);
+    pauseAfterPickUp(io, roomId, currentGame, username, count);
+    sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
+};
 
 export const game = io => {
     io.on('connection', socket => {
-        socket.on('lay-card', async ({ card, cardIndex, roomId, username }) => {
-            const currentRoom = roomsList[roomId];
-            const currentGame = games[roomId];
-            const originalCard = card; // TODO needed?
-            let currentLaidCard = card;
-            console.log('LAY CARD1', card, cardIndex, roomId, username);
-            // Deleting laid card from hand
-            if (currentGame.players[username].userCards.hand.length !== 0) {
-                currentGame.players[username].userCards.hand = currentGame.players[username].userCards.hand.filter(
-                    handCard => !(handCard.value === card.value && handCard.color === card.color),
-                );
+        socket.on('lay-card', async payload => {
+            const { cardIndex, roomId, username, call } = payload ?? {};
+            const validation = validateLayCard(socket, payload ?? {});
+            if (validation.error) {
+                console.log('LAY CARD REJECTED', validation.error, payload);
+                socket.emit('lay-card-rejected', validation.error);
+                return;
             }
-            // Deleting table flipped card (if hand is empty)
-            if (
-                currentGame.players[username].userCards.hand.length === 0 &&
-                currentGame.players[username].userCards.tableFlipped.length !== 0
-            ) {
-                currentGame.players[username].userCards.tableFlipped = currentGame.players[username].userCards.tableFlipped.filter(
-                    tableFlippedCard => !(tableFlippedCard.value === card.value && tableFlippedCard.color === card.color),
-                );
-            }
-            let isValidLastLaidCard = true;
-            if (
-                // TODO TEST what if it is a number, we should reveal that to UI
-                typeof card === 'number' &&
-                currentGame.players[username].userCards.hand.length === 0 &&
-                currentGame.players[username].userCards.tableFlipped.length === 0
-            ) {
-                console.log('LASTLAID', username, card);
-                console.log('LASTLAID', currentGame.players[username].userCards.table);
-                currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
-                currentGame.players[username].userCards.table = currentGame.players[username].userCards.table.filter((_, i) => i !== card);
-                const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                console.log('LASTLAID1', lastLaidCard, currentLaidCard);
-                const secondLaidCard = currentGame.laidCards ? currentGame.laidCards[1] : null;
-                const thirdLaidCard = currentGame.laidCards ? currentGame.laidCards[2] : null;
-                const fourthLaidCard = currentGame.laidCards ? currentGame.laidCards[3] : null;
-                console.log('LASTLAID12', secondLaidCard, currentLaidCard);
-                isValidLastLaidCard =
-                    !lastLaidCard || // false
-                    (lastLaidCard.value <= currentLaidCard.value && // false
-                        ((!lastLaidCard.isMagicCard && !lastLaidCard.isTeaseCard) || // true
-                            (lastLaidCard.isMagicCard && lastLaidCard.value === 2))) || // false
-                    (!lastLaidCard.isTeaseCard && currentLaidCard.isMagicCard) || // false
-                    (lastLaidCard.isMagicCard && lastLaidCard.value === 14 && currentLaidCard.isMagicCard) || // false
-                    (lastLaidCard.isMagicCard &&
-                        lastLaidCard.value === 0 &&
-                        ((secondLaidCard?.value <= currentLaidCard.value && secondLaidCard?.value !== 0) ||
-                            !secondLaidCard ||
-                            (thirdLaidCard?.value <= currentLaidCard.value && thirdLaidCard?.value !== 0) ||
-                            !thirdLaidCard ||
-                            (fourthLaidCard?.value <= currentLaidCard.value && fourthLaidCard?.value !== 0) ||
-                            !fourthLaidCard)) || // TODO NOT SECOND LAID CARD but the first card what is not an 8 before that
-                    (lastLaidCard.isMagicCard && lastLaidCard.value === 2 && lastLaidCard.value <= currentLaidCard.value) || // false
-                    (lastLaidCard.isTeaseCard && currentLaidCard.value >= 3 && currentLaidCard.value <= 7); // false
-                console.log('LAST ROUND', isValidLastLaidCard, currentGame.laidCards);
-                console.log(
-                    'LAST ROUNDasd',
-                    !!!lastLaidCard,
-                    lastLaidCard?.value <= currentLaidCard?.value &&
-                        ((!lastLaidCard?.isMagicCard && !lastLaidCard?.isTeaseCard) ||
-                            (lastLaidCard?.isMagicCard && lastLaidCard?.value === 2)),
-                    lastLaidCard?.isMagicCard && lastLaidCard?.value === 14 && currentLaidCard?.isMagicCard,
-                );
-            }
-            if (!isValidLastLaidCard) {
-                // const lastLaidCard = currentGame.laidCards ? currentGame.laidCards[0] : null;
-                // TODO this is filtered up, will be undefined, FIXMEE
-                // currentLaidCard = currentGame.players[username].userCards.table.find((_, i) => i === card);
-                console.log('LAST ROUND1', isValidLastLaidCard, currentLaidCard, currentGame.players[username].userCards.table);
-                // Setting hand with drawn cards
-                currentGame.players[username].userCards.hand = [currentLaidCard, ...currentGame.laidCards].sort(
-                    (a, b) => a.value - b.value,
-                );
-
-                // Setting laidCards to null (given to hand)
-                currentGame.laidCards = null;
-
-                // Setting active player to next
-                setActivePlayerNext(currentGame.players, username);
-
-                // Send new game data to sockets
-                console.log('DRAWNHEHE', currentGame.players[username].userCards.hand);
-                sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
-            } else {
-                // Add top card from deck to hand if hand.length < 3
-                const cardToAddToHand =
-                    currentGame.deck.length && currentGame.players[username].userCards.hand.length < 3 && currentGame.deck.shift();
-                cardToAddToHand && currentGame.players[username].userCards.hand.splice(cardIndex, 0, cardToAddToHand);
-
-                // If laid card is a 10 we burn all laid cards
-                // TODO TEST of setting active player next when burning cards
-                if (currentLaidCard?.value === 10) {
-                    currentGame.burntCards = currentGame.burntCards
-                        ? [currentLaidCard, ...(currentGame.laidCards ? currentGame.laidCards : []), ...currentGame.burntCards]
-                        : [currentLaidCard, ...(currentGame.laidCards ? currentGame.laidCards : [])];
-                    currentGame.laidCards = null;
-                } else if (isLastFourCardsSame(currentGame.laidCards, currentLaidCard)) {
-                    currentGame.burntCards = [
-                        currentLaidCard,
-                        ...currentGame.laidCards,
-                        ...(currentGame.burntCards ? currentGame.burntCards : []),
-                    ];
-                    currentGame.laidCards = null;
-                } else {
-                    console.log('ELSE', card, cardIndex);
-                    currentGame.laidCards = currentGame.laidCards ? [currentLaidCard, ...currentGame.laidCards] : [currentLaidCard];
-                    console.log('SET NEXT', username);
-                    // Setting active player to next
-                    setActivePlayerNext(currentGame.players, username);
-                }
-                console.log('ORIG1', originalCard);
-                // TODO SET WINNER HERE
-                if (
-                    currentGame.players[username].userCards.hand.length === 0 &&
-                    currentGame.players[username].userCards.tableFlipped.length === 0 &&
-                    currentGame.players[username].userCards.table.length === 0
-                ) {
-                    const gameId = `game-${roomId}`;
-                    let { [roomId]: omit, ...rest } = roomsList;
-                    console.log('REST1', rest);
-                    modifyRooms(rest);
-                    io.to(gameId).emit('game-won', username, roomsList);
-
-                    console.log('GAMEWON', card);
-                    // TODO DELETE ROOM
-                    io.in(gameId).socketsLeave(gameId);
-                    let { [gameId]: deleted, ...restRoomMessages } = roomMessages;
-                    modifyRoomMessages(restRoomMessages);
-                    console.log('GAMEWON1', roomsList);
-                    await PlayedGame.create({
-                        winner: username,
-                        players: currentRoom.players.map(player => player.username).join(','),
-                    });
-                }
-
-                // Send new game data to sockets
-                console.log('CARD LAYED', card, currentLaidCard, username, currentGame.players);
-                sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
-            }
+            await performLay(io, roomId, username, validation, { cardIndex, call });
         });
 
-        socket.on('draw-cards', ({ roomId, username }) => {
-            const currentRoom = roomsList[roomId];
-            const currentGame = games[roomId];
+        // Swap phase: a hand card and a face-up card trade places; everyone sees the new face-up cards.
+        socket.on('swap-cards', payload => {
+            const { roomId, username, hand, faceUp } = payload ?? {};
+            const { error, game: currentGame } = validatePlayer(socket, { roomId, username });
+            const swapError = error ?? swapCards(currentGame, username, hand, faceUp);
+            if (swapError) {
+                socket.emit('action-rejected', swapError);
+                return;
+            }
+            sendUiDataToSocket(io, roomsList[roomId], currentGame, 'game-updated');
+        });
 
-            // Setting hand with drawn cards
-            currentGame.players[username].userCards.hand = [
-                ...(currentGame.players[username].userCards.hand && currentGame.players[username].userCards.hand.length > 0
-                    ? currentGame.players[username].userCards.hand
-                    : []),
-                ...(currentGame.laidCards ? currentGame.laidCards : []),
-            ].sort((a, b) => a.value - b.value);
+        // Swap phase: a player is done swapping; with everyone ready the play phase starts.
+        socket.on('player-ready', payload => {
+            const { roomId, username } = payload ?? {};
+            const { error, game: currentGame } = validatePlayer(socket, { roomId, username });
+            if (error || currentGame.phase !== 'swap') {
+                socket.emit('action-rejected', error ?? 'The game has started already.');
+                return;
+            }
+            // With everyone ready the first turn starts, and its clock.
+            if (markReady(currentGame, username)) startTurnClock(io, roomId, currentGame);
+            sendUiDataToSocket(io, roomsList[roomId], currentGame, 'game-updated');
+        });
 
-            // Setting laidCards to null (given to hand)
-            currentGame.laidCards = null;
+        socket.on('get-game-state', () => {
+            socket.emit('game-state', buildGameState(socket.data.user?.username));
+        });
 
-            // Setting active player to next
-            setActivePlayerNext(currentGame.players, username);
-
-            // Send new game data to sockets
-            console.log('DRAWNHEHE', currentGame.players);
-            sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
+        socket.on('draw-cards', payload => {
+            const { roomId, username } = payload ?? {};
+            const { error } = validateTurn(socket, { roomId, username });
+            if (error) {
+                console.log('DRAW CARDS REJECTED', error, roomId, username);
+                socket.emit('action-rejected', error);
+                return;
+            }
+            performDraw(io, roomId, username);
         });
     });
 };
 
-const isLastFourCardsSame = (laidCards, card) =>
-    laidCards &&
-    laidCards[0] &&
-    laidCards[1] &&
-    laidCards[2] &&
-    card.value === laidCards[0].value &&
-    laidCards[0].value === laidCards[1].value &&
-    laidCards[1].value === laidCards[2].value;
+/**
+ * Whether face-up cards may join a lay from `hand`: the deck is gone and every hand card has the
+ * same value (laying them all empties the hand, which would make the face-up cards next anyway).
+ */
+export const combinesWithFaceUp = (game, hand) =>
+    hand.length > 0 && (game.deck?.length ?? 0) === 0 && hand.every(card => card.value === hand[0].value);
 
-export const sendUiDataToSocket = async (io, room, game, message, roomId) => {
-    const rooms = io.of('/').adapter.rooms;
-    console.log(rooms);
-    console.log(rooms[`game-${roomId}`]);
-    const sockets = await io.fetchSockets();
-    console.log('SOCKETS 2', sockets[0].username);
-    console.log('SOCKETS 2', sockets[1].username);
-
-    room.players.forEach(player => {
-        const playerSpecificGameData = {
-            userCards: {},
-            opponents: {},
-        };
-        playerSpecificGameData.userCards = {
-            ...game.players[player.username].userCards,
-            table: game.players[player.username].userCards.table.length,
-        };
-
-        room.players.forEach(otherPlayer => {
-            if (player.socketId !== otherPlayer.socketId) {
-                playerSpecificGameData.opponents[otherPlayer.username] = {};
-                playerSpecificGameData.opponents[otherPlayer.username].table = game.players[otherPlayer.username].userCards.table.length;
-                playerSpecificGameData.opponents[otherPlayer.username].hand = game.players[otherPlayer.username].userCards.hand.length;
-                playerSpecificGameData.opponents[otherPlayer.username].tableFlipped = [
-                    ...game.players[otherPlayer.username].userCards.tableFlipped,
-                ];
-                playerSpecificGameData.opponents[otherPlayer.username].active = game.players[otherPlayer.username].active;
-            }
-        });
-        playerSpecificGameData.laidCards = game.laidCards ? game.laidCards : null;
-        playerSpecificGameData.burntCards = game.burntCards ? game.burntCards : null;
-        playerSpecificGameData.deck = game.deck.length;
-        playerSpecificGameData.active = game.players[player.username].active;
-
-        io.to(player.socketId).emit(message, playerSpecificGameData, roomsList, roomId);
-    });
-};
-
-const setActivePlayerNext = (players, username) => {
-    const activePlayerIndex = Object.values(players).findIndex(playerSpecificGame => playerSpecificGame.active);
-    players[username].active = false;
-    if (activePlayerIndex + 1 >= Object.keys(players).length) {
-        Object.values(players)[0].active = true;
-    } else {
-        Object.values(players)[activePlayerIndex + 1].active = true;
+/** `from` without one copy of each of `cards` (`rest`), and the cards `from` didn't hold (`missing`). */
+export const takeCards = (from, cards) => {
+    const rest = [...from];
+    const missing = [];
+    for (const card of cards) {
+        const i = rest.findIndex(own => own.value === card.value && own.color === card.color);
+        if (i >= 0) rest.splice(i, 1);
+        else missing.push(card);
     }
-    console.log('SET NEXT2', players);
+    return { rest, missing };
+};
+
+/**
+ * `from` without one copy of each of `cards` (same value and colour). With two decks a
+ * player can hold two identical cards; only as many copies as were laid are removed.
+ */
+export const withoutCards = (from, cards) => {
+    const rest = [...from];
+    for (const card of cards) {
+        const i = rest.findIndex(own => own.value === card.value && own.color === card.color);
+        if (i >= 0) rest.splice(i, 1);
+    }
+    return rest;
+};
+
+// Table cards are kept per spot, as dealt: `table[i]` (face-down) lies under `tableFlipped[i]`
+// (face-up). A played card leaves its spot empty (null), so the other cards keep their spots.
+
+/** The cards of a spot list (`table` or `tableFlipped`), without the empty spots. */
+export const present = spots => (spots ?? []).filter(Boolean);
+
+/** The spot of the `n`-th card still in `spots` (left to right), or -1. */
+export const nthCardSpot = (spots, n) => {
+    let seen = -1;
+    return spots.findIndex(own => own && ++seen === n);
+};
+
+/** `spots` with one copy of each of `cards` taken out (its spot left empty). */
+export const clearSpots = (spots, cards) => {
+    const rest = [...spots];
+    for (const card of cards) {
+        const i = rest.findIndex(own => own && own.value === card.value && own.color === card.color);
+        if (i >= 0) rest[i] = null;
+    }
+    return rest;
+};
+
+/**
+ * What anyone may see of a player's table spots: each spot's face-up card and whether a
+ * face-down card lies there. Empty spots at the end are left out.
+ */
+export const spotsView = userCards => {
+    const spots = Array.from({ length: Math.max(userCards.table.length, userCards.tableFlipped.length) }, (_, i) => ({
+        faceUp: userCards.tableFlipped[i] ?? null,
+        faceDown: !!userCards.table[i],
+    }));
+    while (spots.length > 0 && !spots[spots.length - 1].faceUp && !spots[spots.length - 1].faceDown) spots.pop();
+    return spots;
+};
+
+/** How many cards on top of `pile` (top first) have the top card's value. */
+const topRun = pile => {
+    let count = 0;
+    while (count < pile.length && pile[count].value === pile[0].value) count++;
+    return count;
+};
+
+/**
+ * Lays `cards` (one or several of the same value, already validated) for `username`:
+ * removes them from their hand, or from their face-up cards once the hand is empty (unless
+ * `fromTable`: a revealed face-down card, already removed), refills the hand to 3 from the
+ * deck, then puts them on the pile one after the other (the last one on top). A 10, or four
+ * of a kind on top of the pile, burns it and the same player goes again; otherwise the turn
+ * passes on: with an Ace ("Call Next") to the player `call` names (any other player; missing or
+ * invalid: the next one), who must lay a magic card; with a 6 and the room's "6 reverses" rule,
+ * after the direction flips (once, however many 6s). Until the next move, the player may still add
+ * cards of the same value (`game.addOnBy`, `checkAddOn`). `addOn`: such cards, laid out of turn: they
+ * go on the pile and the turn stays where it was (with its call and direction), unless they burn
+ * it: then their player goes again.
+ */
+export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = false, call, addOn = false } = {}) => {
+    const userCards = game.players[username].userCards;
+    if (!fromTable) {
+        if (userCards.hand.length !== 0) {
+            // From the hand; any the hand doesn't hold are face-up cards laid with it (`checkCards`).
+            const { rest, missing } = takeCards(userCards.hand, cards);
+            userCards.hand = rest;
+            if (missing.length) userCards.tableFlipped = clearSpots(userCards.tableFlipped, missing);
+        } else userCards.tableFlipped = clearSpots(userCards.tableFlipped, cards);
+    }
+    // New cards go where the laid one was (the client keeps the hand in its order).
+    let at = Math.max(0, Math.min(Number.isInteger(cardIndex) ? cardIndex : 0, userCards.hand.length));
+    while (userCards.hand.length < 3 && game.deck.length > 0) {
+        userCards.hand.splice(at++, 0, game.deck.shift());
+    }
+
+    const pile = [...[...cards].reverse(), ...(game.laidCards ?? [])];
+    if (cards[0].value === 10 || topRun(pile) >= 4) {
+        game.burntCards = [...pile, ...(game.burntCards ?? [])];
+        game.laidCards = null;
+        game.call = null;
+        game.addOnBy = null;
+        if (addOn) setActivePlayerNext(game, username);
+        return;
+    }
+    game.laidCards = pile;
+    game.addOnBy = username;
+    if (addOn) return;
+    if (game.rules?.sixReverses && isReverse(cards[0])) {
+        game.direction = game.direction === -1 ? 1 : -1;
+    }
+    // Only a player of this game (not a built-in property name like `__proto__`, which would leave nobody on turn).
+    const target = isCallNext(cards[0]) && call !== username && typeof call === 'string' && Object.hasOwn(game.players, call) ? call : undefined;
+    setActivePlayerNext(game, target);
+    game.call = isCallNext(cards[0]) ? { by: username, target: activeName(game) } : null;
+};
+
+/** Who is on turn in `game`. */
+export const activeName = game => Object.keys(game.players).find(name => game.players[name].active);
+
+/**
+ * What `username` may see of `game`: their own cards (face-down table cards only as a
+ * count), opponents' card counts and face-up cards, the pile, the deck size and the turn.
+ */
+export const buildPlayerView = (room, game, username) => {
+    const opponents = {};
+    room.players.forEach(otherPlayer => {
+        if (otherPlayer.username !== username) {
+            const { userCards, active, ready } = game.players[otherPlayer.username];
+            opponents[otherPlayer.username] = {
+                table: present(userCards.table).length,
+                hand: userCards.hand.length,
+                tableFlipped: present(userCards.tableFlipped),
+                spots: spotsView(userCards),
+                active,
+                ready: !!ready,
+            };
+        }
+    });
+    const own = game.players[username];
+    return {
+        userCards: {
+            hand: own.userCards.hand,
+            tableFlipped: present(own.userCards.tableFlipped),
+            table: present(own.userCards.table).length,
+            spots: spotsView(own.userCards),
+        },
+        opponents,
+        laidCards: game.laidCards ? game.laidCards : null,
+        burntCards: game.burntCards ? game.burntCards : null,
+        deck: game.deck.length,
+        active: own.active,
+        phase: game.phase ?? 'play',
+        ready: !!own.ready,
+        blindMiss: game.blindMiss ?? null,
+        pickedUp: game.pickedUp ?? null,
+        direction: game.direction === -1 ? -1 : 1,
+        call: game.call ?? null,
+        addOnBy: game.addOnBy ?? null,
+        turnTimeLeft: game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : null,
+        turnTime: game.turnEndsAt ? game.turnTime : null,
+        streak: game.streak ?? 1,
+    };
+};
+
+/**
+ * Sends each player of `room` their view of `game` as `message`, with a room list: the whole list
+ * when the game starts, afterwards only the game's own room. The list doesn't change with a move,
+ * and with many rooms it was nearly all of the data (110 KB per move at 200 rooms, see
+ * test/load). An app replaces its list with it, so during a game it holds just its own room; the
+ * whole list comes back with `game-won` / `game-stopped`. (Players of running games get no room
+ * list broadcasts either, see `broadcastRooms`.)
+ */
+export const sendUiDataToSocket = (io, room, game, message, roomId) => {
+    const id = roomId ?? room.socketRoomId?.replace('game-', '');
+    const rooms = message === 'game-started' || id === undefined ? roomsList : { [id]: room };
+    room.players.forEach(player => {
+        if (player.bot) return; // no socket
+        io.to(player.socketId).emit(message, buildPlayerView(room, game, player.username), rooms, roomId);
+    });
+};
+
+/** The room `username` is in, as `[roomId, room]`, or undefined. */
+const findRoomOf = username => {
+    const entry = Object.entries(roomsList).find(([, room]) => room.players.some(player => player.username === username));
+    return entry && [Number(entry[0]), entry[1]];
+};
+
+/**
+ * Full state for one client, used to re-sync after a reconnect or when the app returns to
+ * the foreground: all rooms, the user's room (if any), their view of its game (if
+ * started) and the room's chat history.
+ */
+export const buildGameState = username => {
+    const found = username ? findRoomOf(username) : undefined;
+    if (!found) {
+        return { roomId: null, game: null, rooms: roomsList, messages: [] };
+    }
+    const [roomId, room] = found;
+    const game = room.inGame && games[roomId] ? buildPlayerView(room, games[roomId], username) : null;
+    return { roomId, game, rooms: roomsList, messages: roomMessages[`game-${roomId}`] ?? [] };
+};
+
+/**
+ * Passes the turn on in `game`: to player `to` when given (an Ace's call), otherwise to the
+ * next player after whoever is on turn, in the game's direction (seat order, or reversed).
+ */
+export const setActivePlayerNext = (game, to) => {
+    const names = Object.keys(game.players);
+    const from = names.findIndex(name => game.players[name].active);
+    const step = game.direction === -1 ? -1 : 1;
+    const next = to && Object.hasOwn(game.players, to) ? to : names[(from + step + names.length) % names.length];
+    names.forEach(name => {
+        game.players[name].active = name === next;
+    });
 };
 
 export let deck = [

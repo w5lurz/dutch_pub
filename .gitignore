@@ -2,15 +2,6 @@
 
 # dependencies
 /backend/node_modules
-/frontend/node_modules
-/frontend/.pnp
-/frontend/.pnp.js
-
-# testing
-/frontend/coverage
-
-# production
-/frontend/build
 
 # misc
 .DS_Store
@@ -18,6 +9,9 @@
 .env.development.local
 .env.test.local
 .env.production.local
+# The Sentry token for uploading source maps (mobile/scripts/update.mjs). Here, not in mobile/.gitignore:
+# that file is part of the app's fingerprint.
+.env.sentry-build-plugin
 
 npm-debug.log*
 yarn-debug.log*
@@ -26,3 +20,14 @@ yarn-error.log*
 .env
 **/.env
 !**/.env.example
+
+# On the server: secrets and database backups (deploy/)
+deploy/.env
+deploy/backend.env
+deploy/backups/
+
+# Firebase config for Android push (an EAS file variable on the build servers)
+/mobile/google-services.json
+deploy/web/
+# The web version built by deploy/publish-web.sh (not in mobile/.gitignore: that file is part of the app's native fingerprint).
+mobile/dist-web/

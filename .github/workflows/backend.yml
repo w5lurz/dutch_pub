@@ -1,0 +1,61 @@
+# Runs the backend's unit and end-to-end tests (and the shared package's) on every push and pull
+# request that touches them, e.g. Dependabot's updates. The end-to-end tests get a throwaway
+# MySQL and a random JWT secret: no real credentials are needed or used.
+name: Backend tests
+
+on:
+  push:
+    paths: [backend/**, packages/shared/**, .github/workflows/backend.yml]
+  pull_request:
+    paths: [backend/**, packages/shared/**, .github/workflows/backend.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+          MYSQL_DATABASE: dutch_pub_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASSWORD: ci-only-password
+      DB_NAME: dutch_pub_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            packages/shared/package-lock.json
+      - name: A random JWT secret for this run
+        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - name: Shared package
+        working-directory: packages/shared
+        run: |
+          npm ci
+          npm run build
+          npm test
+      - name: Backend unit tests
+        working-directory: backend
+        run: |
+          npm ci
+          npm test
+      - name: Backend end-to-end tests
+        working-directory: backend
+        run: npm run test:e2e
+      - name: npm audit (high and critical)
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
