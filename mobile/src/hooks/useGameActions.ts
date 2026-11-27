@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { canLayCard, type Cards, type Emote, type TCard } from '@dutch-pub/shared';
 
+import { addOnValue } from '@/components/game/addOn';
 import { pileDrawSignature } from '@/components/game/autoDraw';
 import { useRoomSettings } from '@/hooks/useRoomSettings';
 import i18n from '@/i18n';
@@ -39,6 +40,8 @@ export function useGameActions() {
     const game = useAppSelector(state => state.game);
     const active = !!game.active;
     const laidCards = game.laidCards;
+    // Out of turn: more of the card you just laid (until the next player moves).
+    const addOn = addOnValue(game, username);
     // The room's house rules that change which cards fit.
     const { nineOnMagic } = useRoomSettings();
     const cardRules = useMemo(() => ({ nineOnMagic }), [nineOnMagic]);
@@ -68,7 +71,9 @@ export function useGameActions() {
                 );
                 return false;
             }
-            if (!active) {
+            // Out of turn, only more of the card you just laid (`addOnValue`): they fit whatever the pile's rules.
+            const adding = !active && addOn !== null && typeof first === 'object' && (several ?? [first]).every((own) => own.value === addOn);
+            if (!active && !adding) {
                 dispatch(setToast({ id: `not-your-turn-${Date.now()}`, type: 'warning', message: i18n.t('game.toast.notYourTurnYet'), duration: 3000 }));
                 return false;
             }
@@ -76,7 +81,7 @@ export function useGameActions() {
                 dispatch(setToast({ id: `place-card-failed-${Date.now()}`, type: 'warning', message: i18n.t('game.toast.cannotPlace'), duration: 3000 }));
                 return false;
             }
-            if (first === undefined || !canLayCard(first, laidCards, cardRules)) {
+            if (!adding && (first === undefined || !canLayCard(first, laidCards, cardRules))) {
                 dispatch(setToast({ id: `lay-card-failed-${Date.now()}`, type: 'sad', message: i18n.t('server.cannotLay'), duration: 3000 }));
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
                 playSound('invalid');
@@ -93,7 +98,7 @@ export function useGameActions() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             return true;
         },
-        [active, laidCards, roomId, username, socket, dispatch, game.phase, game.blindMiss, game.pickedUp, cardRules],
+        [active, addOn, laidCards, roomId, username, socket, dispatch, game.phase, game.blindMiss, game.pickedUp, cardRules],
     );
 
     // Swap phase: trade a hand card with a face-up card, and say when you are done.

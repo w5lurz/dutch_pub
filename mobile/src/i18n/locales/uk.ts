@@ -373,6 +373,7 @@ const uk: Translation = {
         },
         turn: {
             yours: 'Твій хід',
+            addOn: 'Ще {{card}}? Клади швидше!',
             player: 'Ходить {{name}}',
             waiting: 'Очікування…',
             yourBlindMiss: 'Твоя закрита карта {{card}} не підходить! Забираєш…',

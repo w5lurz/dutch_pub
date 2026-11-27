@@ -81,6 +81,8 @@ type PileAreaProps = {
     blindMiss?: BlindMiss | null;
     /** Who just picked up the pile (the pause before the next turn): the message says so. */
     pickedUp?: PickedUp | null;
+    /** Out of turn: the top card, when you may add another of it (`addOnValue`): the turn text says so. */
+    addOn?: TCard | null;
     /** Your username (the message then says "Your"). */
     username?: string;
     /** The last Ace's call (who must lay a magic card now). */
@@ -237,7 +239,7 @@ function BurntHeap({ count, size }: { count: number; size: CardSize }) {
  * a heap of burnt backs.
  * The laid pile is where you drop a card to play it (`CardDropZone`).
  */
-export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false, blindMiss, pickedUp, username, call, reversed = false }: PileAreaProps) {
+export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tight = false, column = false, blindMiss, pickedUp, username, call, addOn, reversed = false }: PileAreaProps) {
     const burnt = burntCards?.length ?? 0;
     const { deckRef, dropZoneRef } = useCardDrag();
     const still = useReducedMotion();
@@ -290,6 +292,8 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
         ? blindMiss.username === username
             ? i18n.t('game.turn.yourBlindMiss', { card: cardName(blindMiss.card) })
             : i18n.t('game.turn.blindMiss', { name: blindMiss.username, card: cardName(blindMiss.card) })
+        : addOn
+        ? i18n.t('game.turn.addOn', { card: cardName(addOn) })
         : calling && call
           ? call.by === username
               ? i18n.t('game.turn.youCalled', { target: call.target })
@@ -302,7 +306,7 @@ export function PileArea({ deck, laidCards, burntCards, turnOf, size = 'lg', tig
             ? i18n.t('game.turn.player', { name: turnOf })
             : i18n.t('game.turn.waiting');
     const calledYou = !!(calling && call && call.target === username && call.by !== username);
-    const turnColours = blindMiss || pickedUp ? 'bg-red-200 text-red-900' : calling ? 'bg-amber-200 text-amber-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
+    const turnColours = blindMiss || pickedUp ? 'bg-red-200 text-red-900' : addOn ? 'bg-green-200 text-green-900' : calling ? 'bg-amber-200 text-amber-900' : turnOf === null ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-800';
 
     return (
         <View ref={areaRef} collapsable={false} className="items-center gap-1.5">

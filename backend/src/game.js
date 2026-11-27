@@ -35,6 +35,7 @@ export const timeOutTurn = game => {
     const entry = Object.entries(game.players).find(([, player]) => player.active);
     if (!entry) return undefined;
     game.call = null;
+    game.addOnBy = null;
     setActivePlayerNext(game);
     return entry[0];
 };
@@ -106,6 +107,7 @@ export const finishBlindMiss = (io, roomId, game) => {
     game.players[username].userCards.hand = [...game.laidCards].sort((a, b) => a.value - b.value);
     game.laidCards = null;
     game.call = null;
+    game.addOnBy = null;
     setActivePlayerNext(game);
     pauseAfterPickUp(io, roomId, game, username, count);
     if (roomsList[roomId]) sendUiDataToSocket(io, roomsList[roomId], game, 'cards-drawn');
@@ -142,16 +144,21 @@ const validateTurn = (socket, { roomId, username }) => {
     if (error) {
         return { error };
     }
-    if (game.phase === 'swap') {
-        return { error: 'Swap your cards first, then tap Ready.' };
-    }
-    if (game.blindMiss || game.pickedUp) {
-        return { error: 'Wait a moment, the pile is being picked up.' };
+    const waitError = noMovesError(game);
+    if (waitError) {
+        return { error: waitError };
     }
     if (!player.active) {
         return { error: 'It is not your turn.' };
     }
     return { player };
+};
+
+/** Why nobody can move in `game` now (the swap phase, a missed blind card, the pause after a pick-up), or null. */
+const noMovesError = game => {
+    if (game.phase === 'swap') return 'Swap your cards first, then tap Ready.';
+    if (game.blindMiss || game.pickedUp) return 'Wait a moment, the pile is being picked up.';
+    return null;
 };
 
 /**
@@ -192,18 +199,42 @@ export const markReady = (game, username) => {
  * first one fitting the pile.
  */
 export const validateLayCard = (socket, { card, cards, roomId, username }) => {
-    const { error, player } = validateTurn(socket, { roomId, username });
+    const { error, player, game: currentGame } = validatePlayer(socket, { roomId, username });
     if (error) {
         return { error };
     }
-    return checkCards(games[roomId], player, { card, cards });
+    const waitError = noMovesError(currentGame);
+    if (waitError) {
+        return { error: waitError };
+    }
+    if (!player.active) {
+        return checkAddOn(currentGame, username, { card, cards });
+    }
+    return checkCards(currentGame, player, { card, cards });
+};
+
+/**
+ * An add-on: `username` laid the top of the pile and nobody has moved since (`game.addOnBy`, e.g.
+ * they drew another 7 after laying a 7), so they may lay more cards of that value now, out of
+ * turn, as if laid together with the first ones (they fit whatever the pile's rules). Not blind.
+ * Returns `{ error }`, or `checkCards`' result with `addOn: true`.
+ */
+export const checkAddOn = (game, username, { card, cards }) => {
+    const top = game.laidCards?.[0];
+    if (game.addOnBy !== username || !top || typeof card === 'number' || game.players[username].active) {
+        return { error: 'It is not your turn.' };
+    }
+    const checked = checkCards(game, game.players[username], { card, cards }, { sameAs: top.value });
+    return checked.error ? checked : { ...checked, addOn: true };
 };
 
 /**
  * The cards part of `validateLayCard` (for a player whose turn it is): `{ error }`, or the
  * server's own `{ card }` / `{ card, cards }` / face-down index. Bots' moves go through it too.
  */
-export const checkCards = (currentGame, player, { card, cards }) => {
+export const checkCards = (currentGame, player, { card, cards }, { sameAs } = {}) => {
+    // An add-on (`checkAddOn`): only cards of value `sameAs`, whatever the pile's rules.
+    const fits = own => (sameAs === undefined ? canLayCard(own, currentGame.laidCards, currentGame.rules) : own.value === sameAs);
     const { hand } = player.userCards;
     const tableFlipped = present(player.userCards.tableFlipped);
     const table = present(player.userCards.table);
@@ -252,8 +283,8 @@ export const checkCards = (currentGame, player, { card, cards }) => {
         if (serverCards.some(own => own.value !== serverCards[0].value)) {
             return { error: 'Only cards of the same value can be laid together.' };
         }
-        if (!canLayCard(serverCards[0], currentGame.laidCards, currentGame.rules)) {
-            return { error: 'You cannot lay that card.' };
+        if (!fits(serverCards[0])) {
+            return { error: sameAs === undefined ? 'You cannot lay that card.' : 'It is not your turn.' };
         }
         return { card: serverCards[0], cards: serverCards };
     }
@@ -261,8 +292,8 @@ export const checkCards = (currentGame, player, { card, cards }) => {
     if (!serverCard) {
         return { error: "You don't have that card." };
     }
-    if (!canLayCard(serverCard, currentGame.laidCards, currentGame.rules)) {
-        return { error: 'You cannot lay that card.' };
+    if (!fits(serverCard)) {
+        return { error: sameAs === undefined ? 'You cannot lay that card.' : 'It is not your turn.' };
     }
     return { card: serverCard };
 };
@@ -296,7 +327,7 @@ export const performLay = async (io, roomId, username, validation, { cardIndex, 
         }
         applyLay(currentGame, username, [blindCard], cardIndex, { fromTable: true });
     } else {
-        applyLay(currentGame, username, validation.cards ?? [validation.card], cardIndex, { call });
+        applyLay(currentGame, username, validation.cards ?? [validation.card], cardIndex, { call, addOn: validation.addOn });
     }
 
     const won = userCards.hand.length === 0 && present(userCards.tableFlipped).length === 0 && present(userCards.table).length === 0;
@@ -314,8 +345,9 @@ export const performLay = async (io, roomId, username, validation, { cardIndex, 
     }
 
     // A new turn (the next player's, or the same player's again after a burn); no clock once won.
+    // An add-on that didn't burn the pile leaves the turn (and its clock) as it was.
     if (won) clearTurnClock(currentGame);
-    else startTurnClock(io, roomId, currentGame);
+    else if (!validation.addOn || currentGame.players[username].active) startTurnClock(io, roomId, currentGame);
     sendUiDataToSocket(io, currentRoom, currentGame, 'card-laid');
     // Games with a bot are practice: not recorded anywhere.
     if (won && !currentRoom.players.some(player => player.bot)) {
@@ -336,6 +368,7 @@ export const performDraw = (io, roomId, username) => {
     currentGame.laidCards = null;
     // The next player is on (after a called player: the one after them), once everyone saw the pick-up.
     currentGame.call = null;
+    currentGame.addOnBy = null;
     setActivePlayerNext(currentGame);
     pauseAfterPickUp(io, roomId, currentGame, username, count);
     sendUiDataToSocket(io, currentRoom, currentGame, 'cards-drawn');
@@ -478,9 +511,12 @@ const topRun = pile => {
  * of a kind on top of the pile, burns it and the same player goes again; otherwise the turn
  * passes on: with an Ace ("Call Next") to the player `call` names (any other player; missing or
  * invalid: the next one), who must lay a magic card; with a 6 and the room's "6 reverses" rule,
- * after the direction flips (once, however many 6s).
+ * after the direction flips (once, however many 6s). Until the next move, the player may still add
+ * cards of the same value (`game.addOnBy`, `checkAddOn`). `addOn`: such cards, laid out of turn: they
+ * go on the pile and the turn stays where it was (with its call and direction), unless they burn
+ * it: then their player goes again.
  */
-export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = false, call } = {}) => {
+export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = false, call, addOn = false } = {}) => {
     const userCards = game.players[username].userCards;
     if (!fromTable) {
         if (userCards.hand.length !== 0) {
@@ -501,9 +537,13 @@ export const applyLay = (game, username, cards, cardIndex = 0, { fromTable = fal
         game.burntCards = [...pile, ...(game.burntCards ?? [])];
         game.laidCards = null;
         game.call = null;
+        game.addOnBy = null;
+        if (addOn) setActivePlayerNext(game, username);
         return;
     }
     game.laidCards = pile;
+    game.addOnBy = username;
+    if (addOn) return;
     if (game.rules?.sixReverses && isReverse(cards[0])) {
         game.direction = game.direction === -1 ? 1 : -1;
     }
@@ -554,6 +594,7 @@ export const buildPlayerView = (room, game, username) => {
         pickedUp: game.pickedUp ?? null,
         direction: game.direction === -1 ? -1 : 1,
         call: game.call ?? null,
+        addOnBy: game.addOnBy ?? null,
         turnTimeLeft: game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : null,
         turnTime: game.turnEndsAt ? game.turnTime : null,
         streak: game.streak ?? 1,

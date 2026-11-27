@@ -6,7 +6,7 @@
 
 import { AVATAR_IDS, canLayCard, isCallNext } from '@dutch-pub/shared';
 
-import { activeName, checkCards, combinesWithFaceUp, markReady, performDraw, performLay, present, sendUiDataToSocket, startTurnClock, swapCards } from './game.js';
+import { activeName, checkAddOn, checkCards, combinesWithFaceUp, markReady, performDraw, performLay, present, sendUiDataToSocket, startTurnClock, swapCards } from './game.js';
 import { games, roomsList } from './rooms.js';
 
 /** The bots' names (the robot keeps them apart from real names, which can't contain emoji). */
@@ -118,9 +118,37 @@ export const scheduleBotTurn = (io, roomId, game) => {
             const move = botMove(game, username);
             const validation = move.draw ? { error: 'draw' } : checkCards(game, game.players[username], move);
             if (validation.error) performDraw(io, roomId, username);
-            else await performLay(io, roomId, username, validation, { cardIndex: move.cardIndex, call: move.call });
+            else {
+                await performLay(io, roomId, username, validation, { cardIndex: move.cardIndex, call: move.call });
+                scheduleBotAddOn(io, roomId, game, username);
+            }
         } catch (error) {
             console.log('BOT MOVE FAILED', error.message);
         }
     }, thinkTime()).unref?.();
+};
+
+/**
+ * After a bot's lay: when it now holds more cards of the value it just laid (drawn from the deck),
+ * it adds them a moment later, like a player could (`checkAddOn`), unless someone moved meanwhile.
+ */
+const scheduleBotAddOn = (io, roomId, game, username) => {
+    const copies = () => {
+        const top = game.laidCards?.[0];
+        const { hand, tableFlipped } = game.players[username]?.userCards ?? {};
+        const pool = hand?.length > 0 ? hand : present(tableFlipped);
+        return top ? pool.filter(card => card.value === top.value) : [];
+    };
+    if (games[roomId] !== game || game.addOnBy !== username || copies().length === 0) return;
+    setTimeout(async () => {
+        if (games[roomId] !== game || game.addOnBy !== username || game.blindMiss || game.pickedUp) return;
+        const cards = copies();
+        const validation = cards.length > 0 ? checkAddOn(game, username, { cards }) : { error: 'none' };
+        if (validation.error) return;
+        try {
+            await performLay(io, roomId, username, validation, { cardIndex: game.players[username].userCards.hand.indexOf(cards[0]) });
+        } catch (error) {
+            console.log('BOT ADD-ON FAILED', error.message);
+        }
+    }, thinkTime() / 2).unref?.();
 };

@@ -371,6 +371,7 @@ const zh: Translation = {
         },
         turn: {
             yours: '轮到你了',
+            addOn: '又一张{{card}}？快打出去！',
             player: '轮到 {{name}}',
             waiting: '等待中…',
             yourBlindMiss: '你翻开的暗牌 {{card}} 不能出！正在收牌…',

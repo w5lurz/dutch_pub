@@ -29,6 +29,8 @@ type PlayerBoardProps = {
 	userCards: UserCards;
 	laidCards: Cards | null;
 	active: boolean;
+	/** Out of turn: the value you may still add to the pile (`addOnValue`); your other cards are dimmed meanwhile. */
+	addOnValue?: number | null;
 	username?: string;
 	/** Your chosen avatar id; null / missing: the one generated from your name. */
 	avatar?: string | null;
@@ -92,6 +94,7 @@ export function PlayerBoard({
 	userCards,
 	laidCards,
 	active,
+	addOnValue = null,
 	username,
 	avatar,
 	onLayCard,
@@ -116,7 +119,7 @@ export function PlayerBoard({
 	const handPlayable = hand.length > 0;
 	const faceUpPlayable = hand.length === 0;
 	const faceDownPlayable = hand.length === 0 && tableFlipped.length === 0;
-	const dim = (card: TCard) => active && !canLayCard(card, laidCards, cardRules);
+	const dim = (card: TCard) => (active ? !canLayCard(card, laidCards, cardRules) : addOnValue !== null && card.value !== addOnValue);
 	// With the deck gone and a hand of only one value, face-up cards of that value may join it.
 	const combineValue = deckEmpty && hand.length > 0 && hand.every((own) => own.value === hand[0].value) ? hand[0].value : null;
 	const hasTableCards = tableFlipped.length > 0 || table > 0;

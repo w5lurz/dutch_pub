@@ -372,6 +372,7 @@ const de: Translation = {
         },
         turn: {
             yours: 'Du bist dran',
+            addOn: 'Noch mal {{card}}? Schnell ablegen!',
             player: '{{name}} ist dran',
             waiting: 'Warten…',
             yourBlindMiss: 'Deine blinde {{card}} passt nicht! Wird aufgenommen…',

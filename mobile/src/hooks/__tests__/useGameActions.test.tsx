@@ -99,6 +99,29 @@ describe('useGameActions.layCard', () => {
     });
 });
 
+describe('useGameActions add-ons', () => {
+    it('lays another card of the value you just laid out of turn, even if it would not fit by the rules', async () => {
+        const { hook } = await setup({ active: false, addOnBy: 'me', userCards: { hand: [card(9, 'spades'), card(12)], tableFlipped: [], table: 3 }, laidCards: [card(9)] });
+        await act(async () => {
+            expect(hook.result.current.layCard(card(9, 'spades'), 0, true)).toBe(true);
+        });
+        expect(mockSocket.emit).toHaveBeenCalledWith('lay-card', { card: card(9, 'spades'), cardIndex: 0, roomId: ROOM, username: 'me' });
+    });
+
+    it('refuses other cards, and add-ons once someone else laid the top card', async () => {
+        const { hook, store } = await setup({ active: false, addOnBy: 'me', userCards: { hand: [card(9, 'spades'), card(12)], tableFlipped: [], table: 3 }, laidCards: [card(9)] });
+        await act(async () => {
+            expect(hook.result.current.layCard(card(12), 1, true)).toBe(false);
+        });
+        expect(store.getState().general.toast?.message).toBe("It's not your turn yet.");
+        const later = await setup({ active: false, addOnBy: 'you', userCards: { hand: [card(9, 'spades')], tableFlipped: [], table: 3 }, laidCards: [card(9)] });
+        await act(async () => {
+            expect(later.hook.result.current.layCard(card(9, 'spades'), 0, true)).toBe(false);
+        });
+        expect(mockSocket.emit).not.toHaveBeenCalledWith('lay-card', expect.anything());
+    });
+});
+
 describe('useGameActions auto pick-up', () => {
     it('picks up the pile once when no card can be laid, also across re-renders', async () => {
         const { hook } = await setup({ userCards: { hand: [card(5)], tableFlipped: [], table: 3 }, laidCards: [card(13)] });

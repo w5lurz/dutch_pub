@@ -374,6 +374,7 @@ const en = {
         },
         turn: {
             yours: 'Your turn',
+            addOn: 'Another {{card}}? Lay it now, quick!',
             player: "{{name}}'s turn",
             waiting: 'Waiting…',
             yourBlindMiss: "Your blind {{card}} doesn't fit! Picking up…",

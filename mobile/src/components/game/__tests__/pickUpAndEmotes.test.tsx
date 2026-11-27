@@ -97,8 +97,9 @@ describe('cans on the table', () => {
     it('one can per game in a row from the second game, beer and cola taking turns, at most eight', () => {
         expect(cansFor(undefined)).toEqual([]);
         expect(cansFor(1)).toEqual([]);
-        expect(cansFor(2)).toEqual(['beer', 'cola']);
-        expect(cansFor(3)).toEqual(['beer', 'cola', 'beer']);
+        expect(cansFor(2)).toEqual(['green', 'cola']);
+        expect(cansFor(3)).toEqual(['green', 'cola', 'blue']);
+        expect(cansFor(4)).toEqual(['green', 'cola', 'blue', 'green']);
         expect(cansFor(30)).toHaveLength(MAX_CANS);
     });
 });

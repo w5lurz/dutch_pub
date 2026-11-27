@@ -24,6 +24,7 @@ import { EmotePicker } from './EmotePicker';
 import { PickUpBanner } from './PickUpBanner';
 import { WinBanner } from './WinBanner';
 import { PileArea } from './PileArea';
+import { addOnValue } from './addOn';
 import { PlayerBoard } from './PlayerBoard';
 import { Seat } from './Seat';
 import { ShotGlass, type Point } from './ShotGlass';
@@ -147,7 +148,7 @@ export function GameTable({
 	const insets = useSafeAreaInsets();
 	const layout = tableLayout(window);
 	const short = window.height < SHORT_HEIGHT;
-	const { width: cardWidth, height: cardHeight } = useCardSize('md');
+	const { height: cardHeight } = useCardSize('md');
 
 	// Chat: unread = messages that arrived while the modal was closed.
 	const [chatOpen, setChatOpen] = useState(false);
@@ -206,6 +207,8 @@ export function GameTable({
 
 	const activeOpponent = game.pickedUp ? undefined : Object.entries(game.opponents).find(([, opponent]) => opponent.active)?.[0];
 	const turnOf = active ? null : activeOpponent;
+	// Out of turn: more of the card you just laid may follow it until the next player moves.
+	const addOn = addOnValue(game, username);
 	// Swap phase (right after the deal): nobody is on turn yet; you can swap until you are ready.
 	const swapPhase = game.phase === 'swap';
 	// Turn timer: one countdown for whoever is on turn (shown by their name).
@@ -295,6 +298,7 @@ export function GameTable({
 			pickedUp={game.pickedUp}
 			username={username}
 			call={game.call}
+			addOn={addOn !== null ? game.laidCards?.[0] : null}
 			reversed={game.direction === -1}
 		/>
 	);
@@ -313,7 +317,7 @@ export function GameTable({
 				style={layout === 'portrait' ? { left: '7%', top: '62%' } : { left: '10%', bottom: '13%' }}
 			/>
 			{/* Several games in a row: empty beer and cola cans on the free parts of the table. */}
-			<TableCans streak={game.streak} layout={layout} cardWidth={cardWidth} seed={tableSeed} />
+			<TableCans streak={game.streak} layout={layout} size={Math.round(cardHeight * 0.6)} seed={tableSeed} />
 			<Screen edges={['top', 'bottom', 'left', 'right']} padded={false} background="none">
 				<CardSettingsProvider settings={cardSettings}>
 					<CardDragProvider>
@@ -350,6 +354,7 @@ export function GameTable({
 							userCards={game.userCards}
 							laidCards={game.laidCards}
 							active={active && !swapPhase}
+							addOnValue={addOn}
 							username={username}
 							avatar={username ? avatars?.[username] : undefined}
 							onLayCard={layCard}

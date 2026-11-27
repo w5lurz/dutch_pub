@@ -372,6 +372,7 @@ const hu: Translation = {
         },
         turn: {
             yours: 'Te jössz',
+            addOn: 'Még egy {{card}}? Tedd le gyorsan!',
             player: '{{name}} jön',
             waiting: 'Várakozás…',
             yourBlindMiss: 'A vakon húzott {{card}} nem illik! Felveszed…',

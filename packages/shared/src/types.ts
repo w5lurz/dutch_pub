@@ -132,6 +132,11 @@ export type Game = {
     direction?: 1 | -1;
     /** The last Ace's call: `by` laid it, `target` must lay a magic card (cleared by the next move). */
     call?: { by: string; target: string } | null;
+    /**
+     * Who laid the top of the pile, while nobody has moved since: they may add more cards of its value
+     * out of turn (e.g. another 7 drawn right after laying a 7). Missing (older servers): nobody.
+     */
+    addOnBy?: string | null;
 };
 
 export type TLeaderBoard = Array<{
